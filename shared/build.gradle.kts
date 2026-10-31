@@ -6,6 +6,15 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.sqldelight)
+}
+
+sqldelight {
+    databases {
+        create("ResiDb") {
+            packageName.set("pe.upeu.resi.resiup.db")
+        }
+    }
 }
 
 kotlin {
@@ -45,6 +54,7 @@ kotlin {
             implementation(libs.androidx.security.crypto)
             implementation(libs.koin.android)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.sqldelight.android)
             implementation(libs.camerax.core)
             implementation(libs.camerax.camera2)
             implementation(libs.camerax.lifecycle)
@@ -54,6 +64,7 @@ kotlin {
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
+            implementation(libs.sqldelight.native)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -72,6 +83,8 @@ kotlin {
             implementation(libs.serialization.json)
             implementation(libs.coroutines.core)
             implementation(libs.datetime)
+            implementation(libs.sqldelight.runtime)
+            implementation(libs.sqldelight.coroutines)
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
             implementation(libs.koin.composeViewmodel)
@@ -80,6 +93,9 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.ktor.client.mock)
             implementation(libs.coroutines.test)
+        }
+        getByName("androidHostTest").dependencies {
+            implementation(libs.sqldelight.jvm)
         }
         getByName("androidDeviceTest").dependencies {
             implementation(libs.androidx.testRunner)

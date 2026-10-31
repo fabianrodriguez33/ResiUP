@@ -1,0 +1,112 @@
+-- Copia local de CONSULTA del residente. El servidor es la fuente de verdad: esta base sólo permite ver
+-- lo último sincronizado sin conexión. Nunca autoriza nada ni guarda credenciales ni el QR.
+
+CREATE TABLE meta (
+    clave TEXT NOT NULL PRIMARY KEY,
+    valor TEXT NOT NULL
+);
+
+CREATE TABLE perfil (
+    id                INTEGER NOT NULL PRIMARY KEY,
+    codigo            TEXT    NOT NULL,
+    nombre            TEXT    NOT NULL,
+    telefono          TEXT,
+    habitacion_id     INTEGER,
+    habitacion_numero TEXT
+);
+
+CREATE TABLE asistencia (
+    id            INTEGER NOT NULL PRIMARY KEY,
+    fecha         TEXT    NOT NULL,
+    tipo          TEXT    NOT NULL,
+    registrado_en TEXT    NOT NULL,
+    despues_corte INTEGER NOT NULL
+);
+
+CREATE TABLE evaluacion (
+    id          INTEGER NOT NULL PRIMARY KEY,
+    fecha       TEXT    NOT NULL,
+    total       INTEGER NOT NULL,
+    maximo      INTEGER NOT NULL,
+    puntajes    TEXT    NOT NULL,
+    observacion TEXT
+);
+
+CREATE TABLE resumen_limpieza (
+    id          INTEGER NOT NULL PRIMARY KEY,
+    evaluaciones INTEGER NOT NULL,
+    promedio    REAL,
+    ultimo_total INTEGER,
+    ultima_fecha TEXT
+);
+
+CREATE TABLE solicitud (
+    id                  INTEGER NOT NULL PRIMARY KEY,
+    residente_codigo    TEXT    NOT NULL,
+    residente_nombre    TEXT    NOT NULL,
+    tipo                TEXT    NOT NULL,
+    motivo              TEXT    NOT NULL,
+    destino             TEXT    NOT NULL,
+    salida              TEXT    NOT NULL,
+    retorno_solicitado  TEXT    NOT NULL,
+    retorno_autorizado  TEXT    NOT NULL,
+    estado              TEXT    NOT NULL,
+    requiere_apoderado  INTEGER NOT NULL,
+    comentario_decision TEXT,
+    creado_en           TEXT    NOT NULL
+);
+
+leerMeta:
+SELECT valor FROM meta WHERE clave = ?;
+
+guardarMeta:
+INSERT OR REPLACE INTO meta (clave, valor) VALUES (?, ?);
+
+borrarMeta:
+DELETE FROM meta;
+
+observarPerfil:
+SELECT * FROM perfil LIMIT 1;
+
+guardarPerfil:
+INSERT OR REPLACE INTO perfil (id, codigo, nombre, telefono, habitacion_id, habitacion_numero) VALUES (?, ?, ?, ?, ?, ?);
+
+borrarPerfil:
+DELETE FROM perfil;
+
+observarAsistencias:
+SELECT * FROM asistencia ORDER BY registrado_en DESC;
+
+guardarAsistencia:
+INSERT OR REPLACE INTO asistencia (id, fecha, tipo, registrado_en, despues_corte) VALUES (?, ?, ?, ?, ?);
+
+borrarAsistencias:
+DELETE FROM asistencia;
+
+observarEvaluaciones:
+SELECT * FROM evaluacion ORDER BY fecha DESC, id DESC;
+
+guardarEvaluacion:
+INSERT OR REPLACE INTO evaluacion (id, fecha, total, maximo, puntajes, observacion) VALUES (?, ?, ?, ?, ?, ?);
+
+borrarEvaluaciones:
+DELETE FROM evaluacion;
+
+observarResumen:
+SELECT * FROM resumen_limpieza WHERE id = 1;
+
+guardarResumen:
+INSERT OR REPLACE INTO resumen_limpieza (id, evaluaciones, promedio, ultimo_total, ultima_fecha) VALUES (1, ?, ?, ?, ?);
+
+borrarResumen:
+DELETE FROM resumen_limpieza;
+
+observarSolicitudes:
+SELECT * FROM solicitud ORDER BY creado_en DESC;
+
+guardarSolicitud:
+INSERT OR REPLACE INTO solicitud (id, residente_codigo, residente_nombre, tipo, motivo, destino, salida, retorno_solicitado, retorno_autorizado, estado, requiere_apoderado, comentario_decision, creado_en)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+borrarSolicitudes:
+DELETE FROM solicitud;
