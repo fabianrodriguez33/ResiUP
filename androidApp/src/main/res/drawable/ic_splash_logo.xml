@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+    <!-- Isotipo propio: casa con puerta, dentro del círculo seguro de 192dp -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M144,92 L196,136 L184,136 L184,190 L104,190 L104,136 L92,136 Z M132,190 L132,156 L156,156 L156,190 Z" />
+</vector>

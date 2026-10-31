@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Color de marca propuesto (no oficial); mantener igual que Paleta.AzulInstitucional -->
+    <color name="resi_marca">#0A2F6B</color>
+</resources>

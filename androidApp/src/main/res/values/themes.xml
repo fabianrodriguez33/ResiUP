@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ResiUP" parent="android:Theme.DeviceDefault.NoActionBar" />
+
+    <style name="Theme.ResiUP.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/resi_marca</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.ResiUP</item>
+    </style>
+</resources>
