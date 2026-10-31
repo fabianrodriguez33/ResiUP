@@ -20,6 +20,8 @@ class GestorSesion(
     private val obtenerGuardada: ObtenerSesionGuardadaUseCase,
     private val cerrar: CerrarSesionUseCase,
     val eventos: SesionEventos,
+    private val alIniciar: (Sesion) -> Unit = {},
+    private val alCerrar: () -> Unit = {},
 ) {
     private val _estado = MutableStateFlow<EstadoSesion>(EstadoSesion.Arrancando)
     val estado: StateFlow<EstadoSesion> = _estado.asStateFlow()
@@ -27,15 +29,18 @@ class GestorSesion(
     suspend fun restaurar() {
         if (_estado.value != EstadoSesion.Arrancando) return
         val sesion = obtenerGuardada()
+        if (sesion != null) alIniciar(sesion) else alCerrar()
         _estado.value = if (sesion != null) EstadoSesion.Activa(sesion) else EstadoSesion.SinSesion()
     }
 
     fun sesionIniciada(sesion: Sesion) {
+        alIniciar(sesion)
         _estado.value = EstadoSesion.Activa(sesion)
     }
 
     suspend fun cerrarSesion(aviso: String? = null) {
         cerrar()
+        alCerrar() // se borra la copia local de consulta: otro usuario no debe ver datos del anterior
         _estado.value = EstadoSesion.SinSesion(aviso)
     }
 

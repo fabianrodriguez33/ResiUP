@@ -43,3 +43,9 @@ fun combinarFechaHora(fechaMillisUtc: Long, hora: Int, minuto: Int): Instant {
     val fecha = Instant.fromEpochMilliseconds(fechaMillisUtc).toLocalDateTime(TimeZone.UTC).date
     return LocalDateTime(fecha, LocalTime(hora, minuto)).toInstant(ZonaResidencia)
 }
+
+/** Un decimal con coma («17,5»), sin depender de la configuración regional de la plataforma. */
+fun Double.unDecimal(): String {
+    val decimas = kotlin.math.round(this * 10).toInt()
+    return "${decimas / 10},${decimas % 10}"
+}

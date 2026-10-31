@@ -1,6 +1,7 @@
 package pe.upeu.resi.resiup.di
 
 import io.ktor.client.HttpClient
+import app.cash.sqldelight.db.SqlDriver
 import io.ktor.client.engine.HttpClientEngine
 import kotlin.time.Clock
 import org.koin.core.KoinApplication
@@ -11,6 +12,11 @@ import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.KoinAppDeclaration
 import org.koin.dsl.module
 import pe.upeu.resi.resiup.data.local.AlmacenSeguro
+import pe.upeu.resi.resiup.data.local.DatosLocales
+import pe.upeu.resi.resiup.db.ResiDb
+import pe.upeu.resi.resiup.data.repository.ConsultasResidenteRepositoryImpl
+import pe.upeu.resi.resiup.domain.repository.ConsultasResidenteRepository
+import pe.upeu.resi.resiup.presentation.util.Sincronizador
 import pe.upeu.resi.resiup.data.local.SesionStore
 import pe.upeu.resi.resiup.data.remote.AuthApi
 import pe.upeu.resi.resiup.data.remote.CultoApi
@@ -74,6 +80,11 @@ fun datosModule(config: ConfigEntorno) = module {
     single<CultoRepository> { CultoRepositoryImpl(get()) }
     single<LimpiezaRepository> { LimpiezaRepositoryImpl(get()) }
     single<GaritaRepository> { GaritaRepositoryImpl(get()) }
+    single { ResiDb(get<SqlDriver>()) }
+    single { DatosLocales(get()) }
+    single<ConsultasResidenteRepository> {
+        ConsultasResidenteRepositoryImpl(get(), get(), get()) { Clock.System.now().toEpochMilliseconds() }
+    }
     single<AuthRepository> { AuthRepositoryImpl(get(), get()) { Clock.System.now().toEpochMilliseconds() } }
 }
 
@@ -84,7 +95,16 @@ val dominioModule = module {
 }
 
 val presentacionModule = module {
-    single { GestorSesion(get(), get(), get()) }
+    single { Sincronizador(get()) { Clock.System.now().toEpochMilliseconds() } }
+    single {
+        val consultas = get<ConsultasResidenteRepository>()
+        val sincronizador = get<Sincronizador>()
+        GestorSesion(
+            get(), get(), get(),
+            alIniciar = { consultas.asegurarPropietario(it.usuario) },
+            alCerrar = { consultas.borrarTodo(); sincronizador.reiniciar() },
+        )
+    }
     viewModelOf(::LoginViewModel)
     // Residente
     viewModelOf(::InicioResidenteViewModel)
@@ -93,8 +113,8 @@ val presentacionModule = module {
     viewModelOf(::LimpiezaResidenteViewModel)
     viewModelOf(::MisSolicitudesViewModel)
     viewModelOf(::MovimientosViewModel)
-    viewModelOf(::SolicitudFormViewModel)
-    viewModel { (id: Long) -> SolicitudDetalleViewModel(id, get()) }
+    viewModel { SolicitudFormViewModel(get()) { get<Sincronizador>().refrescar(forzar = true) } }
+    viewModel { (id: Long) -> SolicitudDetalleViewModel(id, get()) { get<Sincronizador>().refrescar(forzar = true) } }
     // Preceptor
     viewModelOf(::InicioPreceptorViewModel)
     viewModelOf(::AsistenciaCultoViewModel)
