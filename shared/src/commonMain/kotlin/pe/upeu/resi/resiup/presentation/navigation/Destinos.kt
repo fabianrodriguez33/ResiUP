@@ -1,14 +1,8 @@
 package pe.upeu.resi.resiup.presentation.navigation
 
+import pe.upeu.resi.resiup.domain.model.Rol
 import pe.upeu.resi.resiup.presentation.components.ItemNavegacion
 import pe.upeu.resi.resiup.presentation.components.ResiIconos
-
-enum class Rol(val etiqueta: String) {
-    Residente("Residente"),
-    Preceptor("Preceptor"),
-    Garita("Garita"),
-    Administrador("Administrador"),
-}
 
 object Destinos {
     const val Inicio = "inicio"

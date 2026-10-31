@@ -34,12 +34,13 @@ import pe.upeu.resi.resiup.presentation.components.ResiTarjeta
 import pe.upeu.resi.resiup.presentation.components.TituloPantalla
 import pe.upeu.resi.resiup.presentation.components.VarianteBoton
 import pe.upeu.resi.resiup.presentation.navigation.Destinos
-import pe.upeu.resi.resiup.presentation.navigation.Rol
+import pe.upeu.resi.resiup.domain.model.Rol
+import pe.upeu.resi.resiup.domain.model.Sesion
 import pe.upeu.resi.resiup.presentation.navigation.destinos
 import pe.upeu.resi.resiup.presentation.theme.Espacio
 
 @Composable
-fun ShellPrincipal(rol: Rol, onCerrarSesion: () -> Unit) {
+fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
     val items = remember(rol) { rol.destinos() }
     var seleccionado by rememberSaveable(rol) { mutableStateOf(items.first().id) }
     val actual = items.first { it.id == seleccionado }
@@ -47,7 +48,7 @@ fun ShellPrincipal(rol: Rol, onCerrarSesion: () -> Unit) {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().padding(bottom = 84.dp)) {
             when (actual.id) {
-                Destinos.Perfil, Destinos.Mas -> PantallaCuenta(rol, onCerrarSesion)
+                Destinos.Perfil, Destinos.Mas -> PantallaCuenta(rol, sesion, onCerrarSesion)
                 else -> PantallaPendiente(actual.etiqueta, rol)
             }
         }
@@ -71,7 +72,7 @@ private fun PantallaPendiente(titulo: String, rol: Rol) {
 }
 
 @Composable
-private fun PantallaCuenta(rol: Rol, onCerrarSesion: () -> Unit) {
+private fun PantallaCuenta(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
     var confirmar by remember { mutableStateOf(false) }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l),
@@ -80,8 +81,8 @@ private fun PantallaCuenta(rol: Rol, onCerrarSesion: () -> Unit) {
         TituloPantalla("Cuenta")
         ResiTarjeta {
             ElementoLista(
-                titulo = "Sesión de vista previa",
-                subtitulo = "Datos del usuario disponibles al conectar con el servidor",
+                titulo = sesion?.nombreCompleto ?: "Vista previa (sin sesión)",
+                subtitulo = sesion?.usuario ?: "Modo de desarrollo: no hay un usuario autenticado",
                 icono = ResiIconos.Perfil,
                 final = { ChipEstado(rol.etiqueta, EstadoVisual.Info) },
             )

@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,7 +41,7 @@ import pe.upeu.resi.resiup.presentation.components.IsotipoResi
 import pe.upeu.resi.resiup.presentation.components.ResiBoton
 import pe.upeu.resi.resiup.presentation.components.ResiCampoTexto
 import pe.upeu.resi.resiup.presentation.components.VarianteBoton
-import pe.upeu.resi.resiup.presentation.navigation.Rol
+import pe.upeu.resi.resiup.domain.model.Rol
 import pe.upeu.resi.resiup.presentation.theme.Espacio
 import pe.upeu.resi.resiup.presentation.theme.ResiTheme
 
@@ -50,6 +52,7 @@ fun LoginScreen(
     onUsuario: (String) -> Unit,
     onClave: (String) -> Unit,
     onIngresar: () -> Unit,
+    aviso: String?,
     modoDesarrollo: Boolean,
     onVistaPrevia: (Rol) -> Unit,
     onCatalogo: () -> Unit,
@@ -64,7 +67,7 @@ fun LoginScreen(
             Modifier.fillMaxWidth().background(marca, RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)).padding(bottom = Espacio.xl),
         ) {
             Column(
-                Modifier.fillMaxWidth().safeDrawingPadding().padding(top = Espacio.xl).alpha(entrada.value).scale(0.92f + 0.08f * entrada.value),
+                Modifier.fillMaxWidth().statusBarsPadding().padding(top = Espacio.xl).alpha(entrada.value).scale(0.92f + 0.08f * entrada.value),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Image(IsotipoResi, null, Modifier.size(72.dp))
@@ -81,20 +84,21 @@ fun LoginScreen(
         }
 
         Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(Espacio.xl).alpha(entrada.value),
+            Modifier.weight(1f).imePadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(Espacio.xl).alpha(entrada.value),
             verticalArrangement = Arrangement.spacedBy(Espacio.m),
         ) {
             Text("Iniciar sesión", style = MaterialTheme.typography.headlineMedium)
-            ResiCampoTexto(estado.usuario, onUsuario, "Usuario o código", error = estado.usuarioError, tipoTeclado = KeyboardType.Ascii)
-            ResiCampoTexto(estado.clave, onClave, "Contraseña", error = estado.claveError, esClave = true)
-            estado.mensaje?.let { BannerMensaje(it, EstadoVisual.Info) }
-            ResiBoton("Ingresar", onIngresar, Modifier.fillMaxWidth())
+            aviso?.let { BannerMensaje(it, EstadoVisual.Advertencia) }
+            ResiCampoTexto(estado.usuario, onUsuario, "Usuario o código", error = estado.usuarioError, tipoTeclado = KeyboardType.Ascii, habilitado = !estado.cargando)
+            ResiCampoTexto(estado.clave, onClave, "Contraseña", error = estado.claveError, esClave = true, habilitado = !estado.cargando)
+            estado.error?.let { BannerMensaje(it, EstadoVisual.Error) }
+            ResiBoton("Ingresar", onIngresar, Modifier.fillMaxWidth(), cargando = estado.cargando)
 
             if (modoDesarrollo) {
                 Spacer(Modifier.height(Espacio.l))
                 ChipEstado("Solo desarrollo", EstadoVisual.Advertencia)
                 Text(
-                    "Vista previa de la navegación por rol (sin autenticación real).",
+                    "Vista previa de la navegación por rol: no inicia sesión ni consulta el servidor.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
