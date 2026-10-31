@@ -34,6 +34,8 @@ androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", versi
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
 androidx-testExt-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-testExt" }
 androidx-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "androidx-espresso" }
+androidx-compose-uiTestJunit4 = { module = "androidx.compose.ui:ui-test-junit4", version = "1.12.1" }
+androidx-compose-uiTestManifest = { module = "androidx.compose.ui:ui-test-manifest", version = "1.12.1" }
 androidx-testRunner = { module = "androidx.test:runner", version.ref = "androidx-testRunner" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "androidx-appcompat" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }

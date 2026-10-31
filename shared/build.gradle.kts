@@ -41,7 +41,7 @@ kotlin {
            isIncludeAndroidResources = true
        }
        withDeviceTestBuilder {
-           sourceSetTreeName = "test"
+           sourceSetTreeName = "instrumented"
        }.configure {
            instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
        }
@@ -99,6 +99,10 @@ kotlin {
         }
         getByName("androidDeviceTest").dependencies {
             implementation(libs.androidx.testRunner)
+            implementation(libs.androidx.testExt.junit)
+            implementation(libs.androidx.espresso.core)
+            implementation(libs.androidx.compose.uiTestJunit4)
+            implementation(libs.androidx.compose.uiTestManifest)
         }
     }
 }

@@ -25,3 +25,5 @@ En debug el login muestra una *vista previa de roles* (sólo navegación, sin se
 ```bash
 ./gradlew :shared:testAndroidHostTest :androidApp:lintDebug
 ```
+Pruebas de interfaz (Compose, requieren un emulador o teléfono conectado): `./gradlew :shared:connectedAndroidDeviceTest`.
+Las pruebas de interfaz usan su propio conjunto de fuentes (`androidDeviceTest`) porque los nombres de prueba con espacios de `commonTest` no se pueden compilar a DEX en dispositivos.

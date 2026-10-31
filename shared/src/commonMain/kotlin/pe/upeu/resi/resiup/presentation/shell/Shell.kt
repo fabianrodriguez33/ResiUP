@@ -114,7 +114,7 @@ private fun PantallaPendiente(titulo: String, rol: Rol) {
         TituloPantalla(titulo, subtitulo = rol.etiqueta)
         EstadoVacio(
             titulo = "Módulo en construcción",
-            mensaje = "Esta sección se implementa en la Fase 4 y mostrará datos reales del servidor.",
+            mensaje = "Esta es una vista previa de navegación. Inicia sesión con un usuario real para ver los datos del servidor.",
         )
     }
 }
