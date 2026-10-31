@@ -2,8 +2,10 @@ package pe.upeu.resi.resiup.presentation.residente
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,42 +21,62 @@ import pe.upeu.resi.resiup.domain.model.QrPersonal
 import pe.upeu.resi.resiup.domain.model.ResumenLimpieza
 import pe.upeu.resi.resiup.domain.model.SolicitudPermiso
 import pe.upeu.resi.resiup.domain.model.TipoPermiso
+import pe.upeu.resi.resiup.domain.repository.ConsultasResidenteRepository
 import pe.upeu.resi.resiup.domain.repository.PermisoRepository
 import pe.upeu.resi.resiup.domain.repository.ResidenteRepository
 import pe.upeu.resi.resiup.presentation.util.Carga
+import pe.upeu.resi.resiup.presentation.util.Consulta
 import pe.upeu.resi.resiup.presentation.util.ListaViewModel
+import pe.upeu.resi.resiup.presentation.util.Sincronizador
+import pe.upeu.resi.resiup.presentation.util.comoConsulta
 import pe.upeu.resi.resiup.presentation.util.aCarga
 import pe.upeu.resi.resiup.presentation.util.aErrorApi
 import pe.upeu.resi.resiup.presentation.util.ahora
 
-class AsistenciasViewModel(repo: ResidenteRepository) : ListaViewModel<AsistenciaCulto>({ repo.asistencias(it) })
-
 class MovimientosViewModel(repo: ResidenteRepository) : ListaViewModel<MovimientoRegistrado>({ repo.movimientos(it) })
 
-class MisSolicitudesViewModel(repo: PermisoRepository) : ListaViewModel<SolicitudPermiso>({ repo.mias(it) })
+// Las pantallas de consulta leen la copia local (SQLDelight) y se actualizan solas al sincronizar.
+private fun <T> ViewModel.compartir(flujo: Flow<Consulta<T>>): StateFlow<Consulta<T>> =
+    flujo.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Consulta.Cargando)
+
+class AsistenciasViewModel(private val consultas: ConsultasResidenteRepository, private val sync: Sincronizador) : ViewModel() {
+    val estado = compartir(consultas.asistencias().comoConsulta(sync.estado, consultas.ultimaSincronizacion()))
+    init { sync.refrescar() }
+    fun reintentar() = sync.refrescar(forzar = true)
+}
+
+class MisSolicitudesViewModel(private val consultas: ConsultasResidenteRepository, private val sync: Sincronizador) : ViewModel() {
+    val estado = compartir(consultas.solicitudes().comoConsulta(sync.estado, consultas.ultimaSincronizacion()))
+    init { sync.refrescar() }
+    fun reintentar() = sync.refrescar(forzar = true)
+}
 
 // ---------------------------------------------------------------- perfil + QR
 
-/** El perfil es obligatorio; el QR puede fallar sin impedir ver el perfil. */
-data class PerfilUi(val perfil: Perfil, val qr: QrPersonal?, val errorQr: ErrorApi?)
+/** El QR no se guarda en el dispositivo: sólo se muestra con conexión (es una credencial revocable). */
+class PerfilViewModel(
+    private val consultas: ConsultasResidenteRepository,
+    private val residente: ResidenteRepository,
+    private val sync: Sincronizador,
+) : ViewModel() {
+    val estado = compartir(consultas.perfil().comoConsulta(sync.estado, consultas.ultimaSincronizacion()))
 
-class PerfilViewModel(private val repo: ResidenteRepository) : ViewModel() {
-    private val _estado = MutableStateFlow<Carga<PerfilUi>>(Carga.Cargando)
-    val estado: StateFlow<Carga<PerfilUi>> = _estado.asStateFlow()
+    private val _qr = MutableStateFlow<Carga<QrPersonal>>(Carga.Cargando)
+    val qr: StateFlow<Carga<QrPersonal>> = _qr.asStateFlow()
 
-    init { cargar() }
+    init {
+        sync.refrescar()
+        cargarQr()
+    }
 
-    fun cargar() {
-        _estado.value = Carga.Cargando
-        viewModelScope.launch {
-            val (perfil, qr) = coroutineScope { async { repo.perfil() } to async { repo.qr() } }
-            val p = perfil.await()
-            val q = qr.await()
-            _estado.value = p.fold(
-                { Carga.Exito(PerfilUi(it, q.getOrNull(), q.exceptionOrNull()?.aErrorApi())) },
-                { Carga.Fallo(it.aErrorApi()) },
-            )
-        }
+    fun cargarQr() {
+        _qr.value = Carga.Cargando
+        viewModelScope.launch { _qr.value = residente.qr().aCarga() }
+    }
+
+    fun reintentar() {
+        sync.refrescar(forzar = true)
+        cargarQr()
     }
 }
 
@@ -67,62 +89,28 @@ data class InicioResidenteUi(
     val permisoReciente: SolicitudPermiso?,
 )
 
-class InicioResidenteViewModel(private val residente: ResidenteRepository, private val permisos: PermisoRepository) : ViewModel() {
-    private val _estado = MutableStateFlow<Carga<InicioResidenteUi>>(Carga.Cargando)
-    val estado: StateFlow<Carga<InicioResidenteUi>> = _estado.asStateFlow()
-
-    init { cargar() }
-
-    fun cargar() {
-        _estado.value = Carga.Cargando
-        viewModelScope.launch {
-            coroutineScope {
-                val perfil = async { residente.perfil() }
-                val limpieza = async { residente.resumenLimpieza() }
-                val asistencias = async { residente.asistencias(0) }
-                val solicitudes = async { permisos.mias(0) }
-                _estado.value = perfil.await().fold(
-                    {
-                        Carga.Exito(
-                            InicioResidenteUi(
-                                it, limpieza.await().getOrNull(), asistencias.await().getOrNull()?.contenido?.firstOrNull(),
-                                solicitudes.await().getOrNull()?.contenido?.firstOrNull(),
-                            ),
-                        )
-                    },
-                    { Carga.Fallo(it.aErrorApi()) },
-                )
-            }
-        }
-    }
+class InicioResidenteViewModel(private val consultas: ConsultasResidenteRepository, private val sync: Sincronizador) : ViewModel() {
+    val estado = compartir(
+        combine(consultas.perfil(), consultas.resumenLimpieza(), consultas.asistencias(), consultas.solicitudes()) { perfil, resumen, asistencias, solicitudes ->
+            perfil?.let { InicioResidenteUi(it, resumen, asistencias.firstOrNull(), solicitudes.firstOrNull()) }
+        }.comoConsulta(sync.estado, consultas.ultimaSincronizacion()),
+    )
+    init { sync.refrescar() }
+    fun reintentar() = sync.refrescar(forzar = true)
 }
 
 // ---------------------------------------------------------------- limpieza
 
 data class LimpiezaUi(val resumen: ResumenLimpieza, val evaluaciones: List<EvaluacionLimpieza>)
 
-class LimpiezaResidenteViewModel(private val repo: ResidenteRepository) : ViewModel() {
-    private val _estado = MutableStateFlow<Carga<LimpiezaUi>>(Carga.Cargando)
-    val estado: StateFlow<Carga<LimpiezaUi>> = _estado.asStateFlow()
-
-    init { cargar() }
-
-    fun cargar() {
-        _estado.value = Carga.Cargando
-        viewModelScope.launch {
-            coroutineScope {
-                val resumen = async { repo.resumenLimpieza() }
-                val lista = async { repo.limpieza(0) }
-                val r = resumen.await()
-                val l = lista.await()
-                _estado.value = when {
-                    r.isFailure -> Carga.Fallo(r.exceptionOrNull()!!.aErrorApi())
-                    l.isFailure -> Carga.Fallo(l.exceptionOrNull()!!.aErrorApi())
-                    else -> Carga.Exito(LimpiezaUi(r.getOrThrow(), l.getOrThrow().contenido))
-                }
-            }
-        }
-    }
+class LimpiezaResidenteViewModel(private val consultas: ConsultasResidenteRepository, private val sync: Sincronizador) : ViewModel() {
+    val estado = compartir(
+        combine(consultas.resumenLimpieza(), consultas.evaluaciones()) { resumen, lista ->
+            LimpiezaUi(resumen ?: ResumenLimpieza(0, null, null, null), lista)
+        }.comoConsulta(sync.estado, consultas.ultimaSincronizacion()),
+    )
+    init { sync.refrescar() }
+    fun reintentar() = sync.refrescar(forzar = true)
 }
 
 // ---------------------------------------------------------------- permisos: formulario y detalle
@@ -139,7 +127,7 @@ data class SolicitudFormState(
     val creada: SolicitudPermiso? = null,
 )
 
-class SolicitudFormViewModel(private val repo: PermisoRepository) : ViewModel() {
+class SolicitudFormViewModel(private val repo: PermisoRepository, private val alCrear: () -> Unit = {}) : ViewModel() {
     private val _estado = MutableStateFlow(SolicitudFormState())
     val estado: StateFlow<SolicitudFormState> = _estado.asStateFlow()
 
@@ -168,7 +156,7 @@ class SolicitudFormViewModel(private val repo: PermisoRepository) : ViewModel() 
         _estado.update { it.copy(enviando = true, error = null, errores = emptyMap()) }
         viewModelScope.launch {
             repo.crear(NuevaSolicitud(s.tipo, s.motivo.trim(), s.destino.trim(), s.salida!!, s.retorno!!))
-                .onSuccess { c -> _estado.update { it.copy(enviando = false, creada = c) } }
+                .onSuccess { c -> alCrear(); _estado.update { it.copy(enviando = false, creada = c) } }
                 .onFailure { e ->
                     val err = e.aErrorApi()
                     _estado.update {
@@ -182,7 +170,7 @@ class SolicitudFormViewModel(private val repo: PermisoRepository) : ViewModel() 
 
 data class DetalleAccionState(val trabajando: Boolean = false, val error: ErrorApi? = null, val mensaje: String? = null)
 
-class SolicitudDetalleViewModel(private val id: Long, private val repo: PermisoRepository) : ViewModel() {
+class SolicitudDetalleViewModel(private val id: Long, private val repo: PermisoRepository, private val alCambiar: () -> Unit = {}) : ViewModel() {
     private val _estado = MutableStateFlow<Carga<SolicitudPermiso>>(Carga.Cargando)
     val estado: StateFlow<Carga<SolicitudPermiso>> = _estado.asStateFlow()
     private val _accion = MutableStateFlow(DetalleAccionState())
@@ -216,7 +204,7 @@ class SolicitudDetalleViewModel(private val id: Long, private val repo: PermisoR
         _accion.value = DetalleAccionState(trabajando = true)
         viewModelScope.launch {
             bloque()
-                .onSuccess { _accion.value = DetalleAccionState(mensaje = exito); cargar() }
+                .onSuccess { _accion.value = DetalleAccionState(mensaje = exito); alCambiar(); cargar() }
                 .onFailure { _accion.value = DetalleAccionState(error = it.aErrorApi()) }
         }
     }

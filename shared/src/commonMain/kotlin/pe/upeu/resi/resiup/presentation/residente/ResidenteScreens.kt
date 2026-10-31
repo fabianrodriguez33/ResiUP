@@ -4,12 +4,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -25,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.koin.compose.viewmodel.koinViewModel
+import pe.upeu.resi.resiup.domain.error.ErrorApi
 import pe.upeu.resi.resiup.domain.model.AsistenciaCulto
 import pe.upeu.resi.resiup.domain.model.Rol
 import pe.upeu.resi.resiup.domain.model.Sesion
@@ -34,7 +38,8 @@ import pe.upeu.resi.resiup.presentation.components.ChipEstado
 import pe.upeu.resi.resiup.presentation.components.DialogoConfirmacion
 import pe.upeu.resi.resiup.presentation.components.ElementoLista
 import pe.upeu.resi.resiup.presentation.components.EstadoVisual
-import pe.upeu.resi.resiup.presentation.components.ListaPaginada
+import pe.upeu.resi.resiup.presentation.components.EstadoVacio
+import pe.upeu.resi.resiup.presentation.components.IndicadorCarga
 import pe.upeu.resi.resiup.presentation.components.QrVista
 import pe.upeu.resi.resiup.presentation.components.ResiBoton
 import pe.upeu.resi.resiup.presentation.components.ResiIconos
@@ -49,14 +54,17 @@ import pe.upeu.resi.resiup.presentation.navigation.Destinos
 import pe.upeu.resi.resiup.presentation.theme.Espacio
 import pe.upeu.resi.resiup.presentation.theme.ResiEstilos
 import pe.upeu.resi.resiup.presentation.theme.ResiTheme
-import pe.upeu.resi.resiup.presentation.util.ContenidoCarga
+import pe.upeu.resi.resiup.presentation.util.Carga
+import pe.upeu.resi.resiup.presentation.util.ContenidoConsulta
 import pe.upeu.resi.resiup.presentation.util.fechaLegible
 import pe.upeu.resi.resiup.presentation.util.formatoLima
+import pe.upeu.resi.resiup.presentation.util.unDecimal
 
 @Composable
 fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
-    ContenidoCarga(estado, vm::cargar) { ui ->
+    ContenidoConsulta(estado, vm::reintentar) { datos ->
+        val ui = datos ?: return@ContenidoConsulta IndicadorCarga()
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
             TituloPantalla(
                 "Hola, ${ui.perfil.nombreCompleto.substringBefore(' ')}",
@@ -86,7 +94,7 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
                 Box(Modifier.weight(1f)) {
                     ResiTarjeta(onClick = { onIr(Destinos.Limpieza) }) {
                         Text("Limpieza", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(ui.limpieza?.promedio?.let { "$it/20" } ?: "—", style = ResiEstilos.Numero)
+                        Text(ui.limpieza?.promedio?.let { "${it.unDecimal()}/20" } ?: "—", style = ResiEstilos.Numero)
                         Text(if (ui.limpieza?.evaluaciones == 0L || ui.limpieza == null) "Sin evaluaciones" else "promedio", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -105,31 +113,44 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
 @Composable
 fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: PerfilViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
+    val qr by vm.qr.collectAsState()
     var confirmar by remember { mutableStateOf(false) }
-    ContenidoCarga(estado, vm::cargar) { ui ->
+    ContenidoConsulta(estado, vm::reintentar) { datos ->
+        val perfil = datos ?: return@ContenidoConsulta IndicadorCarga()
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
             TituloPantalla("Perfil")
             ResiTarjeta {
-                ElementoLista(ui.perfil.nombreCompleto, subtitulo = "Código ${ui.perfil.codigo}", icono = ResiIconos.Perfil, final = { ChipEstado(Rol.Residente.etiqueta, EstadoVisual.Info) })
+                ElementoLista(perfil.nombreCompleto, subtitulo = "Código ${perfil.codigo}", icono = ResiIconos.Perfil, final = { ChipEstado(Rol.Residente.etiqueta, EstadoVisual.Info) })
                 Text(
-                    ui.perfil.habitacion?.let { "Habitación ${it.numero}" } ?: "Sin habitación asignada",
+                    perfil.habitacion?.let { "Habitación ${it.numero}" } ?: "Sin habitación asignada",
                     Modifier.padding(top = Espacio.s), style = MaterialTheme.typography.bodyLarge,
                 )
-                ui.perfil.telefono?.let { Text("Teléfono $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                perfil.telefono?.let { Text("Teléfono $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             ResiTarjeta {
                 Text("Mi código QR", style = MaterialTheme.typography.titleMedium)
-                val matriz = ui.qr?.let { crearMatrizQr(it.contenido) }
-                when {
-                    matriz != null -> {
-                        Box(Modifier.fillMaxWidth().padding(vertical = Espacio.m), contentAlignment = Alignment.Center) { QrVista(matriz, Modifier.widthIn(max = 280.dp).fillMaxWidth()) }
-                        Text(
-                            "Preséntalo al preceptor o en garita. Es personal: no lo compartas ni lo publiques. Si lo perdiste, pide que lo regeneren.",
-                            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                when (val q = qr) {
+                    is Carga.Cargando -> Text("Cargando…", Modifier.padding(vertical = Espacio.m), style = MaterialTheme.typography.bodyMedium)
+                    is Carga.Fallo -> {
+                        val sinRed = q.error == ErrorApi.SinConexion || q.error == ErrorApi.TiempoAgotado
+                        BannerMensaje(
+                            if (sinRed) "El QR sólo se muestra con conexión al servidor (es una credencial y no se guarda en el teléfono)." else q.error.aMensaje(),
+                            EstadoVisual.Advertencia, Modifier.padding(top = Espacio.s),
                         )
+                        ResiBoton("Reintentar", vm::cargarQr, Modifier.padding(top = Espacio.s), variante = VarianteBoton.Secundario)
                     }
-                    ui.errorQr != null -> BannerMensaje(ui.errorQr.aMensaje(), EstadoVisual.Error, Modifier.padding(top = Espacio.s))
-                    else -> BannerMensaje("No se pudo generar el QR en este dispositivo.", EstadoVisual.Advertencia, Modifier.padding(top = Espacio.s))
+                    is Carga.Exito -> {
+                        val matriz = crearMatrizQr(q.datos.contenido)
+                        if (matriz == null) {
+                            BannerMensaje("No se pudo generar el QR en este dispositivo.", EstadoVisual.Advertencia, Modifier.padding(top = Espacio.s))
+                        } else {
+                            Box(Modifier.fillMaxWidth().padding(vertical = Espacio.m), contentAlignment = Alignment.Center) { QrVista(matriz, Modifier.widthIn(max = 280.dp).fillMaxWidth()) }
+                            Text(
+                                "Preséntalo al preceptor o en garita. Es personal: no lo compartas ni lo publiques. Si lo perdiste, pide que lo regeneren.",
+                                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
             }
             sesion?.let { Text("Sesión: ${it.usuario}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -137,17 +158,23 @@ fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: Perfi
         }
     }
     if (confirmar) {
-        DialogoConfirmacion("Cerrar sesión", "¿Deseas salir de ResiUP en este dispositivo?", "Cerrar sesión", { confirmar = false; onCerrarSesion() }, { confirmar = false }, destructivo = true)
+        DialogoConfirmacion("Cerrar sesión", "Se borrarán los datos guardados en este teléfono. ¿Deseas salir de ResiUP?", "Cerrar sesión", { confirmar = false; onCerrarSesion() }, { confirmar = false }, destructivo = true)
     }
 }
 
 @Composable
 fun AsistenciasScreen(vm: AsistenciasViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
-    Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l)) {
-        TituloPantalla("Asistencias", Modifier.padding(vertical = Espacio.l), subtitulo = "Cultos de lunes a viernes")
-        ListaPaginada(estado, vm::refrescar, vm::cargarMas, "Sin asistencias", "Cuando el preceptor registre tu asistencia a un culto aparecerá aquí.") { a ->
-            ResiTarjeta { AsistenciaItem(a) }
+    Column(Modifier.fillMaxSize()) {
+        TituloPantalla("Asistencias", Modifier.padding(horizontal = Espacio.l, vertical = Espacio.l), subtitulo = "Cultos de lunes a viernes")
+        ContenidoConsulta(estado, vm::reintentar, Modifier.weight(1f)) { lista ->
+            if (lista.isEmpty()) {
+                EstadoVacio("Sin asistencias", "Cuando el preceptor registre tu asistencia a un culto aparecerá aquí.")
+            } else {
+                LazyColumn(Modifier.fillMaxSize().padding(horizontal = Espacio.l), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                    items(lista) { a -> ResiTarjeta { AsistenciaItem(a) } }
+                }
+            }
         }
     }
 }
@@ -163,14 +190,14 @@ private fun AsistenciaItem(a: AsistenciaCulto) {
 @Composable
 fun LimpiezaResidenteScreen(vm: LimpiezaResidenteViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
-    ContenidoCarga(estado, vm::cargar) { ui ->
+    ContenidoConsulta(estado, vm::reintentar) { ui ->
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
             TituloPantalla("Limpieza", subtitulo = "Evaluación individual sobre 20 puntos")
             if (ui.evaluaciones.isEmpty()) {
                 ResiTarjeta { Text("Todavía no tienes evaluaciones. Aparecerán aquí cuando el preceptor las registre.", style = MaterialTheme.typography.bodyLarge) }
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                    TarjetaEstadistica("Promedio", ui.resumen.promedio?.toString() ?: "—", Modifier.weight(1f), "de 20")
+                    TarjetaEstadistica("Promedio", ui.resumen.promedio?.unDecimal() ?: "—", Modifier.weight(1f), "de 20")
                     TarjetaEstadistica("Evaluaciones", ui.resumen.evaluaciones.toString(), Modifier.weight(1f), ui.resumen.ultimaFecha?.let { "última ${it.fechaLegible()}" })
                 }
                 if (ui.evaluaciones.size >= 2) {

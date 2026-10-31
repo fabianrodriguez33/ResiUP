@@ -2,9 +2,12 @@ package pe.upeu.resi.resiup.presentation.residente
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -18,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
+import androidx.compose.ui.unit.dp
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import pe.upeu.resi.resiup.domain.model.EstadoRevision
@@ -29,6 +33,7 @@ import pe.upeu.resi.resiup.presentation.components.CampoFechaHora
 import pe.upeu.resi.resiup.presentation.components.ChipEstado
 import pe.upeu.resi.resiup.presentation.components.DialogoConfirmacion
 import pe.upeu.resi.resiup.presentation.components.ElementoLista
+import pe.upeu.resi.resiup.presentation.components.EstadoVacio
 import pe.upeu.resi.resiup.presentation.components.EstadoVisual
 import pe.upeu.resi.resiup.presentation.components.ListaPaginada
 import pe.upeu.resi.resiup.presentation.components.ResiBoton
@@ -42,6 +47,7 @@ import pe.upeu.resi.resiup.presentation.components.aEstadoVisual
 import pe.upeu.resi.resiup.presentation.login.aMensaje
 import pe.upeu.resi.resiup.presentation.theme.Espacio
 import pe.upeu.resi.resiup.presentation.util.ContenidoCarga
+import pe.upeu.resi.resiup.presentation.util.ContenidoConsulta
 import pe.upeu.resi.resiup.presentation.util.ahora
 import pe.upeu.resi.resiup.presentation.util.formatoLima
 
@@ -70,17 +76,23 @@ private fun ListaPermisos(onNueva: () -> Unit, onDetalle: (Long) -> Unit) {
     val vm = koinViewModel<MisSolicitudesViewModel>()
     val movimientos = koinViewModel<MovimientosViewModel>()
     var seccion by remember { mutableStateOf(Seccion.Solicitudes) }
-    // Al volver de crear/cancelar, se recarga para reflejar el estado actual del servidor.
-    LaunchedEffect(Unit) { vm.refrescar() }
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla("Permisos", Modifier.padding(top = Espacio.l))
         Segmentos(Seccion.entries, seccion, { it.etiqueta }, { seccion = it })
         if (seccion == Seccion.Solicitudes) {
             ResiBoton("Solicitar permiso", onNueva, Modifier.fillMaxWidth())
             val estado by vm.estado.collectAsState()
-            ListaPaginada(estado, vm::refrescar, vm::cargarMas, "Sin solicitudes", "Cuando solicites un permiso de salida aparecerá aquí con su estado.") { s ->
-                ResiTarjeta(onClick = { onDetalle(s.id) }) {
-                    ElementoLista(s.destino, subtitulo = "${s.tipo.etiqueta} · ${s.salida.formatoLima()}", icono = ResiIconos.Permisos, final = { ChipEstado(s.estado.etiqueta, s.estado.aEstadoVisual()) })
+            ContenidoConsulta(estado, vm::reintentar) { lista ->
+                if (lista.isEmpty()) {
+                    EstadoVacio("Sin solicitudes", "Cuando solicites un permiso de salida aparecerá aquí con su estado.")
+                } else {
+                    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                        items(lista) { s ->
+                            ResiTarjeta(onClick = { onDetalle(s.id) }) {
+                                ElementoLista(s.destino, subtitulo = "${s.tipo.etiqueta} · ${s.salida.formatoLima()}", icono = ResiIconos.Permisos, final = { ChipEstado(s.estado.etiqueta, s.estado.aEstadoVisual()) })
+                            }
+                        }
+                    }
                 }
             }
         } else {
