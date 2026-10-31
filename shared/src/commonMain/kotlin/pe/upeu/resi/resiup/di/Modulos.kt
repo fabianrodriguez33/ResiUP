@@ -75,7 +75,7 @@ fun datosModule(config: ConfigEntorno) = module {
     single { CultoApi(get()) }
     single { LimpiezaApi(get()) }
     single { GaritaApi(get()) }
-    single<ResidenteRepository> { ResidenteRepositoryImpl(get()) }
+    single<ResidenteRepository> { ResidenteRepositoryImpl(get(), get()) }
     single<PermisoRepository> { PermisoRepositoryImpl(get()) }
     single<CultoRepository> { CultoRepositoryImpl(get()) }
     single<LimpiezaRepository> { LimpiezaRepositoryImpl(get()) }

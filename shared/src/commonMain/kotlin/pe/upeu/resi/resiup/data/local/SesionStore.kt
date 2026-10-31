@@ -13,6 +13,7 @@ private data class SesionGuardada(
     val rol: String,
     val permisos: List<String>,
     val expiraEnMillis: Long,
+    val qr: String? = null,
 )
 
 /**
@@ -23,10 +24,12 @@ class SesionStore(private val almacen: AlmacenSeguro) {
 
     private val json = Json { ignoreUnknownKeys = true }
     private var cache: Sesion? = null
+    private var qrGuardado: String? = null
     private var cargada = false
 
     fun guardar(sesion: Sesion) {
-        val s = SesionGuardada(sesion.token, sesion.usuario, sesion.nombreCompleto, sesion.rol.name.uppercase(), sesion.permisos.toList(), sesion.expiraEnMillis)
+        val s = SesionGuardada(sesion.token, sesion.usuario, sesion.nombreCompleto, sesion.rol.name.uppercase(), sesion.permisos.toList(), sesion.expiraEnMillis, null)
+        qrGuardado = null
         almacen.guardar(json.encodeToString(SesionGuardada.serializer(), s))
         cache = sesion
         cargada = true
@@ -36,6 +39,7 @@ class SesionStore(private val almacen: AlmacenSeguro) {
         if (cargada) return cache
         cache = almacen.leer()?.let { texto ->
             runCatching { json.decodeFromString(SesionGuardada.serializer(), texto) }.getOrNull()?.let { g ->
+                qrGuardado = g.qr
                 g.rol.aRol()?.let { rol -> Sesion(g.token, g.usuario, g.nombreCompleto, rol, g.permisos.toSet(), g.expiraEnMillis) }
             }
         }
@@ -44,11 +48,22 @@ class SesionStore(private val almacen: AlmacenSeguro) {
         return cache
     }
 
+    /** QR personal cifrado junto a la sesión: se borra con ella (cierre, expiración o cambio de usuario). */
+    fun guardarQr(contenido: String) {
+        val sesion = leer() ?: return
+        val s = SesionGuardada(sesion.token, sesion.usuario, sesion.nombreCompleto, sesion.rol.name.uppercase(), sesion.permisos.toList(), sesion.expiraEnMillis, contenido)
+        almacen.guardar(json.encodeToString(SesionGuardada.serializer(), s))
+        qrGuardado = contenido
+    }
+
+    fun qr(): String? = leer()?.let { qrGuardado }
+
     fun token(): String? = leer()?.token
 
     fun borrar() {
         almacen.borrar()
         cache = null
+        qrGuardado = null
         cargada = true
     }
 }

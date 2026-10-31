@@ -19,6 +19,9 @@ import pe.upeu.resi.resiup.domain.model.EstadoSolicitud
 import pe.upeu.resi.resiup.domain.model.NuevaEvaluacion
 import pe.upeu.resi.resiup.domain.model.NuevaSolicitud
 import pe.upeu.resi.resiup.domain.model.QrPersonal
+import pe.upeu.resi.resiup.data.local.SesionStore
+import pe.upeu.resi.resiup.domain.error.ErrorApi
+import pe.upeu.resi.resiup.domain.error.ErrorApiException
 import pe.upeu.resi.resiup.domain.model.TipoCulto
 import pe.upeu.resi.resiup.domain.model.TipoMovimiento
 import pe.upeu.resi.resiup.domain.repository.CultoRepository
@@ -29,9 +32,21 @@ import pe.upeu.resi.resiup.domain.repository.ResidenteRepository
 
 const val TAMANIO_PAGINA = 20
 
-class ResidenteRepositoryImpl(private val api: ResidenteApi) : ResidenteRepository {
+class ResidenteRepositoryImpl(private val api: ResidenteApi, private val sesiones: SesionStore) : ResidenteRepository {
     override suspend fun perfil() = ejecutarLlamada { api.perfil().aPerfil() }
-    override suspend fun qr() = ejecutarLlamada { QrPersonal(api.qr().contenido) }
+    /**
+     * Con conexión se pide al servidor (y se renueva la copia cifrada). Sin red se muestra la última copia: el servidor
+     * decide en garita/culto si sigue vigente, así que un QR revocado no sirve aunque se vea en el teléfono.
+     */
+    override suspend fun qr(): Result<QrPersonal> {
+        val r = ejecutarLlamada { QrPersonal(api.qr().contenido) }
+        r.onSuccess { sesiones.guardarQr(it.contenido) }
+        val error = (r.exceptionOrNull() as? ErrorApiException)?.error
+        if (error == ErrorApi.SinConexion || error == ErrorApi.TiempoAgotado) {
+            sesiones.qr()?.let { return Result.success(QrPersonal(it, guardado = true)) }
+        }
+        return r
+    }
     override suspend fun asistencias(pagina: Int) = ejecutarLlamada { api.asistencias(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
     override suspend fun limpieza(pagina: Int) = ejecutarLlamada { api.limpieza(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
     override suspend fun resumenLimpieza() = ejecutarLlamada { api.resumenLimpieza().aDominio() }

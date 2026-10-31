@@ -127,16 +127,13 @@ class AuthRepositoryTest {
     }
 
     @Test
-    fun `una sesion vencida se descarta al restaurar y una vigente se conserva`() = runTest {
+    fun `una sesion vencida por reloj se conserva para trabajar sin conexion y el servidor decide`() = runTest {
         val e = Entorno { json(RESPUESTA_LOGIN) }
         e.repositorio.iniciarSesion(credenciales).getOrThrow()
 
-        e.ahora += 1_000L
-        assertNotNull(e.repositorio.sesionGuardada())
-
-        e.ahora += 3_600_000L // pasó la hora de vigencia
-        assertNull(e.repositorio.sesionGuardada())
-        assertNull(e.almacen.valor, "la sesión vencida se elimina del almacén")
+        e.ahora += 3_600_000L // pasó la hora de vigencia del token
+        assertNotNull(e.repositorio.sesionGuardada(), "sin red el residente debe seguir viendo sus datos y su QR")
+        assertNotNull(e.almacen.valor)
     }
 
     @Test

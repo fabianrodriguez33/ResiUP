@@ -5,12 +5,16 @@ import kotlin.time.Instant
 data class Pagina<T>(val contenido: List<T>, val pagina: Int, val totalElementos: Long, val ultima: Boolean)
 
 // ---- Residente ----
-data class HabitacionResumen(val id: Long, val numero: String)
+data class HabitacionResumen(val id: Long, val numero: String, val cama: String? = null) {
+    /** «Cama 101-A» cuando la letra está asignada. */
+    val etiquetaCama: String? get() = cama?.let { "Cama $numero-$it" }
+}
 
 data class Perfil(val id: Long, val codigo: String, val nombreCompleto: String, val telefono: String?, val habitacion: HabitacionResumen?)
 
 /** Contenido del QR emitido por el servidor. Se muestra tal cual; la app no lo interpreta. */
-data class QrPersonal(val contenido: String)
+/** [guardado] indica que se muestra la copia cifrada del teléfono porque no hubo conexión. */
+data class QrPersonal(val contenido: String, val guardado: Boolean = false)
 
 enum class TipoCulto(val etiqueta: String) { Matutino("Matutino"), Vespertino("Vespertino") }
 

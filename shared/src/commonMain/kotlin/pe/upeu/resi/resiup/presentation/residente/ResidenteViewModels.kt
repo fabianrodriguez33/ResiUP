@@ -53,7 +53,7 @@ class MisSolicitudesViewModel(private val consultas: ConsultasResidenteRepositor
 
 // ---------------------------------------------------------------- perfil + QR
 
-/** El QR no se guarda en el dispositivo: sólo se muestra con conexión (es una credencial revocable). */
+/** El QR se pide al servidor y, sin red, se usa la copia cifrada del teléfono (el servidor valida y revoca en garita). */
 class PerfilViewModel(
     private val consultas: ConsultasResidenteRepository,
     private val residente: ResidenteRepository,

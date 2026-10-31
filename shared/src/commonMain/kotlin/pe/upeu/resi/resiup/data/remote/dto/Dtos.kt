@@ -14,7 +14,7 @@ data class PaginaDto<T>(
 )
 
 @Serializable
-data class HabitacionResumenDto(val id: Long, val numero: String)
+data class HabitacionResumenDto(val id: Long, val numero: String, val cama: String? = null)
 
 @Serializable
 data class ResidenteDto(

@@ -68,7 +68,7 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
             TituloPantalla(
                 "Hola, ${ui.perfil.nombreCompleto.substringBefore(' ')}",
-                subtitulo = ui.perfil.habitacion?.let { "Habitación ${it.numero}" } ?: "Sin habitación asignada",
+                subtitulo = ui.perfil.habitacion?.let { listOfNotNull("Habitación ${it.numero}", it.etiquetaCama).joinToString(" · ") } ?: "Sin habitación asignada",
             )
             Box(Modifier.fillMaxWidth().background(ResiTheme.colores.marca, RoundedCornerShape(24.dp)).padding(Espacio.m)) {
                 TarjetaVidrio(Modifier.fillMaxWidth()) {
@@ -122,7 +122,7 @@ fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: Perfi
             ResiTarjeta {
                 ElementoLista(perfil.nombreCompleto, subtitulo = "Código ${perfil.codigo}", icono = ResiIconos.Perfil, final = { ChipEstado(Rol.Residente.etiqueta, EstadoVisual.Info) })
                 Text(
-                    perfil.habitacion?.let { "Habitación ${it.numero}" } ?: "Sin habitación asignada",
+                    perfil.habitacion?.let { listOfNotNull("Habitación ${it.numero}", it.etiquetaCama).joinToString(" · ") } ?: "Sin habitación asignada",
                     Modifier.padding(top = Espacio.s), style = MaterialTheme.typography.bodyLarge,
                 )
                 perfil.telefono?.let { Text("Teléfono $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -134,7 +134,7 @@ fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: Perfi
                     is Carga.Fallo -> {
                         val sinRed = q.error == ErrorApi.SinConexion || q.error == ErrorApi.TiempoAgotado
                         BannerMensaje(
-                            if (sinRed) "El QR sólo se muestra con conexión al servidor (es una credencial y no se guarda en el teléfono)." else q.error.aMensaje(),
+                            if (sinRed) "Aún no hay un QR guardado en este teléfono. Conéctate una vez para descargarlo; después se podrá mostrar sin internet." else q.error.aMensaje(),
                             EstadoVisual.Advertencia, Modifier.padding(top = Espacio.s),
                         )
                         ResiBoton("Reintentar", vm::cargarQr, Modifier.padding(top = Espacio.s), variante = VarianteBoton.Secundario)
@@ -145,6 +145,9 @@ fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: Perfi
                             BannerMensaje("No se pudo generar el QR en este dispositivo.", EstadoVisual.Advertencia, Modifier.padding(top = Espacio.s))
                         } else {
                             Box(Modifier.fillMaxWidth().padding(vertical = Espacio.m), contentAlignment = Alignment.Center) { QrVista(matriz, Modifier.widthIn(max = 280.dp).fillMaxWidth()) }
+                            if (q.datos.guardado) {
+                                BannerMensaje("Sin conexión: se muestra el QR guardado en este teléfono. Sigue siendo válido mientras no lo hayan regenerado.", EstadoVisual.Info, Modifier.padding(bottom = Espacio.s))
+                            }
                             Text(
                                 "Preséntalo al preceptor o en garita. Es personal: no lo compartas ni lo publiques. Si lo perdiste, pide que lo regeneren.",
                                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
