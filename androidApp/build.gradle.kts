@@ -1,9 +1,19 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
 }
+
+// URL de la API por entorno. Se define en local.properties (no versionado):
+//   resi.apiUrl=http://192.168.1.50:8080/          (teléfono físico: IP de la PC en la red local)
+//   resi.apiUrlRelease=https://api.ejemplo.pe/      (producción: HTTPS obligatorio)
+val propiedadesLocales = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+val apiUrlDebug = propiedadesLocales.getProperty("resi.apiUrl", "http://10.0.2.2:8080/") // 10.0.2.2 = PC anfitriona desde el emulador
+val apiUrlRelease = propiedadesLocales.getProperty("resi.apiUrlRelease", "https://CONFIGURAR-URL-DE-PRODUCCION/")
 
 kotlin {
     compilerOptions {
@@ -15,6 +25,7 @@ dependencies {
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.splashscreen)
+    implementation(libs.koin.android)
 
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
@@ -37,7 +48,11 @@ android {
         }
     }
     buildTypes {
+        debug {
+            buildConfigField("String", "API_URL", "\"$apiUrlDebug\"")
+        }
         release {
+            buildConfigField("String", "API_URL", "\"$apiUrlRelease\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -51,5 +66,6 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
