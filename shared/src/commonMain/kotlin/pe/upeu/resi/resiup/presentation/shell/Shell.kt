@@ -34,6 +34,17 @@ import pe.upeu.resi.resiup.presentation.components.ResiTarjeta
 import pe.upeu.resi.resiup.presentation.components.TituloPantalla
 import pe.upeu.resi.resiup.presentation.components.VarianteBoton
 import pe.upeu.resi.resiup.presentation.navigation.Destinos
+import pe.upeu.resi.resiup.presentation.personal.AsistenciaCultoScreen
+import pe.upeu.resi.resiup.presentation.personal.EscanerGaritaScreen
+import pe.upeu.resi.resiup.presentation.personal.HistorialGaritaScreen
+import pe.upeu.resi.resiup.presentation.personal.InicioPreceptorScreen
+import pe.upeu.resi.resiup.presentation.personal.LimpiezaPreceptorScreen
+import pe.upeu.resi.resiup.presentation.personal.SolicitudesPreceptorScreen
+import pe.upeu.resi.resiup.presentation.residente.AsistenciasScreen
+import pe.upeu.resi.resiup.presentation.residente.InicioResidenteScreen
+import pe.upeu.resi.resiup.presentation.residente.LimpiezaResidenteScreen
+import pe.upeu.resi.resiup.presentation.residente.PerfilResidenteScreen
+import pe.upeu.resi.resiup.presentation.residente.PermisosResidenteScreen
 import pe.upeu.resi.resiup.domain.model.Rol
 import pe.upeu.resi.resiup.domain.model.Sesion
 import pe.upeu.resi.resiup.presentation.navigation.destinos
@@ -47,15 +58,52 @@ fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().padding(bottom = 84.dp)) {
-            when (actual.id) {
-                Destinos.Perfil, Destinos.Mas -> PantallaCuenta(rol, sesion, onCerrarSesion)
-                else -> PantallaPendiente(actual.etiqueta, rol)
+            if (sesion == null) {
+                // Vista previa de desarrollo: sin sesión no se consulta el servidor.
+                when (actual.id) {
+                    Destinos.Perfil, Destinos.Mas -> PantallaCuenta(rol, null, onCerrarSesion)
+                    else -> PantallaPendiente(actual.etiqueta, rol)
+                }
+            } else {
+                ContenidoReal(rol, sesion, actual.id, { seleccionado = it }, onCerrarSesion)
             }
         }
         BarraNavegacionResi(
             items, seleccionado, { seleccionado = it },
             Modifier.align(Alignment.BottomCenter).padding(WindowInsets.navigationBars.asPaddingValues()),
         )
+    }
+}
+
+@Composable
+private fun ContenidoReal(rol: Rol, sesion: Sesion, destino: String, irA: (String) -> Unit, onCerrarSesion: () -> Unit) {
+    when (rol) {
+        Rol.Residente -> when (destino) {
+            Destinos.Inicio -> InicioResidenteScreen(irA)
+            Destinos.Permisos -> PermisosResidenteScreen()
+            Destinos.Asistencias -> AsistenciasScreen()
+            Destinos.Limpieza -> LimpiezaResidenteScreen()
+            else -> PerfilResidenteScreen(sesion, onCerrarSesion)
+        }
+        Rol.Preceptor -> when (destino) {
+            Destinos.Inicio -> InicioPreceptorScreen(sesion.nombreCompleto, irA)
+            Destinos.Escanear -> AsistenciaCultoScreen()
+            Destinos.Solicitudes -> SolicitudesPreceptorScreen()
+            Destinos.Limpieza -> LimpiezaPreceptorScreen()
+            else -> PantallaCuenta(rol, sesion, onCerrarSesion)
+        }
+        Rol.Garita -> when (destino) {
+            Destinos.Escanear -> EscanerGaritaScreen()
+            Destinos.Historial -> HistorialGaritaScreen()
+            else -> PantallaCuenta(rol, sesion, onCerrarSesion)
+        }
+        Rol.Administrador -> when (destino) {
+            Destinos.Inicio -> Column(Modifier.fillMaxSize().padding(Espacio.l)) {
+                TituloPantalla("Administración", subtitulo = sesion.nombreCompleto)
+                EstadoVacio("Gestión desde el panel web", "La administración de usuarios, residentes y habitaciones se hará desde un panel web que todavía no está aprobado ni construido. La API ya la soporta.")
+            }
+            else -> PantallaCuenta(rol, sesion, onCerrarSesion)
+        }
     }
 }
 

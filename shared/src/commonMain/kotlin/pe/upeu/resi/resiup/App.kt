@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -13,6 +15,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -62,7 +67,9 @@ fun App(
         Crossfade(estado to vista) { (e, v) ->
             when {
                 e is EstadoSesion.Arrancando -> Box(Modifier.fillMaxSize().background(androidx.compose.material3.MaterialTheme.colorScheme.background))
-                e is EstadoSesion.Activa -> ShellPrincipal(e.sesion.rol, e.sesion) { alcance.launch { gestor.cerrarSesion() } }
+                e is EstadoSesion.Activa -> StoreDeSesion(e.sesion.token) {
+                    ShellPrincipal(e.sesion.rol, e.sesion) { alcance.launch { gestor.cerrarSesion() } }
+                }
                 v is VistaDev.Catalogo -> CatalogoScreen(onVolver = { vista = null })
                 v is VistaDev.PrevisualizarRol -> ShellPrincipal(v.rol, null) { vista = null }
                 else -> {
@@ -82,4 +89,19 @@ fun App(
             }
         }
     }
+}
+
+/**
+ * Los ViewModels de las pantallas con datos viven en un almacén propio de la sesión: al cerrar sesión se descartan, de modo
+ * que otro usuario en el mismo dispositivo nunca ve datos en memoria del anterior.
+ */
+@Composable
+private fun StoreDeSesion(clave: String, contenido: @Composable () -> Unit) {
+    val dueno = remember(clave) {
+        object : ViewModelStoreOwner {
+            override val viewModelStore = ViewModelStore()
+        }
+    }
+    DisposableEffect(dueno) { onDispose { dueno.viewModelStore.clear() } }
+    CompositionLocalProvider(LocalViewModelStoreOwner provides dueno) { contenido() }
 }
