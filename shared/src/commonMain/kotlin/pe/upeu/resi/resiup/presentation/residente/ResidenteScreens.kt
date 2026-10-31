@@ -34,7 +34,11 @@ import pe.upeu.resi.resiup.domain.model.Rol
 import pe.upeu.resi.resiup.domain.model.Sesion
 import pe.upeu.resi.resiup.platform.crearMatrizQr
 import pe.upeu.resi.resiup.presentation.components.BannerMensaje
+import pe.upeu.resi.resiup.presentation.components.CalendarioAsistencias
 import pe.upeu.resi.resiup.presentation.components.ChipEstado
+import pe.upeu.resi.resiup.presentation.util.hoyLima
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import pe.upeu.resi.resiup.presentation.components.DialogoConfirmacion
 import pe.upeu.resi.resiup.presentation.components.ElementoLista
 import pe.upeu.resi.resiup.presentation.components.EstadoVisual
@@ -171,10 +175,12 @@ fun AsistenciasScreen(vm: AsistenciasViewModel = koinViewModel()) {
     Column(Modifier.fillMaxSize()) {
         TituloPantalla("Asistencias", Modifier.padding(horizontal = Espacio.l, vertical = Espacio.l), subtitulo = "Cultos de lunes a viernes")
         ContenidoConsulta(estado, vm::reintentar, Modifier.weight(1f)) { lista ->
-            if (lista.isEmpty()) {
-                EstadoVacio("Sin asistencias", "Cuando el preceptor registre tu asistencia a un culto aparecerá aquí.")
-            } else {
-                LazyColumn(Modifier.fillMaxSize().padding(horizontal = Espacio.l), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+            LazyColumn(Modifier.fillMaxSize().padding(horizontal = Espacio.l), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                item { CalendarioAsistencias(lista, hoyLima()) }
+                if (lista.isEmpty()) {
+                    item { Text("Cuando el preceptor registre tu asistencia a un culto aparecerá en el calendario.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                } else {
+                    item { Text("Historial reciente", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground) }
                     items(lista) { a -> ResiTarjeta { AsistenciaItem(a) } }
                 }
             }

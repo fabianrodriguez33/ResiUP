@@ -5,6 +5,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -41,7 +42,10 @@ fun ResiTheme(oscuro: Boolean = isSystemInDarkTheme(), content: @Composable () -
             colorScheme = if (oscuro) EsquemaOscuro else EsquemaClaro,
             typography = ResiTipografia,
             shapes = ResiFormas,
-            content = content,
-        )
+        ) {
+            // Los textos sin color explícito (fuera de un Surface) deben seguir el tema, no quedar en negro sobre fondo oscuro.
+            val esquema = MaterialTheme.colorScheme
+            CompositionLocalProvider(LocalContentColor provides esquema.onBackground, content = content)
+        }
     }
 }

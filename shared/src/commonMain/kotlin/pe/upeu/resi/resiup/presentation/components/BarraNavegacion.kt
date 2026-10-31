@@ -13,6 +13,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -33,6 +36,9 @@ fun BarraNavegacionResi(
     modifier: Modifier = Modifier,
 ) {
     TarjetaVidrio(modifier.fillMaxWidth().padding(horizontal = Espacio.l, vertical = Espacio.s), forma = RoundedCornerShape(28.dp)) {
+        // La barra tiene un ancho fijo: con textos muy grandes se limita la escala para que las etiquetas no se solapen.
+        val densidad = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(densidad.density, minOf(densidad.fontScale, 1.15f))) {
         Row(Modifier.fillMaxWidth().padding(Espacio.xs), horizontalArrangement = Arrangement.SpaceEvenly) {
             items.forEach { item ->
                 val activo = item.id == seleccionado
@@ -50,9 +56,10 @@ fun BarraNavegacionResi(
                     verticalArrangement = Arrangement.Center,
                 ) {
                     ResiIcono(item.icono, null, tint = color, tamano = 22.dp)
-                    Text(item.etiqueta, style = MaterialTheme.typography.labelSmall, color = color, maxLines = 1)
+                    Text(item.etiqueta, style = MaterialTheme.typography.labelSmall, color = color, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 }
             }
+        }
         }
     }
 }
