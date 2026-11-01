@@ -74,6 +74,10 @@ import pe.upeu.resi.resiup.presentation.util.ContenidoConsulta
 import pe.upeu.resi.resiup.presentation.util.fechaLegible
 import pe.upeu.resi.resiup.presentation.util.formatoLima
 import pe.upeu.resi.resiup.presentation.util.unDecimal
+import pe.upeu.resi.resiup.presentation.util.Nota
+import pe.upeu.resi.resiup.presentation.util.NotasMes
+import pe.upeu.resi.resiup.presentation.util.NOMBRES_MES
+import androidx.compose.foundation.layout.Spacer
 
 @Composable
 fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel = koinViewModel()) {
@@ -98,6 +102,12 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
                 TarjetaDato(e.racha.toString(), "Racha de cultos", ResiIconos.Racha, Acento.Naranja, Modifier.weight(1f), detalle = if (e.racha == 1) "día seguido" else "días seguidos")
                 TarjetaDato("${e.diasAsistidosMes}/${e.diasHabilesMes}", if (e.delMesAnterior) "Mes pasado" else "Este mes", ResiIconos.Asistencias, Acento.Verde, Modifier.weight(1f), detalle = "días con culto")
                 TarjetaDato(ui.limpieza?.promedio?.let { it.unDecimal() } ?: "—", "Limpieza", ResiIconos.Limpieza, Acento.Violeta, Modifier.weight(1f), detalle = "promedio sobre 20")
+            }
+            EncabezadoSeccion("Mis notas")
+            ResiTarjeta {
+                NotasDelMes(ui.notasMes, enCurso = true)
+                Spacer(Modifier.height(Espacio.m))
+                NotasDelMes(ui.notasMesAnterior, enCurso = false)
             }
             EncabezadoSeccion("Accesos")
             CuadriculaModulos(
@@ -281,6 +291,27 @@ private fun BarrasEvolucion(valores: List<Int>, maximo: Int) {
                 Modifier.weight(1f).height((100 * v / maximo.toFloat()).coerceAtLeast(4f).dp)
                     .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)),
             )
+        }
+    }
+}
+
+private fun Nota.estado() = when (this) {
+    Nota.AD -> EstadoVisual.Exito
+    Nota.A -> EstadoVisual.Info
+    Nota.B -> EstadoVisual.Advertencia
+    Nota.C -> EstadoVisual.Error
+}
+
+/** Resumen de un mes: cuántos cultos y cómo le fue en limpieza, cada uno con su nota (AD, A, B o C). */
+@Composable
+private fun NotasDelMes(n: NotasMes, enCurso: Boolean) {
+    val mes = NOMBRES_MES[n.mes - 1].replaceFirstChar { it.uppercase() }
+    Column(verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+        Text("$mes ${n.anio}" + if (enCurso) " · en curso" else "", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s), verticalAlignment = Alignment.CenterVertically) {
+            ChipEstado("Cultos ${n.cultos} · ${n.notaCultos.name}", n.notaCultos.estado())
+            if (n.notaLimpieza == null || n.promedioLimpieza == null) ChipEstado("Limpieza · sin evaluar", EstadoVisual.Neutro)
+            else ChipEstado("Limpieza ${n.promedioLimpieza.unDecimal()} · ${n.notaLimpieza.name}", n.notaLimpieza.estado())
         }
     }
 }

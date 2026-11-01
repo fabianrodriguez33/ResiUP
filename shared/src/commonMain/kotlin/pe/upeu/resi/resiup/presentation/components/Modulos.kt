@@ -106,7 +106,7 @@ fun TarjetaDato(valor: String, etiqueta: String, icono: ImageVector, acento: Ace
 fun TarjetaHero(titulo: String, subtitulo: String, textoBoton: String, onClick: () -> Unit, icono: ImageVector, modifier: Modifier = Modifier) {
     val c = ResiTheme.colores
     Row(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Brush.linearGradient(listOf(c.marca, c.marcaClara))).padding(Espacio.l),
+        modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(c.marca).padding(Espacio.l),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Espacio.m),
     ) {

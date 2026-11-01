@@ -30,19 +30,13 @@ import pe.upeu.resi.resiup.presentation.sesion.GestorSesion
 import pe.upeu.resi.resiup.presentation.shell.ShellPrincipal
 import pe.upeu.resi.resiup.presentation.theme.ResiTheme
 
-/** Pantallas de apoyo que sólo existen en modo desarrollo. */
-private sealed interface VistaDev {
-    data object Catalogo : VistaDev
-    data class PrevisualizarRol(val rol: Rol) : VistaDev
-}
-
 /**
  * Raíz de la app. La sesión se restaura del almacén seguro; si no hay una vigente se muestra el login.
  * Requiere que Koin esté iniciado (ver [pe.upeu.resi.resiup.di.initKoin]).
  *
  * [onSesionResuelta] avisa a la plataforma cuando ya se sabe si hay sesión (para soltar el splash nativo).
  * [onCabeceraDeMarca] indica que la parte superior es azul (iconos de barra de estado claros).
- * [modoDesarrollo] habilita la vista previa de roles y el catálogo; nunca debe estar activo en release.
+ * [modoDesarrollo] ya no muestra nada en el login; se conserva por compatibilidad con las plataformas.
  */
 @Composable
 fun App(
@@ -54,24 +48,20 @@ fun App(
         val gestor = koinInject<GestorSesion>()
         val estado by gestor.estado.collectAsState()
         val alcance = rememberCoroutineScope()
-        var vista by remember { mutableStateOf<VistaDev?>(null) }
 
         LaunchedEffect(Unit) { gestor.restaurar() }
         LaunchedEffect(Unit) { gestor.eventos.expirada.collect { gestor.sesionExpirada() } }
         LaunchedEffect(estado) {
             if (estado != EstadoSesion.Arrancando) onSesionResuelta()
-            onCabeceraDeMarca(estado !is EstadoSesion.Activa && vista == null)
+            onCabeceraDeMarca(estado !is EstadoSesion.Activa)
         }
-        LaunchedEffect(vista) { onCabeceraDeMarca(estado !is EstadoSesion.Activa && vista == null) }
 
-        Crossfade(estado to vista) { (e, v) ->
+        Crossfade(estado) { e ->
             when {
                 e is EstadoSesion.Arrancando -> Box(Modifier.fillMaxSize().background(androidx.compose.material3.MaterialTheme.colorScheme.background))
                 e is EstadoSesion.Activa -> StoreDeSesion(e.sesion.token) {
                     ShellPrincipal(e.sesion.rol, e.sesion) { alcance.launch { gestor.cerrarSesion() } }
                 }
-                v is VistaDev.Catalogo -> CatalogoScreen(onVolver = { vista = null })
-                v is VistaDev.PrevisualizarRol -> ShellPrincipal(v.rol, null) { vista = null }
                 else -> {
                     val vm = koinViewModel<LoginViewModel>()
                     val login by vm.estado.collectAsState()
@@ -81,9 +71,6 @@ fun App(
                         onClave = vm::alCambiarClave,
                         onIngresar = vm::ingresar,
                         aviso = (e as? EstadoSesion.SinSesion)?.aviso,
-                        modoDesarrollo = modoDesarrollo,
-                        onVistaPrevia = { vista = VistaDev.PrevisualizarRol(it) },
-                        onCatalogo = { vista = VistaDev.Catalogo },
                     )
                 }
             }

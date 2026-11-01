@@ -27,6 +27,11 @@ import pe.upeu.resi.resiup.presentation.residente.EditarPerfilViewModel
 import pe.upeu.resi.resiup.presentation.util.Sincronizador
 import pe.upeu.resi.resiup.presentation.util.calcularEstadisticas
 import pe.upeu.resi.resiup.presentation.util.validarContacto
+import pe.upeu.resi.resiup.presentation.util.Nota
+import pe.upeu.resi.resiup.presentation.util.calcularNotasMes
+import pe.upeu.resi.resiup.presentation.util.notaCultos
+import pe.upeu.resi.resiup.presentation.util.notaLimpieza
+import pe.upeu.resi.resiup.domain.model.EvaluacionLimpieza
 
 /** Racha y estadísticas de cultos, y la edición del perfil del residente. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -102,6 +107,34 @@ class EstadisticasPerfilTest {
         val lunes = calcularEstadisticas(sinFalta, LocalDate(2026, 11, 2))
         assertTrue(!lunes.delMesAnterior)
         assertEquals(1, lunes.diasHabilesMes)
+    }
+
+    @Test
+    fun `las notas siguen los rangos de la residencia`() {
+        assertEquals(listOf(Nota.C, Nota.C, Nota.B, Nota.B, Nota.A, Nota.A, Nota.AD, Nota.AD), listOf(0, 10, 11, 14, 15, 19, 20, 44).map { notaCultos(it) })
+        assertEquals(Nota.C, notaLimpieza(10.4))
+        assertEquals(Nota.B, notaLimpieza(10.5))
+        assertEquals(Nota.B, notaLimpieza(14.4))
+        assertEquals(Nota.A, notaLimpieza(14.5))
+        assertEquals(Nota.A, notaLimpieza(17.4))
+        assertEquals(Nota.AD, notaLimpieza(17.5))
+        assertEquals(Nota.AD, notaLimpieza(20.0))
+    }
+
+    @Test
+    fun `las notas del mes cuentan cultos y promedian la limpieza solo de ese mes`() {
+        fun eval(fecha: String, total: Int) = EvaluacionLimpieza(1, fecha, total, 20, emptyMap(), null)
+        val cultos = (1..16).map { culto("2026-10-${it.toString().padStart(2, '0')}") } + culto("2026-09-30") + culto("2026-11-02")
+        val n = calcularNotasMes(cultos, listOf(eval("2026-10-05", 20), eval("2026-10-06", 15), eval("2026-09-30", 2)), 2026, 10)
+        assertEquals(16, n.cultos)
+        assertEquals(Nota.A, n.notaCultos)
+        assertEquals(2, n.evaluaciones)
+        assertEquals(17.5, n.promedioLimpieza)
+        assertEquals(Nota.AD, n.notaLimpieza)
+        val vacio = calcularNotasMes(emptyList(), emptyList(), 2026, 12)
+        assertEquals(Nota.C, vacio.notaCultos)
+        assertNull(vacio.promedioLimpieza)
+        assertNull(vacio.notaLimpieza)
     }
 
     // ------------------------------------------------------------ edición del perfil

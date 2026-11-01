@@ -1,7 +1,10 @@
 package pe.upeu.resi.resiup.presentation.residente
 
+import kotlinx.datetime.minus
 import pe.upeu.resi.resiup.presentation.util.hoyLima
 import pe.upeu.resi.resiup.presentation.util.calcularEstadisticas
+import pe.upeu.resi.resiup.presentation.util.calcularNotasMes
+import pe.upeu.resi.resiup.presentation.util.NotasMes
 import pe.upeu.resi.resiup.presentation.util.EstadisticasCultos
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -91,13 +94,33 @@ data class InicioResidenteUi(
     val ultimaAsistencia: AsistenciaCulto?,
     val permisoReciente: SolicitudPermiso?,
     val estadisticas: EstadisticasCultos,
+    val notasMes: NotasMes,
+    val notasMesAnterior: NotasMes,
+)
+
+private data class Cinco(
+    val perfil: Perfil?, val resumen: ResumenLimpieza?, val asistencias: List<AsistenciaCulto>,
+    val solicitudes: List<SolicitudPermiso>, val sinCulto: List<pe.upeu.resi.resiup.domain.model.DiaSinCulto>,
 )
 
 class InicioResidenteViewModel(private val consultas: ConsultasResidenteRepository, private val sync: Sincronizador) : ViewModel() {
     val estado = compartir(
-        combine(consultas.perfil(), consultas.resumenLimpieza(), consultas.asistencias(), consultas.solicitudes(), consultas.diasSinCulto()) { perfil, resumen, asistencias, solicitudes, sinCulto ->
-            val feriados = sinCulto.mapNotNull { runCatching { kotlinx.datetime.LocalDate.parse(it.fecha) }.getOrNull() }.toSet()
-            perfil?.let { InicioResidenteUi(it, resumen, asistencias.firstOrNull(), solicitudes.firstOrNull(), calcularEstadisticas(asistencias, hoyLima(), feriados)) }
+        combine(
+            combine(consultas.perfil(), consultas.resumenLimpieza(), consultas.asistencias(), consultas.solicitudes(), consultas.diasSinCulto()) { perfil, resumen, asistencias, solicitudes, sinCulto ->
+                Cinco(perfil, resumen, asistencias, solicitudes, sinCulto)
+            },
+            consultas.evaluaciones(),
+        ) { c, evaluaciones ->
+            val feriados = c.sinCulto.mapNotNull { runCatching { kotlinx.datetime.LocalDate.parse(it.fecha) }.getOrNull() }.toSet()
+            val hoy = hoyLima()
+            val anterior = kotlinx.datetime.LocalDate(hoy.year, hoy.month.ordinal + 1, 1).minus(1, kotlinx.datetime.DateTimeUnit.DAY)
+            c.perfil?.let {
+                InicioResidenteUi(
+                    it, c.resumen, c.asistencias.firstOrNull(), c.solicitudes.firstOrNull(), calcularEstadisticas(c.asistencias, hoy, feriados),
+                    calcularNotasMes(c.asistencias, evaluaciones, hoy.year, hoy.month.ordinal + 1),
+                    calcularNotasMes(c.asistencias, evaluaciones, anterior.year, anterior.month.ordinal + 1),
+                )
+            }
         }.comoConsulta(sync.estado, consultas.ultimaSincronizacion()),
     )
     init { sync.refrescar() }

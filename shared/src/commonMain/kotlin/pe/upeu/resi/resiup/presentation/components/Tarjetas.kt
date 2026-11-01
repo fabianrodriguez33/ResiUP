@@ -43,7 +43,6 @@ fun ResiTarjeta(
         modifier = if (onClick != null) base.clickable(role = Role.Button, onClick = onClick) else base,
         shape = FormaTarjeta,
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(Modifier.padding(Espacio.l)) { contenido() }
     }
