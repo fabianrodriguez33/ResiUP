@@ -138,7 +138,7 @@ fun PerfilCuentaScreen(rol: Rol, onCerrarSesion: () -> Unit, vm: PerfilCuentaVie
         val f = form
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
             if (f == null) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                Row(Modifier.padding(end = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
                     AvatarInicial(p.nombreCompleto, Acento.Azul, tamano = 60.dp)
                     Column(Modifier.weight(1f)) {
                         Text(p.nombreCompleto, style = MaterialTheme.typography.headlineMedium)

@@ -314,7 +314,10 @@ fun LimpiezaPreceptorScreen(vm: LimpiezaPreceptorViewModel = koinViewModel()) {
             subtitulo = if (hab == null) "Hoy, ${hoyLima().toString().fechaLegible()} · elige una habitación" else "Hoy, ${hoyLima().toString().fechaLegible()}",
         )
         s.mensaje?.let { BannerMensaje(it, EstadoVisual.Exito) }
-        if (hab == null) {
+        val finDeSemana = hoyLima().dayOfWeek.let { it == kotlinx.datetime.DayOfWeek.SATURDAY || it == kotlinx.datetime.DayOfWeek.SUNDAY }
+        if (hab == null && finDeSemana) {
+            pe.upeu.resi.resiup.presentation.components.EstadoVacio("Hoy no se evalúa", "La limpieza se revisa de lunes a viernes. Vuelve el lunes para evaluar las habitaciones.")
+        } else if (hab == null) {
             ContenidoCarga(s.habitaciones, vm::cargar) { lista ->
                 if (lista.isEmpty()) {
                     pe.upeu.resi.resiup.presentation.components.EstadoVacio("Sin habitaciones ocupadas", "Asigna residentes a las habitaciones desde administración para poder evaluarlas.")

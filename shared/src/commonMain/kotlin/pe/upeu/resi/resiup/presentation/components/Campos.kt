@@ -39,6 +39,14 @@ fun ResiCampoTexto(
         enabled = habilitado,
         singleLine = unaLinea,
         shape = MaterialTheme.shapes.medium,
+        // Campo plano: relleno suave y sin borde hasta que recibe el foco.
+        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+            unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+            disabledBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
         keyboardOptions = KeyboardOptions(keyboardType = if (esClave) KeyboardType.Password else tipoTeclado),
         visualTransformation = if (esClave && !visible) PasswordVisualTransformation() else VisualTransformation.None,
         trailingIcon = if (esClave) {

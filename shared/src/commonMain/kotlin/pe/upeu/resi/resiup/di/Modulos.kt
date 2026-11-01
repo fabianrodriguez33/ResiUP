@@ -39,6 +39,7 @@ import pe.upeu.resi.resiup.domain.repository.PermisoRepository
 import pe.upeu.resi.resiup.domain.repository.ResidenteRepository
 import pe.upeu.resi.resiup.presentation.personal.AsistenciaCultoViewModel
 import pe.upeu.resi.resiup.presentation.personal.DiasSinCultoViewModel
+import pe.upeu.resi.resiup.presentation.notificaciones.BandejaViewModel
 import pe.upeu.resi.resiup.presentation.perfil.PerfilCuentaViewModel
 import pe.upeu.resi.resiup.presentation.perfil.VerificacionCorreoViewModel
 import pe.upeu.resi.resiup.presentation.personal.GaritaEscanerViewModel
@@ -90,6 +91,7 @@ fun datosModule(config: ConfigEntorno) = module {
     single { GaritaApi(get()) }
     single { pe.upeu.resi.resiup.data.remote.PerfilCuentaApi(get()) }
     single { pe.upeu.resi.resiup.data.remote.CalendarioApi(get()) }
+    single { pe.upeu.resi.resiup.data.remote.NotificacionesApi(get()) }
     single<ResidenteRepository> { ResidenteRepositoryImpl(get(), get()) }
     single<PermisoRepository> { PermisoRepositoryImpl(get()) }
     single<CultoRepository> { CultoRepositoryImpl(get()) }
@@ -98,6 +100,8 @@ fun datosModule(config: ConfigEntorno) = module {
     single<GaritaRepository> { GaritaRepositoryImpl(get()) }
     single<pe.upeu.resi.resiup.domain.repository.PerfilCuentaRepository> { pe.upeu.resi.resiup.data.repository.PerfilCuentaRepositoryImpl(get()) }
     single<pe.upeu.resi.resiup.domain.repository.CalendarioRepository> { pe.upeu.resi.resiup.data.repository.CalendarioRepositoryImpl(get()) }
+    single<pe.upeu.resi.resiup.domain.repository.NotificacionesRepository> { pe.upeu.resi.resiup.data.repository.NotificacionesRepositoryImpl(get()) }
+    single { pe.upeu.resi.resiup.presentation.notificaciones.GestorAvisos(get(), get()) }
     single { ResiDb(get<SqlDriver>()) }
     single { DatosLocales(get()) }
     single<ConsultasResidenteRepository> {
@@ -146,6 +150,7 @@ val presentacionModule = module {
     viewModelOf(::EditarPerfilViewModel)
     // Cuenta de cualquier rol
     viewModelOf(::PerfilCuentaViewModel)
+    viewModelOf(::BandejaViewModel)
     viewModelOf(::VerificacionCorreoViewModel)
     viewModelOf(::DiasSinCultoViewModel)
     viewModelOf(::LimpiezaPreceptorViewModel)

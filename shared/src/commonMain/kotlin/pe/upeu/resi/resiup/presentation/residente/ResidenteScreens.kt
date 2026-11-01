@@ -87,7 +87,7 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
         val ui = datos ?: return@ContenidoConsulta IndicadorCarga()
         val e = ui.estadisticas
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+            Row(Modifier.padding(end = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
                 AvatarInicial(ui.perfil.nombreCompleto, Acento.Rosa)
                 Column(Modifier.weight(1f)) {
                     Text("Hola, ${ui.perfil.nombreCompleto.substringBefore(' ')}", style = MaterialTheme.typography.headlineMedium)
@@ -161,7 +161,7 @@ fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: Perfi
             return@ContenidoConsulta
         }
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+            Row(Modifier.padding(end = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
                 AvatarInicial(perfil.nombreCompleto, Acento.Rosa, tamano = 60.dp)
                 Column(Modifier.weight(1f)) {
                     Text(perfil.nombreCompleto, style = MaterialTheme.typography.headlineMedium)

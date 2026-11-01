@@ -13,5 +13,6 @@ class ResiApplication : Application() {
         initKoin(ConfigEntorno(apiUrl = BuildConfig.API_URL, depuracion = esDebug)) {
             androidContext(this@ResiApplication)
         }
+        pe.upeu.resi.resiup.data.RevisarAvisosWorker.programar(this)
     }
 }

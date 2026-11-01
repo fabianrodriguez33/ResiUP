@@ -25,6 +25,9 @@ mlkit-barcode = "17.3.0"
 zxing = "3.5.4"
 datetime = "0.7.1"
 sqldelight = "2.4.1"
+sqlcipher = "4.6.1"
+androidx-sqlite = "2.4.0"
+work = "2.10.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -76,6 +79,9 @@ datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "d
 
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
 sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
+sqlcipher-android = { module = "net.zetetic:sqlcipher-android", version.ref = "sqlcipher" }
+androidx-sqlite = { module = "androidx.sqlite:sqlite", version.ref = "androidx-sqlite" }
+androidx-work = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 sqldelight-android = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
 sqldelight-native = { module = "app.cash.sqldelight:native-driver", version.ref = "sqldelight" }
 sqldelight-jvm = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }

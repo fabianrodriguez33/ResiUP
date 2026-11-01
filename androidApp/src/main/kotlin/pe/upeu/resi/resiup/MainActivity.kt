@@ -8,6 +8,9 @@ import android.graphics.Color
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.os.Build
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -16,6 +19,11 @@ class MainActivity : ComponentActivity() {
         installSplashScreen().setKeepOnScreenCondition { !sesionResuelta } // el splash dura hasta saber si hay sesión
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        // Android 13+ pide permiso para mostrar notificaciones; sin él los avisos solo se ven dentro de la app.
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerForActivityResult(ActivityResultContracts.RequestPermission()) { }.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
 
         val esDebug = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         setContent {

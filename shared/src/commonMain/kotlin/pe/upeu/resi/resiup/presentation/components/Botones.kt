@@ -1,6 +1,5 @@
 package pe.upeu.resi.resiup.presentation.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
@@ -9,7 +8,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,7 +30,8 @@ fun ResiBoton(
 ) {
     val activo = habilitado && !cargando
     val tamano = modifier.heightIn(min = 46.dp)
-    val forma = MaterialTheme.shapes.medium
+    // Diseño plano: botones en píldora, sin sombras ni bordes; el secundario es un relleno tonal.
+    val forma = androidx.compose.foundation.shape.RoundedCornerShape(percent = 50)
     val esquema = MaterialTheme.colorScheme
     val contenido: @Composable () -> Unit = {
         Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s), verticalAlignment = Alignment.CenterVertically) {
@@ -46,9 +46,9 @@ fun ResiBoton(
             colors = ButtonDefaults.buttonColors(containerColor = esquema.error, contentColor = esquema.onError),
             content = { contenido() },
         )
-        VarianteBoton.Secundario -> OutlinedButton(
+        VarianteBoton.Secundario -> FilledTonalButton(
             onClick, tamano, activo, shape = forma,
-            border = BorderStroke(1.dp, if (activo) esquema.primary.copy(alpha = 0.5f) else esquema.outlineVariant),
+            colors = ButtonDefaults.filledTonalButtonColors(containerColor = esquema.primaryContainer, contentColor = esquema.onPrimaryContainer),
             content = { contenido() },
         )
         VarianteBoton.Terciario -> TextButton(onClick, tamano, activo, shape = forma, content = { contenido() })

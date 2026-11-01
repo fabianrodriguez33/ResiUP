@@ -34,6 +34,12 @@ import pe.upeu.resi.resiup.presentation.components.ResiTarjeta
 import pe.upeu.resi.resiup.presentation.components.TituloPantalla
 import pe.upeu.resi.resiup.presentation.components.VarianteBoton
 import pe.upeu.resi.resiup.presentation.navigation.Destinos
+import pe.upeu.resi.resiup.presentation.notificaciones.BandejaScreen
+import pe.upeu.resi.resiup.presentation.notificaciones.CampanaAvisos
+import pe.upeu.resi.resiup.presentation.notificaciones.GestorAvisos
+import org.koin.compose.koinInject
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import pe.upeu.resi.resiup.presentation.perfil.PerfilCuentaScreen
 import pe.upeu.resi.resiup.presentation.familia.InicioFamiliaScreen
 import pe.upeu.resi.resiup.presentation.familia.NuevoPermisoFamiliaScreen
@@ -59,10 +65,16 @@ fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
     val items = remember(rol) { rol.destinos() }
     var seleccionado by rememberSaveable(rol) { mutableStateOf(items.first().id) }
     val actual = items.first { it.id == seleccionado }
+    val avisos: GestorAvisos = koinInject()
+    val noLeidas by avisos.noLeidas.collectAsState()
+    var verBandeja by rememberSaveable { mutableStateOf(false) }
+    if (sesion != null) LaunchedEffect(sesion.usuario) { avisos.vigilar() }
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().padding(bottom = 84.dp)) {
-            if (sesion == null) {
+            if (sesion != null && verBandeja) {
+                BandejaScreen(onVolver = { verBandeja = false })
+            } else if (sesion == null) {
                 // Vista previa de desarrollo: sin sesión no se consulta el servidor.
                 when (actual.id) {
                     Destinos.Perfil, Destinos.Mas -> PantallaCuenta(rol, null, onCerrarSesion)
@@ -72,8 +84,11 @@ fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
                 ContenidoReal(rol, sesion, actual.id, { seleccionado = it }, onCerrarSesion)
             }
         }
+        if (sesion != null && !verBandeja) {
+            CampanaAvisos(noLeidas, { verBandeja = true }, Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = Espacio.xs, end = Espacio.s))
+        }
         BarraNavegacionResi(
-            items, seleccionado, { seleccionado = it },
+            items, seleccionado, { seleccionado = it; verBandeja = false },
             Modifier.align(Alignment.BottomCenter).padding(WindowInsets.navigationBars.asPaddingValues()),
         )
     }
@@ -110,7 +125,7 @@ private fun ContenidoReal(rol: Rol, sesion: Sesion, destino: String, irA: (Strin
         Rol.Administrador -> when (destino) {
             Destinos.Inicio -> Column(Modifier.fillMaxSize().padding(Espacio.l)) {
                 TituloPantalla("Administración", subtitulo = sesion.nombreCompleto)
-                EstadoVacio("Gestión desde el panel web", "La administración de usuarios, residentes y habitaciones se hará desde un panel web que todavía no está aprobado ni construido. La API ya la soporta.")
+                EstadoVacio("Gestión desde el panel web", "Los usuarios, residentes, habitaciones, días sin culto y el Excel de notas se administran desde el panel web de la residencia (dirección del servidor terminada en /panel).")
             }
             else -> PerfilCuentaScreen(rol, onCerrarSesion)
         }
