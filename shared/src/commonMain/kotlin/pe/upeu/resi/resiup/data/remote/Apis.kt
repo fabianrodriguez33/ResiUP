@@ -12,7 +12,8 @@ import pe.upeu.resi.resiup.data.remote.dto.DecisionRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.EnlaceDto
 import pe.upeu.resi.resiup.data.remote.dto.EvaluacionDto
 import pe.upeu.resi.resiup.data.remote.dto.JustificacionRequestDto
-import pe.upeu.resi.resiup.data.remote.dto.LimpiezaRequestDto
+import pe.upeu.resi.resiup.data.remote.dto.HabitacionLimpiezaDto
+import pe.upeu.resi.resiup.data.remote.dto.LimpiezaHabitacionRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.MovimientoDto
 import pe.upeu.resi.resiup.data.remote.dto.MovimientoRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.PaginaDto
@@ -68,7 +69,9 @@ class CultoApi(private val client: HttpClient) {
 }
 
 class LimpiezaApi(private val client: HttpClient) {
-    suspend fun registrar(r: LimpiezaRequestDto): EvaluacionDto = client.post("${BASE}limpieza/evaluaciones") { setBody(r) }.body()
+    suspend fun habitaciones(fecha: String): List<HabitacionLimpiezaDto> = client.get("${BASE}limpieza/habitaciones") { parameter("fecha", fecha) }.body()
+    suspend fun registrarHabitacion(id: Long, r: LimpiezaHabitacionRequestDto): List<EvaluacionDto> =
+        client.post("${BASE}limpieza/habitaciones/$id/evaluaciones") { setBody(r) }.body()
 }
 
 class GaritaApi(private val client: HttpClient) {

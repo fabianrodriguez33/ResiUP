@@ -79,7 +79,22 @@ data class SesionCulto(val id: Long, val fecha: String, val tipo: TipoCulto, val
 
 data class AsistenciaRegistrada(val codigo: String, val nombreCompleto: String, val despuesDelCorte: Boolean)
 
-data class NuevaEvaluacion(val residenteId: Long, val fecha: String, val puntajes: Map<CriterioLimpieza, Int>, val observacion: String?)
+/** Residente de una habitación en la lista de limpieza; [cama] es la letra («A») y [evaluado] indica si ya tiene nota en la fecha. */
+data class ResidenteLimpieza(val residenteId: Long, val codigo: String, val nombreCompleto: String, val cama: String?, val evaluado: Boolean)
+
+data class HabitacionLimpieza(val id: Long, val numero: String, val capacidad: Int, val residentes: List<ResidenteLimpieza>, val evaluados: Int) {
+    val pendientes get() = residentes.filterNot { it.evaluado }
+    val completa get() = residentes.isNotEmpty() && pendientes.isEmpty()
+}
+
+/** Puntaje personal de un residente: basura y olores no van aquí, son comunes a la habitación. */
+data class PuntajePersonal(val residenteId: Long, val ropero: Int, val cama: Int, val escritorio: Int, val piso: Int)
+
+data class NuevaEvaluacionHabitacion(val habitacionId: Long, val fecha: String, val basura: Int, val olores: Int, val personas: List<PuntajePersonal>)
+
+/** Criterios que puntúa cada residente por separado; basura y olores se puntúan una vez por habitación. */
+val CRITERIOS_PERSONALES = listOf(CriterioLimpieza.Ropero, CriterioLimpieza.Cama, CriterioLimpieza.Escritorio, CriterioLimpieza.Piso)
+val CRITERIOS_DE_HABITACION = listOf(CriterioLimpieza.Basura, CriterioLimpieza.Olores)
 
 // ---- Garita ----
 enum class TipoMovimiento(val etiqueta: String) { Salida("Salida"), Retorno("Retorno") }

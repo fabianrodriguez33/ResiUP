@@ -94,7 +94,7 @@ fun ElementoLista(
     final: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
-    val base = modifier.fillMaxWidth().heightIn(min = 56.dp)
+    val base = modifier.fillMaxWidth().heightIn(min = 48.dp)
     Row(
         modifier = if (onClick != null) base.clickable(role = Role.Button, onClick = onClick) else base,
         verticalAlignment = Alignment.CenterVertically,

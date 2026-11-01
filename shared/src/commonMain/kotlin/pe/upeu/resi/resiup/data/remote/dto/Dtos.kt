@@ -100,7 +100,16 @@ data class AbrirSesionRequestDto(val tipo: String)
 data class QrRequestDto(val qr: String)
 
 @Serializable
-data class LimpiezaRequestDto(val residenteId: Long, val fecha: String, val puntajes: Map<String, Int>, val observacion: String? = null)
+data class PuntajePersonalDto(val residenteId: Long, val ropero: Int, val cama: Int, val escritorio: Int, val piso: Int)
+
+@Serializable
+data class LimpiezaHabitacionRequestDto(val fecha: String, val basura: Int, val olores: Int, val residentes: List<PuntajePersonalDto>)
+
+@Serializable
+data class ResidenteLimpiezaDto(val residenteId: Long, val codigo: String, val nombreCompleto: String, val cama: String? = null, val evaluado: Boolean = false)
+
+@Serializable
+data class HabitacionLimpiezaDto(val habitacionId: Long, val numero: String, val capacidad: Int = 0, val residentes: List<ResidenteLimpiezaDto> = emptyList(), val evaluados: Long = 0)
 
 @Serializable
 data class ResidenteGaritaDto(val id: Long, val codigo: String, val nombreCompleto: String, val habitacion: String? = null)

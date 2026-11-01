@@ -30,7 +30,7 @@ fun ResiBoton(
     cargando: Boolean = false,
 ) {
     val activo = habilitado && !cargando
-    val tamano = modifier.heightIn(min = 52.dp)
+    val tamano = modifier.heightIn(min = 46.dp)
     val forma = MaterialTheme.shapes.medium
     val esquema = MaterialTheme.colorScheme
     val contenido: @Composable () -> Unit = {

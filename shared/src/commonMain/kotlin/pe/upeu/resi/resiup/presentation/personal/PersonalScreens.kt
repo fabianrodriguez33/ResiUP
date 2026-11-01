@@ -25,6 +25,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import pe.upeu.resi.resiup.domain.model.CRITERIOS_PERSONALES
+import pe.upeu.resi.resiup.domain.model.CRITERIOS_DE_HABITACION
+import pe.upeu.resi.resiup.domain.model.HabitacionLimpieza
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.contentDescription
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -227,51 +239,103 @@ private fun RevisionSolicitudScreen(id: Long, onVolver: () -> Unit) {
 @Composable
 fun LimpiezaPreceptorScreen(vm: LimpiezaPreceptorViewModel = koinViewModel()) {
     val s by vm.estado.collectAsState()
-    BackHandler(enabled = s.seleccionado != null) { vm.seleccionar(null) }
+    val hab = s.habitacion
+    BackHandler(enabled = hab != null) { vm.cerrar() }
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla("Evaluación de limpieza", Modifier.padding(top = Espacio.l), subtitulo = "Hoy, ${hoyLima().toString().fechaLegible()}")
+        TituloPantalla(
+            if (hab == null) "Evaluación de limpieza" else "Habitación ${hab.numero}", Modifier.padding(top = Espacio.l),
+            subtitulo = if (hab == null) "Hoy, ${hoyLima().toString().fechaLegible()} · elige una habitación" else "Hoy, ${hoyLima().toString().fechaLegible()}",
+        )
         s.mensaje?.let { BannerMensaje(it, EstadoVisual.Exito) }
-        val sel = s.seleccionado
-        if (sel == null) {
-            ContenidoCarga(s.residentes, vm::cargarResidentes) { lista ->
+        if (hab == null) {
+            ContenidoCarga(s.habitaciones, vm::cargar) { lista ->
                 if (lista.isEmpty()) {
-                    pe.upeu.resi.resiup.presentation.components.EstadoVacio("Sin residentes activos", "Registra residentes desde administración para poder evaluarlos.")
+                    pe.upeu.resi.resiup.presentation.components.EstadoVacio("Sin habitaciones ocupadas", "Asigna residentes a las habitaciones desde administración para poder evaluarlas.")
                 } else {
-                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
-                        Text("Elige al residente:", style = MaterialTheme.typography.bodyLarge)
-                        lista.forEach { r ->
-                            ResiTarjeta(onClick = { vm.seleccionar(r) }) {
-                                ElementoLista(r.nombreCompleto, subtitulo = "${r.codigo} · ${r.habitacion?.let { "Hab. $it" } ?: "Sin habitación"}", icono = ResiIconos.Perfil)
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                        lista.groupBy { it.numero.take(1) }.forEach { (piso, habitaciones) ->
+                            Text(if (piso.first().isDigit()) "Piso $piso" else "Otras", Modifier.padding(top = Espacio.s).semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+                            habitaciones.forEach { h ->
+                                ResiTarjeta(onClick = { vm.abrir(h) }) {
+                                    ElementoLista(
+                                        "Habitación ${h.numero}",
+                                        subtitulo = h.residentes.joinToString(", ") { it.nombreCompleto.substringBefore(' ') },
+                                        icono = ResiIconos.Limpieza,
+                                        final = {
+                                            if (h.completa) ChipEstado("Evaluada", EstadoVisual.Exito)
+                                            else ChipEstado("${h.evaluados}/${h.residentes.size}", if (h.evaluados > 0) EstadoVisual.Advertencia else EstadoVisual.Neutro)
+                                        },
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
         } else {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                ResiTarjeta { ElementoLista(sel.nombreCompleto, subtitulo = "${sel.codigo} · ${sel.habitacion?.let { "Hab. $it" } ?: "Sin habitación"}", icono = ResiIconos.Perfil, final = { ChipEstado("${s.total}/20", EstadoVisual.Info) }) }
-                CriterioLimpieza.entries.forEach { c ->
-                    ResiTarjeta {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
-                            Column(Modifier.weight(1f)) {
-                                Text(c.etiqueta, style = MaterialTheme.typography.titleMedium)
-                                Text("máx. ${c.maximo}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                s.errores[c.name.uppercase()]?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error) }
-                            }
-                            ResiBoton("−", { vm.ajustar(c, -1) }, variante = VarianteBoton.Secundario, habilitado = s.puntajes.getValue(c) > 0)
-                            Text(s.puntajes.getValue(c).toString(), Modifier.padding(horizontal = Espacio.s), style = MaterialTheme.typography.titleLarge)
-                            ResiBoton("+", { vm.ajustar(c, 1) }, variante = VarianteBoton.Secundario, habilitado = s.puntajes.getValue(c) < c.maximo)
-                        }
-                    }
-                }
-                ResiCampoTexto(s.observacion, vm::observacion, "Observación (opcional)", unaLinea = false)
-                s.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
-                s.errores["fecha"]?.let { BannerMensaje(it, EstadoVisual.Error) }
-                ResiBoton("Guardar evaluación", vm::guardar, Modifier.fillMaxWidth(), cargando = s.enviando)
-                ResiBoton("Cancelar", { vm.seleccionar(null) }, Modifier.fillMaxWidth(), variante = VarianteBoton.Terciario)
-            }
+            FormularioHabitacion(s, hab, vm)
         }
     }
+}
+
+@Composable
+private fun FormularioHabitacion(s: LimpiezaFormState, hab: HabitacionLimpieza, vm: LimpiezaPreceptorViewModel) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+        ResiTarjeta {
+            Text("Común a toda la habitación", style = MaterialTheme.typography.titleMedium)
+            CRITERIOS_DE_HABITACION.forEach { c -> Contador(c.etiqueta, c.maximo, s.comun(c)) { vm.ajustarComun(c, it) } }
+        }
+        hab.residentes.forEach { r ->
+            ResiTarjeta {
+                val etiquetaCama = r.cama?.let { "Cama ${hab.numero}-$it · " }.orEmpty()
+                ElementoLista(
+                    r.nombreCompleto, subtitulo = etiquetaCama + r.codigo,
+                    final = { if (r.evaluado) ChipEstado("Ya evaluado", EstadoVisual.Exito) else ChipEstado("${s.totalDe(r.residenteId)}/20", EstadoVisual.Info) },
+                )
+                val puntajes = s.personales[r.residenteId]
+                if (puntajes != null) {
+                    CRITERIOS_PERSONALES.forEach { c -> Contador(c.etiqueta, c.maximo, puntajes.getValue(c)) { vm.ajustar(r.residenteId, c, it) } }
+                }
+            }
+        }
+        s.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else if (it is ErrorApi.Validacion) it.porCampo.values.firstOrNull() ?: it.aMensaje() else it.aMensaje(), EstadoVisual.Error) }
+        if (s.personales.isEmpty()) {
+            BannerMensaje("Todos los residentes de esta habitación ya fueron evaluados hoy.", EstadoVisual.Info)
+        } else {
+            ResiBoton("Guardar evaluación", vm::guardar, Modifier.fillMaxWidth(), cargando = s.enviando)
+        }
+        ResiBoton("Volver a las habitaciones", vm::cerrar, Modifier.fillMaxWidth(), variante = VarianteBoton.Terciario)
+    }
+}
+
+/** Fila de puntaje con − / + : etiqueta y máximo a la izquierda, valor al centro. */
+@Composable
+private fun Contador(etiqueta: String, maximo: Int, valor: Int, onCambio: (Int) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(top = Espacio.xs), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+        Column(Modifier.weight(1f)) {
+            Text(etiqueta, style = MaterialTheme.typography.bodyLarge)
+            Text("máx. $maximo", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        BotonPaso("−", "Restar a $etiqueta", valor > 0) { onCambio(-1) }
+        Text(
+            valor.toString(), Modifier.widthIn(min = 24.dp).semantics { contentDescription = "$etiqueta: $valor de $maximo" },
+            style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        BotonPaso("+", "Sumar a $etiqueta", valor < maximo) { onCambio(1) }
+    }
+}
+
+/** Botón cuadrado compacto (44 dp) para sumar o restar un punto. */
+@Composable
+private fun BotonPaso(texto: String, descripcion: String, habilitado: Boolean, onClick: () -> Unit) {
+    val forma = RoundedCornerShape(12.dp)
+    val color = if (habilitado) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    Box(
+        Modifier.size(44.dp).clip(forma).border(1.dp, MaterialTheme.colorScheme.outlineVariant, forma)
+            .clickable(enabled = habilitado, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = descripcion },
+        contentAlignment = Alignment.Center,
+    ) { Text(texto, style = MaterialTheme.typography.titleMedium, color = color) }
 }
 
 // ================================================================= garita

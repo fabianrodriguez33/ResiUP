@@ -7,7 +7,9 @@ import pe.upeu.resi.resiup.data.remote.PermisoApi
 import pe.upeu.resi.resiup.data.remote.ResidenteApi
 import pe.upeu.resi.resiup.data.remote.dto.DecisionRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.JustificacionRequestDto
-import pe.upeu.resi.resiup.data.remote.dto.LimpiezaRequestDto
+import pe.upeu.resi.resiup.data.remote.dto.LimpiezaHabitacionRequestDto
+import pe.upeu.resi.resiup.data.remote.dto.PuntajePersonalDto
+import pe.upeu.resi.resiup.domain.model.NuevaEvaluacionHabitacion
 import pe.upeu.resi.resiup.data.remote.dto.SolicitudRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.aApi
 import pe.upeu.resi.resiup.data.remote.dto.aDominio
@@ -16,7 +18,6 @@ import pe.upeu.resi.resiup.data.remote.dto.aRegistrada
 import pe.upeu.resi.resiup.data.remote.dto.aResumen
 import pe.upeu.resi.resiup.data.remote.ejecutarLlamada
 import pe.upeu.resi.resiup.domain.model.EstadoSolicitud
-import pe.upeu.resi.resiup.domain.model.NuevaEvaluacion
 import pe.upeu.resi.resiup.domain.model.NuevaSolicitud
 import pe.upeu.resi.resiup.domain.model.QrPersonal
 import pe.upeu.resi.resiup.data.local.SesionStore
@@ -77,10 +78,16 @@ class CultoRepositoryImpl(private val api: CultoApi) : CultoRepository {
 }
 
 class LimpiezaRepositoryImpl(private val api: LimpiezaApi) : LimpiezaRepository {
-    override suspend fun registrar(evaluacion: NuevaEvaluacion) = ejecutarLlamada {
-        api.registrar(
-            LimpiezaRequestDto(evaluacion.residenteId, evaluacion.fecha, evaluacion.puntajes.mapKeys { it.key.aApi() }, evaluacion.observacion?.takeIf { it.isNotBlank() }),
-        ).aDominio()
+    override suspend fun habitaciones(fecha: String) = ejecutarLlamada { api.habitaciones(fecha).map { it.aDominio() } }
+
+    override suspend fun registrarHabitacion(evaluacion: NuevaEvaluacionHabitacion) = ejecutarLlamada {
+        api.registrarHabitacion(
+            evaluacion.habitacionId,
+            LimpiezaHabitacionRequestDto(
+                evaluacion.fecha, evaluacion.basura, evaluacion.olores,
+                evaluacion.personas.map { PuntajePersonalDto(it.residenteId, it.ropero, it.cama, it.escritorio, it.piso) },
+            ),
+        ).map { it.aDominio() }
     }
 }
 

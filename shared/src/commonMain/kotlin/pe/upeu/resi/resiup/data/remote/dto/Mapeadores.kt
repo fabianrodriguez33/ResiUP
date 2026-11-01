@@ -9,7 +9,9 @@ import pe.upeu.resi.resiup.domain.model.EnlaceApoderado
 import pe.upeu.resi.resiup.domain.model.EstadoRevision
 import pe.upeu.resi.resiup.domain.model.EstadoSolicitud
 import pe.upeu.resi.resiup.domain.model.EvaluacionLimpieza
+import pe.upeu.resi.resiup.domain.model.HabitacionLimpieza
 import pe.upeu.resi.resiup.domain.model.HabitacionResumen
+import pe.upeu.resi.resiup.domain.model.ResidenteLimpieza
 import pe.upeu.resi.resiup.domain.model.Justificacion
 import pe.upeu.resi.resiup.domain.model.MovimientoRegistrado
 import pe.upeu.resi.resiup.domain.model.Pagina
@@ -118,3 +120,9 @@ fun VerificacionDto.aDominio() = VerificacionGarita(
 )
 
 fun MovimientoDto.aDominio() = MovimientoRegistrado(id, codigo, nombreCompleto, tipo.aTipoMovimiento(), registradoEn.instante(), minutosTarde, anulado)
+
+fun HabitacionLimpiezaDto.aDominio() = HabitacionLimpieza(
+    habitacionId, numero, capacidad,
+    residentes.map { ResidenteLimpieza(it.residenteId, it.codigo, it.nombreCompleto, it.cama, it.evaluado) },
+    evaluados.toInt(),
+)

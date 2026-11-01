@@ -30,7 +30,9 @@ import pe.upeu.resi.resiup.domain.model.EstadoRevision
 import pe.upeu.resi.resiup.domain.model.EstadoSolicitud
 import pe.upeu.resi.resiup.domain.model.EvaluacionLimpieza
 import pe.upeu.resi.resiup.domain.model.MovimientoRegistrado
-import pe.upeu.resi.resiup.domain.model.NuevaEvaluacion
+import pe.upeu.resi.resiup.domain.model.HabitacionLimpieza
+import pe.upeu.resi.resiup.domain.model.NuevaEvaluacionHabitacion
+import pe.upeu.resi.resiup.domain.model.ResidenteLimpieza
 import pe.upeu.resi.resiup.domain.model.NuevaSolicitud
 import pe.upeu.resi.resiup.domain.model.Pagina
 import pe.upeu.resi.resiup.domain.model.ResidenteResumen
@@ -288,45 +290,78 @@ class ModulosTest {
         override suspend fun listarResidentes() = Result.success(listOf(ResidenteResumen(1, "A001", "Ana", "D-12", true)))
     }
 
-    private class LimpiezaFalsa(var respuesta: Result<EvaluacionLimpieza>? = null) : LimpiezaRepository {
-        var enviada: NuevaEvaluacion? = null
-        override suspend fun registrar(evaluacion: NuevaEvaluacion): Result<EvaluacionLimpieza> {
+    private val habitacion101 = HabitacionLimpieza(
+        10, "101", 2,
+        listOf(ResidenteLimpieza(1, "A001", "Ana Pérez", "A", false), ResidenteLimpieza(2, "A002", "Beto Ríos", "B", false)), 0,
+    )
+
+    private class LimpiezaFalsa(
+        var lista: Result<List<HabitacionLimpieza>> = Result.success(emptyList()),
+        var respuesta: Result<List<EvaluacionLimpieza>>? = null,
+    ) : LimpiezaRepository {
+        var enviada: NuevaEvaluacionHabitacion? = null
+        override suspend fun habitaciones(fecha: String) = lista
+        override suspend fun registrarHabitacion(evaluacion: NuevaEvaluacionHabitacion): Result<List<EvaluacionLimpieza>> {
             enviada = evaluacion
-            return respuesta ?: Result.success(EvaluacionLimpieza(1, evaluacion.fecha, evaluacion.puntajes.values.sum(), 20, evaluacion.puntajes, null))
+            return respuesta ?: Result.success(evaluacion.personas.map { EvaluacionLimpieza(it.residenteId, evaluacion.fecha, 0, 20, emptyMap(), null) })
         }
     }
 
     @Test
-    fun `los puntajes nunca superan el maximo ni bajan de cero y el total se calcula`() = runTest {
-        val repo = LimpiezaFalsa()
-        val vm = LimpiezaPreceptorViewModel(ResidentesFalso(), repo)
-        val ana = ResidenteResumen(1, "A001", "Ana", "D-12", true)
-        vm.seleccionar(ana)
-        repeat(9) { vm.ajustar(CriterioLimpieza.Ropero, +1) }
-        repeat(9) { vm.ajustar(CriterioLimpieza.Cama, +1) }
-        vm.ajustar(CriterioLimpieza.Piso, -1)
-        assertEquals(5, vm.estado.value.puntajes.getValue(CriterioLimpieza.Ropero))
-        assertEquals(3, vm.estado.value.puntajes.getValue(CriterioLimpieza.Cama))
-        assertEquals(0, vm.estado.value.puntajes.getValue(CriterioLimpieza.Piso))
-        assertEquals(8, vm.estado.value.total)
-
-        vm.guardar()
-        assertEquals(1, repo.enviada?.residenteId)
-        assertNull(vm.estado.value.seleccionado, "tras guardar se vuelve a la lista")
-        assertNotNull(vm.estado.value.mensaje)
-        assertEquals(0, vm.estado.value.total, "el formulario queda limpio para el siguiente residente")
+    fun `la lista de limpieza trae habitaciones y no residentes sueltos`() = runTest {
+        val vm = LimpiezaPreceptorViewModel(LimpiezaFalsa(lista = Result.success(listOf(habitacion101))))
+        val carga = vm.estado.value.habitaciones
+        assertTrue(carga is Carga.Exito)
+        assertEquals("101", (carga as Carga.Exito).datos.single().numero)
     }
 
     @Test
-    fun `una evaluacion duplicada muestra el conflicto y no se pierde lo capturado`() = runTest {
-        val repo = LimpiezaFalsa(fallo(ErrorApi.Conflicto("El residente ya tiene una evaluación en esa fecha")))
-        val vm = LimpiezaPreceptorViewModel(ResidentesFalso(), repo)
-        vm.seleccionar(ResidenteResumen(1, "A001", "Ana", "D-12", true))
-        vm.ajustar(CriterioLimpieza.Ropero, +1)
+    fun `basura y olores son comunes y el resto personal, con topes y total por residente`() = runTest {
+        val repo = LimpiezaFalsa()
+        val vm = LimpiezaPreceptorViewModel(repo)
+        vm.abrir(habitacion101)
+        repeat(9) { vm.ajustarComun(CriterioLimpieza.Basura, +1) }
+        vm.ajustarComun(CriterioLimpieza.Olores, +1)
+        repeat(9) { vm.ajustar(1, CriterioLimpieza.Ropero, +1) }
+        vm.ajustar(1, CriterioLimpieza.Piso, -1)
+        vm.ajustar(2, CriterioLimpieza.Cama, +1)
+
+        assertEquals(3, vm.estado.value.basura, "tope de basura")
+        assertEquals(5 + 3 + 1, vm.estado.value.totalDe(1), "ropero 5 + comunes 3 y 1")
+        assertEquals(1 + 3 + 1, vm.estado.value.totalDe(2), "lo personal de uno no cambia al otro")
+
         vm.guardar()
-        assertEquals(ErrorApi.Conflicto("El residente ya tiene una evaluación en esa fecha"), vm.estado.value.error)
-        assertNotNull(vm.estado.value.seleccionado)
-        assertEquals(1, vm.estado.value.total)
+        val enviada = repo.enviada!!
+        assertEquals(10, enviada.habitacionId)
+        assertEquals(3, enviada.basura)
+        assertEquals(1, enviada.olores)
+        assertEquals(setOf(1L, 2L), enviada.personas.map { it.residenteId }.toSet())
+        assertEquals(5, enviada.personas.first { it.residenteId == 1L }.ropero)
+        assertNull(vm.estado.value.habitacion, "tras guardar se vuelve a la lista")
+        assertNotNull(vm.estado.value.mensaje)
+    }
+
+    @Test
+    fun `los residentes ya evaluados no se vuelven a calificar`() = runTest {
+        val repo = LimpiezaFalsa()
+        val vm = LimpiezaPreceptorViewModel(repo)
+        val parcial = habitacion101.copy(residentes = habitacion101.residentes.mapIndexed { i, r -> if (i == 0) r.copy(evaluado = true) else r }, evaluados = 1)
+        vm.abrir(parcial)
+        assertEquals(setOf(2L), vm.estado.value.personales.keys)
+        vm.guardar()
+        assertEquals(listOf(2L), repo.enviada!!.personas.map { it.residenteId })
+    }
+
+    @Test
+    fun `un conflicto del servidor se muestra y no se pierde lo capturado`() = runTest {
+        val repo = LimpiezaFalsa(respuesta = fallo(ErrorApi.Conflicto("Basura y olores ya se registraron ese día con otros valores")))
+        val vm = LimpiezaPreceptorViewModel(repo)
+        vm.abrir(habitacion101)
+        vm.ajustar(1, CriterioLimpieza.Ropero, +1)
+        vm.guardar()
+        assertEquals(ErrorApi.Conflicto("Basura y olores ya se registraron ese día con otros valores"), vm.estado.value.error)
+        assertNotNull(vm.estado.value.habitacion)
+        assertEquals(1, vm.estado.value.totalDe(1))
     }
 
     // ------------------------------------------------------------ mapeadores y formato

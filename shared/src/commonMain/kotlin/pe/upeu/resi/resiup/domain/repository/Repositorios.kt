@@ -6,7 +6,8 @@ import pe.upeu.resi.resiup.domain.model.EnlaceApoderado
 import pe.upeu.resi.resiup.domain.model.EstadoSolicitud
 import pe.upeu.resi.resiup.domain.model.EvaluacionLimpieza
 import pe.upeu.resi.resiup.domain.model.MovimientoRegistrado
-import pe.upeu.resi.resiup.domain.model.NuevaEvaluacion
+import pe.upeu.resi.resiup.domain.model.HabitacionLimpieza
+import pe.upeu.resi.resiup.domain.model.NuevaEvaluacionHabitacion
 import pe.upeu.resi.resiup.domain.model.NuevaSolicitud
 import pe.upeu.resi.resiup.domain.model.Pagina
 import pe.upeu.resi.resiup.domain.model.Perfil
@@ -48,7 +49,8 @@ interface CultoRepository {
 }
 
 interface LimpiezaRepository {
-    suspend fun registrar(evaluacion: NuevaEvaluacion): Result<EvaluacionLimpieza>
+    suspend fun habitaciones(fecha: String): Result<List<HabitacionLimpieza>>
+    suspend fun registrarHabitacion(evaluacion: NuevaEvaluacionHabitacion): Result<List<EvaluacionLimpieza>>
 }
 
 interface GaritaRepository {

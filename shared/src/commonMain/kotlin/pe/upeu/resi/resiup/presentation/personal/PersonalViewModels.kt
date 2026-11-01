@@ -16,7 +16,10 @@ import pe.upeu.resi.resiup.domain.model.CriterioLimpieza
 import pe.upeu.resi.resiup.domain.model.EnlaceApoderado
 import pe.upeu.resi.resiup.domain.model.EstadoSolicitud
 import pe.upeu.resi.resiup.domain.model.MovimientoRegistrado
-import pe.upeu.resi.resiup.domain.model.NuevaEvaluacion
+import pe.upeu.resi.resiup.domain.model.HabitacionLimpieza
+import pe.upeu.resi.resiup.domain.model.NuevaEvaluacionHabitacion
+import pe.upeu.resi.resiup.domain.model.PuntajePersonal
+import pe.upeu.resi.resiup.domain.model.CRITERIOS_PERSONALES
 import pe.upeu.resi.resiup.domain.model.ResidenteResumen
 import pe.upeu.resi.resiup.domain.model.SesionCulto
 import pe.upeu.resi.resiup.domain.model.SolicitudPermiso
@@ -193,55 +196,71 @@ class AsistenciaCultoViewModel(private val cultos: CultoRepository) : ViewModel(
     }
 }
 
-// ---------------------------------------------------------------- evaluación de limpieza
+// ---------------------------------------------------------------- evaluación de limpieza (por habitación)
 
 data class LimpiezaFormState(
-    val residentes: Carga<List<ResidenteResumen>> = Carga.Cargando,
-    val seleccionado: ResidenteResumen? = null,
-    val puntajes: Map<CriterioLimpieza, Int> = CriterioLimpieza.entries.associateWith { 0 },
-    val observacion: String = "",
+    val habitaciones: Carga<List<HabitacionLimpieza>> = Carga.Cargando,
+    val habitacion: HabitacionLimpieza? = null,
+    /** Comunes a toda la habitación. */
+    val basura: Int = 0,
+    val olores: Int = 0,
+    /** Ropero, cama, escritorio y piso de cada residente que todavía no tiene nota hoy. */
+    val personales: Map<Long, Map<CriterioLimpieza, Int>> = emptyMap(),
     val enviando: Boolean = false,
     val error: ErrorApi? = null,
-    val errores: Map<String, String> = emptyMap(),
     val mensaje: String? = null,
 ) {
-    val total get() = puntajes.values.sum()
+    fun comun(c: CriterioLimpieza) = if (c == CriterioLimpieza.Basura) basura else olores
+    fun totalDe(residenteId: Long) = basura + olores + personales[residenteId].orEmpty().values.sum()
 }
 
-class LimpiezaPreceptorViewModel(private val residentes: ResidenteRepository, private val limpieza: LimpiezaRepository) : ViewModel() {
+class LimpiezaPreceptorViewModel(private val limpieza: LimpiezaRepository) : ViewModel() {
     private val _estado = MutableStateFlow(LimpiezaFormState())
     val estado: StateFlow<LimpiezaFormState> = _estado.asStateFlow()
 
-    init { cargarResidentes() }
+    init { cargar() }
 
-    fun cargarResidentes() {
-        _estado.update { it.copy(residentes = Carga.Cargando) }
-        viewModelScope.launch { _estado.update { it.copy(residentes = residentes.listarResidentes().aCarga()) } }
+    fun cargar() {
+        _estado.update { it.copy(habitaciones = Carga.Cargando) }
+        viewModelScope.launch { _estado.update { it.copy(habitaciones = limpieza.habitaciones(hoyLima().toString()).aCarga()) } }
     }
 
-    fun seleccionar(r: ResidenteResumen?) = _estado.update { it.copy(seleccionado = r, mensaje = null, error = null, errores = emptyMap()) }
+    fun abrir(h: HabitacionLimpieza) = _estado.update {
+        it.copy(
+            habitacion = h, basura = 0, olores = 0, mensaje = null, error = null,
+            personales = h.pendientes.associate { r -> r.residenteId to CRITERIOS_PERSONALES.associateWith { 0 } },
+        )
+    }
 
-    fun ajustar(c: CriterioLimpieza, delta: Int) =
-        _estado.update { it.copy(puntajes = it.puntajes + (c to ((it.puntajes.getValue(c) + delta).coerceIn(0, c.maximo))), mensaje = null, errores = emptyMap()) }
+    fun cerrar() = _estado.update { it.copy(habitacion = null, error = null) }
 
-    fun observacion(v: String) = _estado.update { it.copy(observacion = v.take(500)) }
+    fun ajustarComun(c: CriterioLimpieza, delta: Int) = _estado.update {
+        val v = (it.comun(c) + delta).coerceIn(0, c.maximo)
+        (if (c == CriterioLimpieza.Basura) it.copy(basura = v) else it.copy(olores = v)).copy(mensaje = null, error = null)
+    }
+
+    fun ajustar(residenteId: Long, c: CriterioLimpieza, delta: Int) = _estado.update {
+        val actual = it.personales[residenteId] ?: return@update it
+        it.copy(personales = it.personales + (residenteId to (actual + (c to ((actual.getValue(c) + delta).coerceIn(0, c.maximo))))), mensaje = null, error = null)
+    }
 
     fun guardar() {
         val s = _estado.value
-        val r = s.seleccionado ?: return
-        if (s.enviando) return
-        _estado.update { it.copy(enviando = true, error = null, errores = emptyMap(), mensaje = null) }
+        val h = s.habitacion ?: return
+        if (s.enviando || s.personales.isEmpty()) return
+        _estado.update { it.copy(enviando = true, error = null, mensaje = null) }
+        val personas = s.personales.map { (id, p) ->
+            PuntajePersonal(id, p.getValue(CriterioLimpieza.Ropero), p.getValue(CriterioLimpieza.Cama), p.getValue(CriterioLimpieza.Escritorio), p.getValue(CriterioLimpieza.Piso))
+        }
         viewModelScope.launch {
-            limpieza.registrar(NuevaEvaluacion(r.id, hoyLima().toString(), s.puntajes, s.observacion))
-                .onSuccess { e ->
-                    _estado.update {
-                        it.copy(enviando = false, seleccionado = null, observacion = "", puntajes = CriterioLimpieza.entries.associateWith { 0 },
-                            mensaje = "Evaluación guardada: ${r.nombreCompleto} obtuvo ${e.total}/${e.maximo}")
-                    }
+            limpieza.registrarHabitacion(NuevaEvaluacionHabitacion(h.id, hoyLima().toString(), s.basura, s.olores, personas))
+                .onSuccess { lista ->
+                    _estado.update { it.copy(enviando = false, habitacion = null, mensaje = "Habitación ${h.numero} evaluada (${lista.size} ${if (lista.size == 1) "residente" else "residentes"})") }
+                    cargar()
                 }
                 .onFailure { err ->
                     val x = err.aErrorApi()
-                    _estado.update { if (x is ErrorApi.Validacion) it.copy(enviando = false, errores = x.porCampo) else it.copy(enviando = false, error = x) }
+                    _estado.update { it.copy(enviando = false, error = x) }
                 }
         }
     }
