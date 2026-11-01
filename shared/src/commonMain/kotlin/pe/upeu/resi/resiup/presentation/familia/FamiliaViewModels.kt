@@ -51,7 +51,7 @@ class FamiliaInicioViewModel(private val repo: FamiliaRepository) : ViewModel() 
         viewModelScope.launch {
             repo.decidir(id, aprobar)
                 .onSuccess {
-                    _estado.update { it.copy(trabajandoId = null, mensaje = if (aprobar) "Permiso aceptado: ya pasó al pastor para su aprobación" else "Permiso rechazado") }
+                    _estado.update { it.copy(trabajandoId = null, mensaje = if (aprobar) "Permiso aceptado: quedó aprobado" else "Permiso rechazado") }
                     cargar()
                 }
                 .onFailure { e ->
@@ -86,7 +86,7 @@ class FamiliaDetalleViewModel(private val id: Long, private val repo: FamiliaRep
         cargar()
     }
 
-    fun decidir(aprobar: Boolean) = ejecutar(if (aprobar) "Permiso aceptado: ya pasó al pastor" else "Permiso rechazado") { repo.decidir(id, aprobar) }
+    fun decidir(aprobar: Boolean) = ejecutar(if (aprobar) "Permiso aceptado: quedó aprobado" else "Permiso rechazado") { repo.decidir(id, aprobar) }
 
     fun cancelar() = ejecutar("Solicitud cancelada") { repo.cancelar(id) }
 

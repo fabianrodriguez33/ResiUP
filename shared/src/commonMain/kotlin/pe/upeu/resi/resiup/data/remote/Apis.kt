@@ -4,11 +4,12 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
+import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import pe.upeu.resi.resiup.data.remote.dto.AbrirSesionRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.AsistenciaDto
-import pe.upeu.resi.resiup.data.remote.dto.DecisionRequestDto
+import pe.upeu.resi.resiup.data.remote.dto.PerfilRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.EnlaceDto
 import pe.upeu.resi.resiup.data.remote.dto.EvaluacionDto
 import pe.upeu.resi.resiup.data.remote.dto.JustificacionRequestDto
@@ -34,6 +35,7 @@ private const val BASE = "api/v1/"
 class ResidenteApi(private val client: HttpClient) {
     suspend fun perfil(): ResidenteDto = client.get("${BASE}residentes/yo").body()
     suspend fun qr(): QrDto = client.get("${BASE}residentes/yo/qr").body()
+    suspend fun actualizarPerfil(r: PerfilRequestDto): ResidenteDto = client.patch("${BASE}residentes/yo") { setBody(r) }.body()
     suspend fun asistencias(pagina: Int, tamanio: Int): PaginaDto<AsistenciaDto> =
         client.get("${BASE}residentes/yo/asistencias") { parameter("pagina", pagina); parameter("tamanio", tamanio) }.body()
     suspend fun limpieza(pagina: Int, tamanio: Int): PaginaDto<EvaluacionDto> =
@@ -59,7 +61,6 @@ class PermisoApi(private val client: HttpClient) {
             estado?.let { parameter("estado", it) }
             parameter("pagina", pagina); parameter("tamanio", tamanio)
         }.body()
-    suspend fun decidir(id: Long, r: DecisionRequestDto): SolicitudDto = client.post("${BASE}permisos/solicitudes/$id/decision") { setBody(r) }.body()
     suspend fun enlaceApoderado(id: Long): EnlaceDto = client.post("${BASE}permisos/solicitudes/$id/enlace-apoderado").body()
     suspend fun resumen(id: Long): ResumenResidenteDto = client.get("${BASE}permisos/solicitudes/$id/resumen-residente").body()
 }

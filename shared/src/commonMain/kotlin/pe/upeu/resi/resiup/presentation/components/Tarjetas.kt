@@ -93,6 +93,7 @@ fun ElementoLista(
     icono: ImageVector? = null,
     final: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
+    acento: pe.upeu.resi.resiup.presentation.theme.Acento? = null,
 ) {
     val base = modifier.fillMaxWidth().heightIn(min = 48.dp)
     Row(
@@ -101,8 +102,8 @@ fun ElementoLista(
         horizontalArrangement = Arrangement.spacedBy(Espacio.m),
     ) {
         if (icono != null) {
-            Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.primaryContainer) {
-                ResiIcono(icono, null, Modifier.padding(10.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+            Surface(shape = MaterialTheme.shapes.small, color = acento?.suave() ?: MaterialTheme.colorScheme.primaryContainer) {
+                ResiIcono(icono, null, Modifier.padding(10.dp), tint = acento?.color() ?: MaterialTheme.colorScheme.onPrimaryContainer)
             }
         }
         Column(Modifier.weight(1f)) {

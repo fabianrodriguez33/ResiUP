@@ -14,6 +14,7 @@ import pe.upeu.resi.resiup.domain.model.Perfil
 import pe.upeu.resi.resiup.domain.model.QrPersonal
 import pe.upeu.resi.resiup.domain.model.ResidenteResumen
 import pe.upeu.resi.resiup.domain.model.Hijo
+import pe.upeu.resi.resiup.domain.model.PerfilEditable
 import pe.upeu.resi.resiup.domain.model.ResumenLimpieza
 import pe.upeu.resi.resiup.domain.model.ResumenResidente
 import pe.upeu.resi.resiup.domain.model.SesionCulto
@@ -30,6 +31,7 @@ interface ResidenteRepository {
     suspend fun resumenLimpieza(): Result<ResumenLimpieza>
     suspend fun movimientos(pagina: Int): Result<Pagina<MovimientoRegistrado>>
     suspend fun listarResidentes(): Result<List<ResidenteResumen>>
+    suspend fun actualizarPerfil(cambios: PerfilEditable): Result<Perfil>
 }
 
 interface PermisoRepository {
@@ -39,7 +41,6 @@ interface PermisoRepository {
     suspend fun cancelar(id: Long): Result<SolicitudPermiso>
     suspend fun justificar(id: Long, motivo: String): Result<Unit>
     suspend fun listar(estado: EstadoSolicitud?, pagina: Int): Result<Pagina<SolicitudPermiso>>
-    suspend fun decidir(id: Long, aprobar: Boolean, comentario: String?): Result<SolicitudPermiso>
     suspend fun enlaceApoderado(id: Long): Result<EnlaceApoderado>
     suspend fun resumenDelResidente(id: Long): Result<ResumenResidente>
 }

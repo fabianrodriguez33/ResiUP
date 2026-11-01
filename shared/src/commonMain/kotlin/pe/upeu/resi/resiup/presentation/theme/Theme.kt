@@ -29,15 +29,19 @@ private val ResiFormas = Shapes(
 )
 
 private val LocalResiColores = staticCompositionLocalOf { ResiColoresClaro }
+private val LocalResiOscuro = staticCompositionLocalOf { false }
 
 object ResiTheme {
+    val oscuro: Boolean
+        @Composable @ReadOnlyComposable get() = LocalResiOscuro.current
+
     val colores: ResiColores
         @Composable @ReadOnlyComposable get() = LocalResiColores.current
 }
 
 @Composable
 fun ResiTheme(oscuro: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalResiColores provides if (oscuro) ResiColoresOscuro else ResiColoresClaro) {
+    CompositionLocalProvider(LocalResiColores provides if (oscuro) ResiColoresOscuro else ResiColoresClaro, LocalResiOscuro provides oscuro) {
         MaterialTheme(
             colorScheme = if (oscuro) EsquemaOscuro else EsquemaClaro,
             typography = ResiTipografia,

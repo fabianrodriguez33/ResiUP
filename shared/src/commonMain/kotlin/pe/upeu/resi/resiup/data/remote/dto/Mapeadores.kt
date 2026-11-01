@@ -74,7 +74,7 @@ private fun String.aEstadoRevision(): EstadoRevision = when (this) {
 
 fun <D, M> PaginaDto<D>.aDominio(mapeo: (D) -> M) = Pagina(contenido.map(mapeo), pagina, totalElementos, ultima)
 
-fun ResidenteDto.aPerfil() = Perfil(id, codigo, nombreCompleto, telefono, habitacion?.let { HabitacionResumen(it.id, it.numero, it.cama) }, puedeSolicitarSolo)
+fun ResidenteDto.aPerfil() = Perfil(id, codigo, nombreCompleto, telefono, habitacion?.let { HabitacionResumen(it.id, it.numero, it.cama) }, puedeSolicitarSolo, email, carrera, ciclo)
 
 fun ResidenteDto.aResumen() = ResidenteResumen(id, codigo, nombreCompleto, habitacion?.numero, activo)
 

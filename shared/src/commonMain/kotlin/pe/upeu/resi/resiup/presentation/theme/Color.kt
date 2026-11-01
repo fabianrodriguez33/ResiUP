@@ -9,11 +9,12 @@ import androidx.compose.ui.graphics.Color
 // Paleta PROPUESTA (no oficial). Reemplazar por los valores del manual de marca UPeU cuando exista.
 internal object Paleta {
     val AzulInstitucional = Color(0xFF0A2F6B)
-    val AzulSecundario = Color(0xFF1F6FD1)
+    val AzulSecundario = Color(0xFF2F7BFF)
+    val AzulVivo = Color(0xFF1F63E0)
 
-    val LuzPrimarioContenedor = Color(0xFFD8E4FA)
+    val LuzPrimarioContenedor = Color(0xFFDDE8FF)
     val LuzSecundarioContenedor = Color(0xFFDCE9FB)
-    val LuzFondo = Color(0xFFF5F7FA)
+    val LuzFondo = Color(0xFFF1F5FF)
     val LuzSuperficie = Color(0xFFFFFFFF)
     val LuzSuperficieVariante = Color(0xFFEEF1F6)
     val LuzTexto = Color(0xFF111827)
@@ -44,6 +45,7 @@ class ResiColores(
     val vidrio: Color,
     val vidrioBorde: Color,
     val marca: Color,
+    val marcaClara: Color,
     val sobreMarca: Color,
 )
 
@@ -57,6 +59,7 @@ internal val ResiColoresClaro = ResiColores(
     vidrio = Color.White.copy(alpha = 0.72f),
     vidrioBorde = Color.White.copy(alpha = 0.85f),
     marca = Paleta.AzulInstitucional,
+    marcaClara = Paleta.AzulSecundario,
     sobreMarca = Color.White,
 )
 
@@ -70,11 +73,12 @@ internal val ResiColoresOscuro = ResiColores(
     vidrio = Paleta.NocheSuperficie.copy(alpha = 0.62f),
     vidrioBorde = Color.White.copy(alpha = 0.14f),
     marca = Paleta.AzulInstitucional,
+    marcaClara = Color(0xFF2A5FCB),
     sobreMarca = Color.White,
 )
 
 internal val EsquemaClaro: ColorScheme = lightColorScheme(
-    primary = Paleta.AzulInstitucional,
+    primary = Paleta.AzulVivo,
     onPrimary = Color.White,
     primaryContainer = Paleta.LuzPrimarioContenedor,
     onPrimaryContainer = Color(0xFF06214D),

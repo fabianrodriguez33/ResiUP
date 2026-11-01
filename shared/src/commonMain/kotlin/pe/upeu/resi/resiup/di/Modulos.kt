@@ -47,8 +47,10 @@ import pe.upeu.resi.resiup.presentation.familia.FamiliaInicioViewModel
 import pe.upeu.resi.resiup.presentation.familia.FamiliaNuevoViewModel
 import pe.upeu.resi.resiup.presentation.familia.FamiliaSolicitudesViewModel
 import pe.upeu.resi.resiup.presentation.personal.SolicitudRevisionViewModel
-import pe.upeu.resi.resiup.presentation.personal.SolicitudesConApoderadoViewModel
-import pe.upeu.resi.resiup.presentation.personal.SolicitudesPorRevisarViewModel
+import pe.upeu.resi.resiup.presentation.personal.PermisosAprobadosViewModel
+import pe.upeu.resi.resiup.presentation.personal.PermisosEnEsperaViewModel
+import pe.upeu.resi.resiup.presentation.personal.PermisosTodosViewModel
+import pe.upeu.resi.resiup.presentation.residente.EditarPerfilViewModel
 import pe.upeu.resi.resiup.presentation.residente.AsistenciasViewModel
 import pe.upeu.resi.resiup.presentation.residente.InicioResidenteViewModel
 import pe.upeu.resi.resiup.presentation.residente.LimpiezaResidenteViewModel
@@ -131,8 +133,10 @@ val presentacionModule = module {
     // Preceptor
     viewModelOf(::InicioPreceptorViewModel)
     viewModelOf(::AsistenciaCultoViewModel)
-    viewModelOf(::SolicitudesPorRevisarViewModel)
-    viewModelOf(::SolicitudesConApoderadoViewModel)
+    viewModelOf(::PermisosAprobadosViewModel)
+    viewModelOf(::PermisosEnEsperaViewModel)
+    viewModelOf(::PermisosTodosViewModel)
+    viewModelOf(::EditarPerfilViewModel)
     viewModelOf(::LimpiezaPreceptorViewModel)
     viewModel { (id: Long) -> SolicitudRevisionViewModel(id, get()) }
     // Garita

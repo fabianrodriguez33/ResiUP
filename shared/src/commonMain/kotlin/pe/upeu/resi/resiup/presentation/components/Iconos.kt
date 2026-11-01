@@ -41,6 +41,12 @@ object ResiIconos {
     val Salir = trazo("salir", "M14 4 H19 V20 H14 M4 12 H15 M11 8 L15 12 L11 16")
     val Alerta = trazo("alerta", "M12 3 L22 20 H2 Z M12 10 V14 M12 17 H12.01")
     val SinConexion = trazo("sin_conexion", "M3 3 L21 21 M5 10 C7 8.5 9.5 7.5 12 7.5 M8.5 14 C9.5 13 10.7 12.5 12 12.5 M12 17 H12.01")
+    val Racha = trazo("racha", "M12 3 C12.5 6 17 8 17 13 A5 5 0 0 1 7 13 C7 10.5 8.5 9 10 7.5 C10.5 9 11 10 12 10 C12.5 7.5 12 5 12 3 Z")
+    val Editar = trazo("editar", "M4 20 L4 16 L15 5 L19 9 L8 20 Z M13 7 L17 11")
+    val Calendario = trazo("calendario", "M4 6 H20 V20 H4 Z M4 10 H20 M8 3 V7 M16 3 V7")
+    val Qr = trazo("qr", "M4 4 H10 V10 H4 Z M14 4 H20 V10 H14 Z M4 14 H10 V20 H4 Z M14 14 H17 V17 M20 14 V14.01 M14 20 H14.01 M17 20 H20 V17")
+    val Correo = trazo("correo", "M4 6 H20 V18 H4 Z M4 7 L12 13 L20 7")
+    val Telefono = trazo("telefono", "M8 3 H16 V21 H8 Z M11 18 H13")
     val Vacio = trazo("vacio", "M4 7 H20 V20 H4 Z M4 7 L7 3 H17 L20 7 M9 12 H15")
 }
 

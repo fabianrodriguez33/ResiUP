@@ -120,8 +120,8 @@ private fun SolicitudNuevaScreen(onVolver: () -> Unit, onCreada: (Long) -> Unit)
         ResiBoton("Volver", onVolver, variante = VarianteBoton.Terciario)
         TituloPantalla("Nuevo permiso", subtitulo = "Salida corta o larga")
         BannerMensaje(
-            if (privilegio == true) "Tu solicitud irá directo al pastor para su aprobación."
-            else "Tu solicitud irá primero a tu padre/madre para que la acepte y después al pastor.",
+            if (privilegio == true) "Tu permiso quedará aprobado al enviarlo y el pastor lo verá en su lista."
+            else "Tu solicitud irá primero a tu padre/madre; cuando la acepte quedará aprobada.",
             EstadoVisual.Info,
         )
         CamposPermiso(s, vm)
@@ -167,7 +167,7 @@ private fun SolicitudDetalleScreen(id: Long, onVolver: () -> Unit) {
                 } else if (s.estado == EstadoSolicitud.Aprobado) {
                     BannerMensaje("La ampliación de horario con fotografía estará disponible en una próxima versión.", EstadoVisual.Neutro)
                 }
-                val cancelable = s.estado == EstadoSolicitud.PendienteApoderado || s.estado == EstadoSolicitud.PendientePreceptor || s.estado == EstadoSolicitud.Aprobado
+                val cancelable = s.estado == EstadoSolicitud.PendienteApoderado || s.estado == EstadoSolicitud.Aprobado
                 if (cancelable) ResiBoton("Cancelar solicitud", { confirmarCancelar = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo, habilitado = !accion.trabajando)
                 accion.mensaje?.let { BannerMensaje(it, EstadoVisual.Exito) }
                 accion.error?.takeIf { it !is pe.upeu.resi.resiup.domain.error.ErrorApi.Validacion }?.let { BannerMensaje(it.aMensaje(), EstadoVisual.Error) }

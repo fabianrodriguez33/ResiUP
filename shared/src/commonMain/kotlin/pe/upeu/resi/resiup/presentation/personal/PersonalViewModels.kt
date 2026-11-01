@@ -40,15 +40,18 @@ import pe.upeu.resi.resiup.presentation.util.aErrorApi
 import pe.upeu.resi.resiup.presentation.util.ahora
 import pe.upeu.resi.resiup.presentation.util.hoyLima
 
-class SolicitudesPorRevisarViewModel(repo: PermisoRepository) : ListaViewModel<SolicitudPermiso>({ repo.listar(EstadoSolicitud.PendientePreceptor, it) })
+/** Permisos para el pastor: solo consulta. Un permiso queda aprobado cuando lo acepta el padre/madre (o si lo envía el padre/madre). */
+class PermisosAprobadosViewModel(repo: PermisoRepository) : ListaViewModel<SolicitudPermiso>({ repo.listar(EstadoSolicitud.Aprobado, it) })
 
-class SolicitudesConApoderadoViewModel(repo: PermisoRepository) : ListaViewModel<SolicitudPermiso>({ repo.listar(EstadoSolicitud.PendienteApoderado, it) })
+class PermisosEnEsperaViewModel(repo: PermisoRepository) : ListaViewModel<SolicitudPermiso>({ repo.listar(EstadoSolicitud.PendienteApoderado, it) })
+
+class PermisosTodosViewModel(repo: PermisoRepository) : ListaViewModel<SolicitudPermiso>({ repo.listar(null, it) })
 
 class HistorialGaritaViewModel(repo: GaritaRepository) : ListaViewModel<MovimientoRegistrado>({ repo.historial(it) })
 
 // ---------------------------------------------------------------- inicio del preceptor
 
-data class InicioPreceptorUi(val porRevisar: Long, val conApoderado: Long, val sesiones: List<SesionCulto>)
+data class InicioPreceptorUi(val aprobados: Long, val enEspera: Long, val sesiones: List<SesionCulto>)
 
 class InicioPreceptorViewModel(private val permisos: PermisoRepository, private val cultos: CultoRepository) : ViewModel() {
     private val _estado = MutableStateFlow<Carga<InicioPreceptorUi>>(Carga.Cargando)
@@ -60,7 +63,7 @@ class InicioPreceptorViewModel(private val permisos: PermisoRepository, private 
         _estado.value = Carga.Cargando
         viewModelScope.launch {
             coroutineScope {
-                val a = async { permisos.listar(EstadoSolicitud.PendientePreceptor, 0) }
+                val a = async { permisos.listar(EstadoSolicitud.Aprobado, 0) }
                 val b = async { permisos.listar(EstadoSolicitud.PendienteApoderado, 0) }
                 val c = async { cultos.sesionesDeHoy() }
                 val ra = a.await()
@@ -99,16 +102,6 @@ class SolicitudRevisionViewModel(private val id: Long, private val repo: Permiso
     fun recargar() {
         _accion.value = RevisionAccion()
         cargar()
-    }
-
-    fun decidir(aprobar: Boolean, comentario: String) {
-        if (_accion.value.trabajando) return
-        _accion.value = RevisionAccion(trabajando = true)
-        viewModelScope.launch {
-            repo.decidir(id, aprobar, comentario)
-                .onSuccess { _accion.value = RevisionAccion(mensaje = if (aprobar) "Solicitud aprobada" else "Solicitud rechazada"); cargar() }
-                .onFailure { _accion.value = RevisionAccion(error = it.aErrorApi()); cargar() }
-        }
     }
 
     fun generarEnlace() {

@@ -1,5 +1,15 @@
 package pe.upeu.resi.resiup.presentation.residente
 
+import pe.upeu.resi.resiup.presentation.theme.Acento
+import pe.upeu.resi.resiup.presentation.components.ResiIcono
+import pe.upeu.resi.resiup.presentation.components.TarjetaHero
+import pe.upeu.resi.resiup.presentation.components.TarjetaDato
+import pe.upeu.resi.resiup.presentation.components.ModuloUi
+import pe.upeu.resi.resiup.presentation.components.EncabezadoSeccion
+import pe.upeu.resi.resiup.presentation.components.CuadriculaModulos
+import pe.upeu.resi.resiup.presentation.components.AvatarInicial
+import androidx.compose.ui.backhandler.BackHandler
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,68 +79,90 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
     val estado by vm.estado.collectAsState()
     ContenidoConsulta(estado, vm::reintentar) { datos ->
         val ui = datos ?: return@ContenidoConsulta IndicadorCarga()
+        val e = ui.estadisticas
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
-            TituloPantalla(
-                "Hola, ${ui.perfil.nombreCompleto.substringBefore(' ')}",
-                subtitulo = ui.perfil.habitacion?.let { listOfNotNull("Habitación ${it.numero}", it.etiquetaCama).joinToString(" · ") } ?: "Sin habitación asignada",
-            )
-            Box(Modifier.fillMaxWidth().background(ResiTheme.colores.marca, RoundedCornerShape(24.dp)).padding(Espacio.m)) {
-                TarjetaVidrio(Modifier.fillMaxWidth()) {
-                    Row(Modifier.padding(Espacio.l), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Mi código QR", style = MaterialTheme.typography.titleMedium)
-                            Text("Para culto y garita", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        ResiBoton("Mostrar", { onIr(Destinos.Perfil) })
-                    }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                AvatarInicial(ui.perfil.nombreCompleto, Acento.Rosa)
+                Column(Modifier.weight(1f)) {
+                    Text("Hola, ${ui.perfil.nombreCompleto.substringBefore(' ')}", style = MaterialTheme.typography.headlineMedium)
+                    Text(
+                        ui.perfil.habitacion?.let { listOfNotNull("Habitación ${it.numero}", it.etiquetaCama).joinToString(" · ") } ?: "Sin habitación asignada",
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
+            TarjetaHero("Mi código QR", "Para culto y garita", "Mostrar", { onIr(Destinos.Perfil) }, ResiIconos.Qr)
+            Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                TarjetaDato(e.racha.toString(), "Racha de cultos", ResiIconos.Racha, Acento.Naranja, Modifier.weight(1f), detalle = if (e.racha == 1) "día seguido" else "días seguidos")
+                TarjetaDato("${e.diasAsistidosMes}/${e.diasHabilesMes}", if (e.delMesAnterior) "Mes pasado" else "Este mes", ResiIconos.Asistencias, Acento.Verde, Modifier.weight(1f), detalle = "días con culto")
+                TarjetaDato(ui.limpieza?.promedio?.let { it.unDecimal() } ?: "—", "Limpieza", ResiIconos.Limpieza, Acento.Violeta, Modifier.weight(1f), detalle = "promedio sobre 20")
+            }
+            EncabezadoSeccion("Accesos")
+            CuadriculaModulos(
+                listOf(
+                    ModuloUi("Mi QR", ResiIconos.Qr, Acento.Violeta, { onIr(Destinos.Perfil) }),
+                    ModuloUi("Permisos", ResiIconos.Permisos, Acento.Azul, { onIr(Destinos.Permisos) }),
+                    ModuloUi("Asistencias", ResiIconos.Calendario, Acento.Verde, { onIr(Destinos.Asistencias) }),
+                    ModuloUi("Limpieza", ResiIconos.Limpieza, Acento.Naranja, { onIr(Destinos.Limpieza) }),
+                    ModuloUi("Mi perfil", ResiIconos.Perfil, Acento.Rosa, { onIr(Destinos.Perfil) }),
+                    ModuloUi("Salidas y retornos", ResiIconos.Salir, Acento.Turquesa, { onIr(Destinos.Permisos) }),
+                ),
+            )
+            EncabezadoSeccion("Lo último")
             ResiTarjeta(onClick = { onIr(Destinos.Permisos) }) {
-                Text("Permiso reciente", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 val p = ui.permisoReciente
                 if (p == null) {
-                    Text("Aún no has solicitado permisos", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = Espacio.xs))
+                    ElementoLista("Permisos", subtitulo = "Aún no has solicitado permisos", icono = ResiIconos.Permisos, acento = Acento.Azul)
                 } else {
-                    ElementoLista(p.destino, subtitulo = "${p.salida.formatoLima()} → ${p.retornoAutorizado.formatoLima()}", final = { ChipEstado(p.estado.etiqueta, p.estado.aEstadoVisual()) })
+                    ElementoLista(
+                        p.destino, subtitulo = "${p.tipo.etiqueta} · ${p.salida.formatoLima()}", icono = ResiIconos.Permisos, acento = Acento.Azul,
+                        final = { ChipEstado(p.estado.etiqueta, p.estado.aEstadoVisual()) },
+                    )
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                Box(Modifier.weight(1f)) {
-                    ResiTarjeta(onClick = { onIr(Destinos.Limpieza) }) {
-                        Text("Limpieza", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(ui.limpieza?.promedio?.let { "${it.unDecimal()}/20" } ?: "—", style = ResiEstilos.Numero)
-                        Text(if (ui.limpieza?.evaluaciones == 0L || ui.limpieza == null) "Sin evaluaciones" else "promedio", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                Box(Modifier.weight(1f)) {
-                    ResiTarjeta(onClick = { onIr(Destinos.Asistencias) }) {
-                        Text("Último culto", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(ui.ultimaAsistencia?.tipo?.etiqueta ?: "—", style = MaterialTheme.typography.titleLarge)
-                        Text(ui.ultimaAsistencia?.fecha?.fechaLegible() ?: "Sin registros", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
+            ResiTarjeta(onClick = { onIr(Destinos.Asistencias) }) {
+                val a = ui.ultimaAsistencia
+                ElementoLista(
+                    if (a == null) "Cultos" else "Culto ${a.tipo.etiqueta.lowercase()}",
+                    subtitulo = a?.fecha?.fechaLegible() ?: "Sin registros todavía", icono = ResiIconos.Asistencias, acento = Acento.Verde,
+                    final = { if (a != null) ChipEstado(if (a.despuesDelCorte) "Tarde" else "Puntual", if (a.despuesDelCorte) EstadoVisual.Advertencia else EstadoVisual.Exito) },
+                )
             }
         }
     }
 }
 
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: PerfilViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
     val qr by vm.qr.collectAsState()
     var confirmar by remember { mutableStateOf(false) }
+    var editando by remember { mutableStateOf(false) }
+    BackHandler(enabled = editando) { editando = false }
     ContenidoConsulta(estado, vm::reintentar) { datos ->
         val perfil = datos ?: return@ContenidoConsulta IndicadorCarga()
+        if (editando) {
+            EditarPerfilScreen(perfil, onTerminar = { editando = false })
+            return@ContenidoConsulta
+        }
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
-            TituloPantalla("Perfil")
-            ResiTarjeta {
-                ElementoLista(perfil.nombreCompleto, subtitulo = "Código ${perfil.codigo}", icono = ResiIconos.Perfil, final = { ChipEstado(Rol.Residente.etiqueta, EstadoVisual.Info) })
-                Text(
-                    perfil.habitacion?.let { listOfNotNull("Habitación ${it.numero}", it.etiquetaCama).joinToString(" · ") } ?: "Sin habitación asignada",
-                    Modifier.padding(top = Espacio.s), style = MaterialTheme.typography.bodyLarge,
-                )
-                perfil.telefono?.let { Text("Teléfono $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                AvatarInicial(perfil.nombreCompleto, Acento.Rosa, tamano = 60.dp)
+                Column(Modifier.weight(1f)) {
+                    Text(perfil.nombreCompleto, style = MaterialTheme.typography.headlineMedium)
+                    Text("Código ${perfil.codigo}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    ChipEstado(Rol.Residente.etiqueta, EstadoVisual.Info, Modifier.padding(top = Espacio.xs))
+                }
             }
+            ResiTarjeta {
+                DatoPerfil("Carrera", perfil.carrera, ResiIconos.Perfil, Acento.Violeta)
+                DatoPerfil("Ciclo", perfil.ciclo?.let { "${it}.º ciclo" }, ResiIconos.Calendario, Acento.Turquesa)
+                DatoPerfil("Correo electrónico", perfil.email, ResiIconos.Correo, Acento.Azul)
+                DatoPerfil("Teléfono", perfil.telefono, ResiIconos.Telefono, Acento.Verde)
+                DatoPerfil("Habitación", perfil.habitacion?.let { listOfNotNull(it.numero, it.etiquetaCama).joinToString(" · ") }, ResiIconos.Inicio, Acento.Naranja)
+            }
+            ResiBoton("Editar perfil", { editando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
             ResiTarjeta {
                 Text("Mi código QR", style = MaterialTheme.typography.titleMedium)
                 when (val q = qr) {
@@ -169,6 +201,21 @@ fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: Perfi
     }
 }
 
+/** Fila del perfil: ícono de color, etiqueta y valor; si falta el dato se invita a completarlo. */
+@Composable
+private fun DatoPerfil(etiqueta: String, valor: String?, icono: androidx.compose.ui.graphics.vector.ImageVector, acento: Acento) {
+    Row(Modifier.fillMaxWidth().padding(vertical = Espacio.xs), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+        Box(Modifier.size(36.dp).background(acento.suave(), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+            ResiIcono(icono, null, tint = acento.color(), tamano = 20.dp)
+        }
+        Column(Modifier.weight(1f)) {
+            Text(etiqueta, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (valor.isNullOrBlank()) Text("Sin completar", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else Text(valor, style = MaterialTheme.typography.bodyLarge)
+        }
+    }
+}
+
 @Composable
 fun AsistenciasScreen(vm: AsistenciasViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
@@ -191,7 +238,7 @@ fun AsistenciasScreen(vm: AsistenciasViewModel = koinViewModel()) {
 @Composable
 private fun AsistenciaItem(a: AsistenciaCulto) {
     ElementoLista(
-        "Culto ${a.tipo.etiqueta.lowercase()}", subtitulo = "${a.fecha.fechaLegible()} · registrado ${a.registradoEn.formatoLima()}", icono = ResiIconos.Asistencias,
+        "Culto ${a.tipo.etiqueta.lowercase()}", subtitulo = "${a.fecha.fechaLegible()} · registrado ${a.registradoEn.formatoLima()}", icono = ResiIconos.Asistencias, acento = Acento.Verde,
         final = { if (a.despuesDelCorte) ChipEstado("Después del corte", EstadoVisual.Advertencia) else ChipEstado("Registrada", EstadoVisual.Exito) },
     )
 }

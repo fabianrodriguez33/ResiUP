@@ -6,7 +6,8 @@ import pe.upeu.resi.resiup.data.remote.FamiliaApi
 import pe.upeu.resi.resiup.data.remote.LimpiezaApi
 import pe.upeu.resi.resiup.data.remote.PermisoApi
 import pe.upeu.resi.resiup.data.remote.ResidenteApi
-import pe.upeu.resi.resiup.data.remote.dto.DecisionRequestDto
+import pe.upeu.resi.resiup.data.remote.dto.PerfilRequestDto
+import pe.upeu.resi.resiup.domain.model.PerfilEditable
 import pe.upeu.resi.resiup.data.remote.dto.JustificacionRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.LimpiezaHabitacionRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.PuntajePersonalDto
@@ -54,6 +55,9 @@ class ResidenteRepositoryImpl(private val api: ResidenteApi, private val sesione
     override suspend fun limpieza(pagina: Int) = ejecutarLlamada { api.limpieza(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
     override suspend fun resumenLimpieza() = ejecutarLlamada { api.resumenLimpieza().aDominio() }
     override suspend fun movimientos(pagina: Int) = ejecutarLlamada { api.movimientos(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
+    override suspend fun actualizarPerfil(cambios: PerfilEditable) = ejecutarLlamada {
+        api.actualizarPerfil(PerfilRequestDto(cambios.email.trim(), cambios.telefono.trim(), cambios.codigo.trim(), cambios.carrera.trim(), cambios.ciclo)).aPerfil()
+    }
     override suspend fun listarResidentes() = ejecutarLlamada { api.listar(0, 100).contenido.filter { it.activo }.map { it.aResumen() } }
 }
 
@@ -67,8 +71,6 @@ class PermisoRepositoryImpl(private val api: PermisoApi) : PermisoRepository {
     override suspend fun justificar(id: Long, motivo: String) = ejecutarLlamada { api.justificar(id, JustificacionRequestDto(motivo)) }
     override suspend fun listar(estado: EstadoSolicitud?, pagina: Int) =
         ejecutarLlamada { api.listar(estado?.aApi(), pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
-    override suspend fun decidir(id: Long, aprobar: Boolean, comentario: String?) =
-        ejecutarLlamada { api.decidir(id, DecisionRequestDto(aprobar, comentario?.takeIf { it.isNotBlank() })).aDominio() }
     override suspend fun enlaceApoderado(id: Long) = ejecutarLlamada { api.enlaceApoderado(id).aDominio() }
     override suspend fun resumenDelResidente(id: Long) = ejecutarLlamada { api.resumen(id).aDominio() }
 }

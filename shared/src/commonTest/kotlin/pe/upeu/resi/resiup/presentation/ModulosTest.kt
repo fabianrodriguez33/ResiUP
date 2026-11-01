@@ -126,7 +126,6 @@ class ModulosTest {
         override suspend fun cancelar(id: Long) = respuesta
         override suspend fun justificar(id: Long, motivo: String) = Result.success(Unit)
         override suspend fun listar(estado: EstadoSolicitud?, pagina: Int) = Result.success(Pagina<SolicitudPermiso>(emptyList(), 0, 0, true))
-        override suspend fun decidir(id: Long, aprobar: Boolean, comentario: String?) = respuesta
         override suspend fun enlaceApoderado(id: Long) = fallo(ErrorApi.NoEncontrado)
         override suspend fun resumenDelResidente(id: Long) = fallo(ErrorApi.NoEncontrado)
     }
@@ -289,6 +288,7 @@ class ModulosTest {
         override suspend fun resumenLimpieza() = fallo(ErrorApi.NoEncontrado)
         override suspend fun movimientos(pagina: Int) = fallo(ErrorApi.NoEncontrado)
         override suspend fun listarResidentes() = Result.success(listOf(ResidenteResumen(1, "A001", "Ana", "D-12", true)))
+        override suspend fun actualizarPerfil(cambios: pe.upeu.resi.resiup.domain.model.PerfilEditable) = fallo(ErrorApi.NoEncontrado)
     }
 
     private val habitacion101 = HabitacionLimpieza(

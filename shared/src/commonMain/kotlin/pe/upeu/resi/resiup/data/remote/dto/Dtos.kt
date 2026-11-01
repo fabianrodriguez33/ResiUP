@@ -25,7 +25,13 @@ data class ResidenteDto(
     val activo: Boolean = true,
     val habitacion: HabitacionResumenDto? = null,
     val puedeSolicitarSolo: Boolean = false,
+    val email: String? = null,
+    val carrera: String? = null,
+    val ciclo: Int? = null,
 )
+
+@Serializable
+data class PerfilRequestDto(val email: String? = null, val telefono: String? = null, val codigo: String? = null, val carrera: String? = null, val ciclo: Int? = null)
 
 @Serializable
 data class QrDto(val contenido: String)
@@ -103,9 +109,6 @@ data class ResumenResidenteDto(
     val dias: Int = 30, val cultosRealizados: Long = 0, val asistencias: Long = 0, val despuesDelCorte: Long = 0,
     val promedioLimpieza: Double? = null, val evaluaciones: Long = 0,
 )
-
-@Serializable
-data class DecisionRequestDto(val aprobar: Boolean, val comentario: String? = null)
 
 @Serializable
 data class JustificacionRequestDto(val motivo: String, val evidenciaId: Long? = null)

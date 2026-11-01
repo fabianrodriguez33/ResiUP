@@ -14,7 +14,10 @@ CREATE TABLE perfil (
     habitacion_id     INTEGER,
     habitacion_numero TEXT,
     habitacion_cama   TEXT,
-    puede_solicitar_solo INTEGER NOT NULL DEFAULT 0
+    puede_solicitar_solo INTEGER NOT NULL DEFAULT 0,
+    email             TEXT,
+    carrera           TEXT,
+    ciclo             INTEGER
 );
 
 CREATE TABLE asistencia (
@@ -71,7 +74,7 @@ observarPerfil:
 SELECT * FROM perfil LIMIT 1;
 
 guardarPerfil:
-INSERT OR REPLACE INTO perfil (id, codigo, nombre, telefono, habitacion_id, habitacion_numero, habitacion_cama, puede_solicitar_solo) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO perfil (id, codigo, nombre, telefono, habitacion_id, habitacion_numero, habitacion_cama, puede_solicitar_solo, email, carrera, ciclo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 borrarPerfil:
 DELETE FROM perfil;

@@ -10,7 +10,13 @@ data class HabitacionResumen(val id: Long, val numero: String, val cama: String?
     val etiquetaCama: String? get() = cama?.let { "Cama $numero-$it" }
 }
 
-data class Perfil(val id: Long, val codigo: String, val nombreCompleto: String, val telefono: String?, val habitacion: HabitacionResumen?, val puedeSolicitarSolo: Boolean = false)
+data class Perfil(
+    val id: Long, val codigo: String, val nombreCompleto: String, val telefono: String?, val habitacion: HabitacionResumen?,
+    val puedeSolicitarSolo: Boolean = false, val email: String? = null, val carrera: String? = null, val ciclo: Int? = null,
+)
+
+/** Lo que el residente puede editar de su perfil. Una cadena vacía borra el dato; el ciclo va de 1 a 14. */
+data class PerfilEditable(val email: String, val telefono: String, val codigo: String, val carrera: String, val ciclo: Int?)
 
 /** Contenido del QR emitido por el servidor. Se muestra tal cual; la app no lo interpreta. */
 /** [guardado] indica que se muestra la copia cifrada del teléfono porque no hubo conexión. */

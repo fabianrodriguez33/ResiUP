@@ -72,6 +72,7 @@ private class ResidenteRemoto : ResidenteRepository {
     override suspend fun resumenLimpieza() = caido?.let { Result.failure(ErrorApiException(it)) } ?: Result.success(ResumenLimpieza(1, 17.0, 17, "2026-10-29"))
     override suspend fun movimientos(pagina: Int) = pagina<MovimientoRegistrado>(emptyList())
     override suspend fun listarResidentes() = Result.success(emptyList<ResidenteResumen>())
+    override suspend fun actualizarPerfil(cambios: pe.upeu.resi.resiup.domain.model.PerfilEditable) = Result.failure<Perfil>(ErrorApiException(ErrorApi.NoEncontrado))
 }
 
 private class PermisosRemoto(val remoto: ResidenteRemoto) : PermisoRepository {
@@ -81,7 +82,6 @@ private class PermisosRemoto(val remoto: ResidenteRemoto) : PermisoRepository {
     override suspend fun cancelar(id: Long) = Result.success(solicitud(id))
     override suspend fun justificar(id: Long, motivo: String) = Result.success(Unit)
     override suspend fun listar(estado: EstadoSolicitud?, pagina: Int) = pagina<SolicitudPermiso>(emptyList())
-    override suspend fun decidir(id: Long, aprobar: Boolean, comentario: String?) = Result.success(solicitud(id))
     override suspend fun enlaceApoderado(id: Long) = Result.failure<pe.upeu.resi.resiup.domain.model.EnlaceApoderado>(ErrorApiException(ErrorApi.NoEncontrado))
     override suspend fun resumenDelResidente(id: Long) = Result.failure<pe.upeu.resi.resiup.domain.model.ResumenResidente>(ErrorApiException(ErrorApi.NoEncontrado))
 }

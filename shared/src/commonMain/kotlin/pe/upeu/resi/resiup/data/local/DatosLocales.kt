@@ -34,7 +34,7 @@ class DatosLocales(db: ResiDb) {
     // ---------------------------------------------------------------- lectura reactiva
 
     fun perfil(): Flow<Perfil?> = q.observarPerfil().asFlow().mapToOneOrNull(Dispatchers.Default).map { f ->
-        f?.let { Perfil(it.id, it.codigo, it.nombre, it.telefono, it.habitacion_id?.let { id -> HabitacionResumen(id, it.habitacion_numero.orEmpty(), it.habitacion_cama) }, it.puede_solicitar_solo != 0L) }
+        f?.let { Perfil(it.id, it.codigo, it.nombre, it.telefono, it.habitacion_id?.let { id -> HabitacionResumen(id, it.habitacion_numero.orEmpty(), it.habitacion_cama) }, it.puede_solicitar_solo != 0L, it.email, it.carrera, it.ciclo?.toInt()) }
     }
 
     fun asistencias(): Flow<List<AsistenciaCulto>> = q.observarAsistencias().asFlow().mapToList(Dispatchers.Default).map { filas ->
@@ -69,7 +69,7 @@ class DatosLocales(db: ResiDb) {
 
     fun reemplazarPerfil(p: Perfil) = q.transaction {
         q.borrarPerfil()
-        q.guardarPerfil(p.id, p.codigo, p.nombreCompleto, p.telefono, p.habitacion?.id, p.habitacion?.numero, p.habitacion?.cama, if (p.puedeSolicitarSolo) 1L else 0L)
+        q.guardarPerfil(p.id, p.codigo, p.nombreCompleto, p.telefono, p.habitacion?.id, p.habitacion?.numero, p.habitacion?.cama, if (p.puedeSolicitarSolo) 1L else 0L, p.email, p.carrera, p.ciclo?.toLong())
     }
 
     fun reemplazarAsistencias(lista: List<AsistenciaCulto>) = q.transaction {

@@ -29,7 +29,7 @@ fun Rol.destinos(): List<ItemNavegacion> = when (this) {
     Rol.Preceptor -> listOf(
         ItemNavegacion(Destinos.Inicio, "Inicio", ResiIconos.Inicio),
         ItemNavegacion(Destinos.Escanear, "Escanear", ResiIconos.Escanear),
-        ItemNavegacion(Destinos.Solicitudes, "Solicitudes", ResiIconos.Solicitudes),
+        ItemNavegacion(Destinos.Solicitudes, "Permisos", ResiIconos.Solicitudes),
         ItemNavegacion(Destinos.Limpieza, "Limpieza", ResiIconos.Limpieza),
         ItemNavegacion(Destinos.Mas, "Más", ResiIconos.Mas),
     )

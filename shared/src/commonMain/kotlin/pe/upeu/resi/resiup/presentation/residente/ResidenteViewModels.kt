@@ -1,5 +1,8 @@
 package pe.upeu.resi.resiup.presentation.residente
 
+import pe.upeu.resi.resiup.presentation.util.hoyLima
+import pe.upeu.resi.resiup.presentation.util.calcularEstadisticas
+import pe.upeu.resi.resiup.presentation.util.EstadisticasCultos
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.Flow
@@ -87,12 +90,13 @@ data class InicioResidenteUi(
     val limpieza: ResumenLimpieza?,
     val ultimaAsistencia: AsistenciaCulto?,
     val permisoReciente: SolicitudPermiso?,
+    val estadisticas: EstadisticasCultos,
 )
 
 class InicioResidenteViewModel(private val consultas: ConsultasResidenteRepository, private val sync: Sincronizador) : ViewModel() {
     val estado = compartir(
         combine(consultas.perfil(), consultas.resumenLimpieza(), consultas.asistencias(), consultas.solicitudes()) { perfil, resumen, asistencias, solicitudes ->
-            perfil?.let { InicioResidenteUi(it, resumen, asistencias.firstOrNull(), solicitudes.firstOrNull()) }
+            perfil?.let { InicioResidenteUi(it, resumen, asistencias.firstOrNull(), solicitudes.firstOrNull(), calcularEstadisticas(asistencias, hoyLima())) }
         }.comoConsulta(sync.estado, consultas.ultimaSincronizacion()),
     )
     init { sync.refrescar() }

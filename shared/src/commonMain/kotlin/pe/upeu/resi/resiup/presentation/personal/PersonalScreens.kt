@@ -1,5 +1,12 @@
 package pe.upeu.resi.resiup.presentation.personal
 
+import pe.upeu.resi.resiup.domain.model.TipoPermiso
+import pe.upeu.resi.resiup.presentation.theme.Acento
+import pe.upeu.resi.resiup.presentation.components.TarjetaDato
+import pe.upeu.resi.resiup.presentation.components.ModuloUi
+import pe.upeu.resi.resiup.presentation.components.EncabezadoSeccion
+import pe.upeu.resi.resiup.presentation.components.CuadriculaModulos
+import pe.upeu.resi.resiup.presentation.components.AvatarInicial
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -100,28 +107,33 @@ fun InicioPreceptorScreen(nombre: String, onIr: (String) -> Unit, vm: InicioPrec
     val estado by vm.estado.collectAsState()
     ContenidoCarga(estado, vm::cargar) { ui ->
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
-            TituloPantalla("Hola, ${nombre.substringBefore(' ')}", subtitulo = "Panel del pastor")
-            Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                Box(Modifier.weight(1f)) {
-                    ResiTarjeta(onClick = { onIr("solicitudes") }) {
-                        Text("Por revisar", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(ui.porRevisar.toString(), style = pe.upeu.resi.resiup.presentation.theme.ResiEstilos.Numero)
-                        Text("solicitudes", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                Box(Modifier.weight(1f)) {
-                    ResiTarjeta(onClick = { onIr("solicitudes") }) {
-                        Text("Con padres", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(ui.conApoderado.toString(), style = pe.upeu.resi.resiup.presentation.theme.ResiEstilos.Numero)
-                        Text("pendientes", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                AvatarInicial(nombre, Acento.Azul)
+                Column(Modifier.weight(1f)) {
+                    Text("Hola, ${nombre.substringBefore(' ')}", style = MaterialTheme.typography.headlineMedium)
+                    Text("Panel del pastor", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                TarjetaDato(ui.aprobados.toString(), "Permisos aprobados", ResiIconos.Permisos, Acento.Azul, Modifier.weight(1f))
+                TarjetaDato(ui.enEspera.toString(), "Esperan a los padres", ResiIconos.Solicitudes, Acento.Ambar, Modifier.weight(1f))
+                TarjetaDato(ui.sesiones.size.toString(), "Cultos hoy", ResiIconos.Asistencias, Acento.Verde, Modifier.weight(1f), detalle = "${ui.sesiones.sumOf { it.presentes }} presentes")
+            }
+            EncabezadoSeccion("Accesos")
+            CuadriculaModulos(
+                listOf(
+                    ModuloUi("Asistencia a cultos", ResiIconos.Escanear, Acento.Verde, { onIr("escanear") }),
+                    ModuloUi("Permisos", ResiIconos.Solicitudes, Acento.Azul, { onIr("solicitudes") }, insignia = ui.enEspera.takeIf { it > 0 }?.toString()),
+                    ModuloUi("Limpieza", ResiIconos.Limpieza, Acento.Naranja, { onIr("limpieza") }),
+                    ModuloUi("Mi cuenta", ResiIconos.Perfil, Acento.Rosa, { onIr("mas") }),
+                ),
+            )
+            EncabezadoSeccion("Cultos de hoy")
             ResiTarjeta(onClick = { onIr("escanear") }) {
-                Text("Cultos de hoy", style = MaterialTheme.typography.titleMedium)
-                if (ui.sesiones.isEmpty()) Text("Aún no se abrió ningún culto. Abre uno desde «Escanear».", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (ui.sesiones.isEmpty()) Text("Aún no se abrió ningún culto. Abre uno desde «Asistencia a cultos».", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 ui.sesiones.forEach { s ->
-                    ElementoLista("Culto ${s.tipo.etiqueta.lowercase()}", subtitulo = "${s.presentes} presentes · corte ${s.corte.soloHoraLima()}", final = { ChipEstado(if (s.cerrada) "Cerrado" else "Abierto", if (s.cerrada) EstadoVisual.Neutro else EstadoVisual.Exito) })
+                    ElementoLista("Culto ${s.tipo.etiqueta.lowercase()}", subtitulo = "${s.presentes} presentes · corte ${s.corte.soloHoraLima()}", icono = ResiIconos.Asistencias, acento = Acento.Verde,
+                        final = { ChipEstado(if (s.cerrada) "Cerrado" else "Abierto", if (s.cerrada) EstadoVisual.Neutro else EstadoVisual.Exito) })
                 }
             }
         }
@@ -166,7 +178,7 @@ private sealed interface RutaSolicitudes {
     data class Revision(val id: Long) : RutaSolicitudes
 }
 
-private enum class FiltroSolicitudes(val etiqueta: String) { PorRevisar("Por revisar"), ConApoderado("Con padres") }
+private enum class FiltroPermisos(val etiqueta: String) { Aprobados("Aprobados"), EnEspera("En espera"), Todos("Todos") }
 
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
@@ -174,37 +186,47 @@ fun SolicitudesPreceptorScreen() {
     var ruta by remember { mutableStateOf<RutaSolicitudes>(RutaSolicitudes.Lista) }
     BackHandler(enabled = ruta != RutaSolicitudes.Lista) { ruta = RutaSolicitudes.Lista }
     when (val r = ruta) {
-        RutaSolicitudes.Lista -> ListaSolicitudesPreceptor { ruta = RutaSolicitudes.Revision(it) }
-        is RutaSolicitudes.Revision -> RevisionSolicitudScreen(r.id) { ruta = RutaSolicitudes.Lista }
+        RutaSolicitudes.Lista -> ListaPermisosPastor { ruta = RutaSolicitudes.Revision(it) }
+        is RutaSolicitudes.Revision -> DetallePermisoPastor(r.id) { ruta = RutaSolicitudes.Lista }
     }
 }
 
+private fun TipoPermiso.acento() = when (this) {
+    TipoPermiso.Corto -> Acento.Verde
+    TipoPermiso.Largo -> Acento.Azul
+    TipoPermiso.Pernocte -> Acento.Violeta
+}
+
+/** El pastor solo consulta: aquí no se aprueba nada. */
 @Composable
-private fun ListaSolicitudesPreceptor(onAbrir: (Long) -> Unit) {
-    var filtro by remember { mutableStateOf(FiltroSolicitudes.PorRevisar) }
-    val porRevisar = koinViewModel<SolicitudesPorRevisarViewModel>()
-    val conApoderado = koinViewModel<SolicitudesConApoderadoViewModel>()
-    LaunchedEffect(Unit) { porRevisar.refrescar(); conApoderado.refrescar() }
-    val vm = if (filtro == FiltroSolicitudes.PorRevisar) porRevisar else conApoderado
+private fun ListaPermisosPastor(onAbrir: (Long) -> Unit) {
+    var filtro by remember { mutableStateOf(FiltroPermisos.Aprobados) }
+    val aprobados = koinViewModel<PermisosAprobadosViewModel>()
+    val enEspera = koinViewModel<PermisosEnEsperaViewModel>()
+    val todos = koinViewModel<PermisosTodosViewModel>()
+    LaunchedEffect(Unit) { aprobados.refrescar(); enEspera.refrescar(); todos.refrescar() }
+    val vm = when (filtro) { FiltroPermisos.Aprobados -> aprobados; FiltroPermisos.EnEspera -> enEspera; FiltroPermisos.Todos -> todos }
     val estado by vm.estado.collectAsState()
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla("Solicitudes", Modifier.padding(top = Espacio.l))
-        Segmentos(FiltroSolicitudes.entries, filtro, { it.etiqueta }, { filtro = it })
-        ListaPaginada(estado, vm::refrescar, vm::cargarMas, "Todo al día", "No hay solicitudes en este estado.") { s ->
+        TituloPantalla("Permisos", Modifier.padding(top = Espacio.l), subtitulo = "Lista de permisos generados")
+        Segmentos(FiltroPermisos.entries, filtro, { it.etiqueta }, { filtro = it })
+        ListaPaginada(estado, vm::refrescar, vm::cargarMas, "Sin permisos", "No hay permisos en esta lista.") { s ->
             ResiTarjeta(onClick = { onAbrir(s.id) }) {
-                ElementoLista(s.residenteNombre, subtitulo = "${s.destino} · ${s.salida.formatoLima()}", icono = ResiIconos.Solicitudes, final = { ChipEstado(s.tipo.etiqueta, EstadoVisual.Info) })
+                ElementoLista(
+                    s.residenteNombre, subtitulo = "${s.tipo.etiqueta} · ${s.destino}\n${s.salida.formatoLima()}", icono = ResiIconos.Permisos, acento = s.tipo.acento(),
+                    final = { ChipEstado(s.estado.etiqueta, s.estado.aEstadoVisual()) },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun RevisionSolicitudScreen(id: Long, onVolver: () -> Unit) {
+private fun DetallePermisoPastor(id: Long, onVolver: () -> Unit) {
     val vm = koinViewModel<SolicitudRevisionViewModel>(key = "revision-$id", parameters = { parametersOf(id) })
     val estado by vm.estado.collectAsState()
     val accion by vm.accion.collectAsState()
     LaunchedEffect(id) { vm.recargar() }
-    var comentario by remember { mutableStateOf("") }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         ResiBoton("Volver", onVolver, variante = VarianteBoton.Terciario)
         ContenidoCarga(estado, vm::cargar, Modifier.fillMaxWidth()) { s ->
@@ -213,24 +235,22 @@ private fun RevisionSolicitudScreen(id: Long, onVolver: () -> Unit) {
                 ChipEstado(s.estado.etiqueta, s.estado.aEstadoVisual())
                 ResiTarjeta { DatosSolicitud(s) }
                 ResumenDelResidente(vm.resumen.collectAsState().value)
-                if (s.estado == EstadoSolicitud.PendienteApoderado) {
-                    BannerMensaje("Falta que el padre/madre acepte el permiso (desde su cuenta o con el enlace de un solo uso). Genera un enlace de un solo uso y entrégalo por el medio institucional.", EstadoVisual.Info)
-                    ResiBoton("Generar enlace para el apoderado", vm::generarEnlace, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario, cargando = accion.trabajando)
-                    accion.enlace?.let { e ->
-                        ResiTarjeta {
-                            Text("Enlace para ${e.apoderado.ifBlank { "el apoderado" }}", style = MaterialTheme.typography.titleMedium)
-                            Text("Vence ${e.expiraEn.formatoLima()}; sólo sirve una vez.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(e.ruta, Modifier.padding(vertical = Espacio.s), style = MaterialTheme.typography.bodyMedium)
-                            Text("Agrega la dirección del servidor delante de esta ruta al enviarlo.", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                when (s.estado) {
+                    EstadoSolicitud.PendienteApoderado -> {
+                        BannerMensaje("Falta que el padre/madre acepte el permiso (desde su cuenta o con el enlace de un solo uso).", EstadoVisual.Info)
+                        ResiBoton("Generar enlace para el padre/madre", vm::generarEnlace, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario, cargando = accion.trabajando)
+                        accion.enlace?.let { e ->
+                            ResiTarjeta {
+                                Text("Enlace para ${e.apoderado.ifBlank { "el apoderado" }}", style = MaterialTheme.typography.titleMedium)
+                                Text("Vence ${e.expiraEn.formatoLima()}; sólo sirve una vez.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(e.ruta, Modifier.padding(vertical = Espacio.s), style = MaterialTheme.typography.bodyMedium)
+                                Text("Agrega la dirección del servidor delante de esta ruta al enviarlo.", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
+                    EstadoSolicitud.Aprobado -> BannerMensaje("Aprobado: garita lo verá como autorizado en el horario indicado.", EstadoVisual.Exito)
+                    else -> {}
                 }
-                if (s.estado == EstadoSolicitud.PendientePreceptor) {
-                    ResiCampoTexto(comentario, { comentario = it.take(300) }, "Comentario (opcional)", unaLinea = false)
-                    ResiBoton("Aprobar", { vm.decidir(true, comentario) }, Modifier.fillMaxWidth(), cargando = accion.trabajando)
-                    ResiBoton("Rechazar", { vm.decidir(false, comentario) }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo, habilitado = !accion.trabajando)
-                }
-                accion.mensaje?.let { BannerMensaje(it, EstadoVisual.Exito) }
                 accion.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
             }
         }

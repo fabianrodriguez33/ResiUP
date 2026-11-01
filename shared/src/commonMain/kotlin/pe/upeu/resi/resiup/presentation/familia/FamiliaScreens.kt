@@ -1,5 +1,11 @@
 package pe.upeu.resi.resiup.presentation.familia
 
+import pe.upeu.resi.resiup.presentation.theme.Acento
+import pe.upeu.resi.resiup.presentation.components.ModuloUi
+import pe.upeu.resi.resiup.presentation.components.CuadriculaModulos
+import pe.upeu.resi.resiup.presentation.components.AvatarInicial
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -56,7 +62,13 @@ fun InicioFamiliaScreen(nombre: String, irA: (String) -> Unit) {
     var rechazando by remember { mutableStateOf<SolicitudPermiso?>(null) }
     LaunchedEffect(Unit) { vm.cargar() }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla("Hola, ${nombre.substringBefore(' ')}", subtitulo = "Permisos de tus hijos")
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+            AvatarInicial(nombre, Acento.Turquesa)
+            Column(Modifier.weight(1f)) {
+                Text("Hola, ${nombre.substringBefore(' ')}", style = MaterialTheme.typography.headlineMedium)
+                Text("Permisos de tus hijos", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         s.mensaje?.let { BannerMensaje(it, EstadoVisual.Exito) }
         s.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
 
@@ -78,7 +90,14 @@ fun InicioFamiliaScreen(nombre: String, irA: (String) -> Unit) {
             }
         }
 
-        ResiBoton("Enviar permiso (corto, largo o pernoctar fuera)", { irA(Destinos.Nuevo) }, Modifier.fillMaxWidth())
+        val pendientes = (s.porAceptar as? Carga.Exito)?.datos?.size ?: 0
+        CuadriculaModulos(
+            listOf(
+                ModuloUi("Enviar permiso", ResiIconos.Permisos, Acento.Azul, { irA(Destinos.Nuevo) }),
+                ModuloUi("Permisos de mis hijos", ResiIconos.Solicitudes, Acento.Verde, { irA(Destinos.Solicitudes) }, insignia = pendientes.takeIf { it > 0 }?.toString()),
+                ModuloUi("Mi cuenta", ResiIconos.Perfil, Acento.Rosa, { irA(Destinos.Mas) }),
+            ),
+        )
 
         Text("Por aceptar", style = MaterialTheme.typography.titleMedium)
         ContenidoCarga(s.porAceptar, vm::cargar, Modifier.fillMaxWidth()) { lista ->
@@ -156,14 +175,11 @@ private fun DetalleFamilia(id: Long, onVolver: () -> Unit) {
                 ResiTarjeta { DatosSolicitud(s) }
                 s.comentarioDecision?.let { BannerMensaje("Comentario del pastor: $it", EstadoVisual.Info) }
                 if (s.estado == EstadoSolicitud.PendienteApoderado) {
-                    BannerMensaje("${s.residenteNombre} pidió este permiso. Si lo aceptas, pasa al pastor para su aprobación.", EstadoVisual.Info)
+                    BannerMensaje("${s.residenteNombre} pidió este permiso. Si lo aceptas, queda aprobado y el pastor lo verá en su lista.", EstadoVisual.Info)
                     ResiBoton("Aceptar", { vm.decidir(true) }, Modifier.fillMaxWidth(), cargando = accion.trabajando)
                     ResiBoton("Rechazar", { confirmarRechazo = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo, habilitado = !accion.trabajando)
                 }
-                if (s.estado == EstadoSolicitud.PendientePreceptor) {
-                    BannerMensaje("Enviado al pastor. Esperando su aprobación.", EstadoVisual.Info)
-                }
-                val cancelable = s.estado == EstadoSolicitud.PendienteApoderado || s.estado == EstadoSolicitud.PendientePreceptor || s.estado == EstadoSolicitud.Aprobado
+                val cancelable = s.estado == EstadoSolicitud.PendienteApoderado || s.estado == EstadoSolicitud.Aprobado
                 if (cancelable) ResiBoton("Cancelar permiso", { confirmarCancelar = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Terciario, habilitado = !accion.trabajando)
                 accion.mensaje?.let { BannerMensaje(it, EstadoVisual.Exito) }
                 accion.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
@@ -186,10 +202,10 @@ fun NuevoPermisoFamiliaScreen(irA: (String) -> Unit) {
     val s by vm.estado.collectAsState()
     val hijos by vm.hijos.collectAsState()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla("Enviar permiso", subtitulo = "Va directo al pastor para su aprobación")
+        TituloPantalla("Enviar permiso", subtitulo = "Queda aprobado al enviarlo; el pastor lo ve en su lista")
         val creada = s.creada
         if (creada != null) {
-            BannerMensaje("Permiso enviado al pastor: ${creada.tipo.etiqueta.lowercase()} de ${creada.residenteNombre} a ${creada.destino}.", EstadoVisual.Exito)
+            BannerMensaje("Permiso enviado y aprobado: ${creada.tipo.etiqueta.lowercase()} de ${creada.residenteNombre} a ${creada.destino}.", EstadoVisual.Exito)
             ResiBoton("Enviar otro permiso", vm::reiniciar, Modifier.fillMaxWidth())
             ResiBoton("Ver permisos", { irA(Destinos.Solicitudes) }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
         } else {
@@ -211,7 +227,7 @@ fun NuevoPermisoFamiliaScreen(irA: (String) -> Unit) {
                     }
                     CamposPermiso(s, vm)
                     s.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
-                    ResiBoton("Enviar al pastor", vm::enviar, Modifier.fillMaxWidth(), cargando = s.enviando)
+                    ResiBoton("Enviar permiso", vm::enviar, Modifier.fillMaxWidth(), cargando = s.enviando)
                 }
             }
         }
