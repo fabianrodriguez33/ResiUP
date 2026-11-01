@@ -18,6 +18,7 @@ interface ConsultasResidenteRepository {
     fun evaluaciones(): Flow<List<EvaluacionLimpieza>>
     fun resumenLimpieza(): Flow<ResumenLimpieza?>
     fun solicitudes(): Flow<List<SolicitudPermiso>>
+    fun diasSinCulto(): Flow<List<pe.upeu.resi.resiup.domain.model.DiaSinCulto>>
 
     /** Milisegundos de la última sincronización completa; null si todavía no hay copia válida. */
     fun ultimaSincronizacion(): Flow<Long?>

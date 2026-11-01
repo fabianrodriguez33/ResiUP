@@ -28,10 +28,36 @@ data class ResidenteDto(
     val email: String? = null,
     val carrera: String? = null,
     val ciclo: Int? = null,
+    val dni: String? = null,
+    val fechaNacimiento: String? = null,
+    val emailVerificado: Boolean = false,
 )
 
 @Serializable
-data class PerfilRequestDto(val email: String? = null, val telefono: String? = null, val codigo: String? = null, val carrera: String? = null, val ciclo: Int? = null)
+data class PerfilRequestDto(val email: String? = null, val telefono: String? = null, val fechaNacimiento: String? = null, val carrera: String? = null, val ciclo: Int? = null)
+
+@Serializable
+data class PerfilCuentaDto(
+    val username: String,
+    val nombreCompleto: String,
+    val dni: String? = null,
+    val fechaNacimiento: String? = null,
+    val email: String? = null,
+    val emailVerificado: Boolean = false,
+    val telefono: String? = null,
+)
+
+@Serializable
+data class ContactoRequestDto(val email: String? = null, val telefono: String? = null, val fechaNacimiento: String? = null)
+
+@Serializable
+data class CodigoCorreoRequestDto(val codigo: String)
+
+@Serializable
+data class DiaSinCultoDto(val fecha: String, val motivo: String)
+
+@Serializable
+data class AnulacionRequestDto(val motivo: String)
 
 @Serializable
 data class QrDto(val contenido: String)

@@ -84,6 +84,13 @@ private class PermisosRemoto(val remoto: ResidenteRemoto) : PermisoRepository {
     override suspend fun listar(estado: EstadoSolicitud?, pagina: Int) = pagina<SolicitudPermiso>(emptyList())
     override suspend fun enlaceApoderado(id: Long) = Result.failure<pe.upeu.resi.resiup.domain.model.EnlaceApoderado>(ErrorApiException(ErrorApi.NoEncontrado))
     override suspend fun resumenDelResidente(id: Long) = Result.failure<pe.upeu.resi.resiup.domain.model.ResumenResidente>(ErrorApiException(ErrorApi.NoEncontrado))
+    override suspend fun anular(id: Long, motivo: String) = Result.success(solicitud(id))
+}
+
+private class CalendarioRemoto : pe.upeu.resi.resiup.domain.repository.CalendarioRepository {
+    override suspend fun diasSinCulto() = Result.success(listOf(pe.upeu.resi.resiup.domain.model.DiaSinCulto("2026-10-08", "Combate de Angamos")))
+    override suspend fun marcar(fecha: String, motivo: String) = Result.success(pe.upeu.resi.resiup.domain.model.DiaSinCulto(fecha, motivo))
+    override suspend fun quitar(fecha: String) = Result.success(Unit)
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -92,7 +99,7 @@ class ConsultasLocalesTest {
     private fun armar(ahora: () -> Long = { 5_000L }): Triple<ConsultasResidenteRepositoryImpl, ResidenteRemoto, DatosLocales> {
         val local = baseEnMemoria()
         val remoto = ResidenteRemoto()
-        return Triple(ConsultasResidenteRepositoryImpl(remoto, PermisosRemoto(remoto), local, ahora), remoto, local)
+        return Triple(ConsultasResidenteRepositoryImpl(remoto, PermisosRemoto(remoto), CalendarioRemoto(), local, ahora), remoto, local)
     }
 
     @Test

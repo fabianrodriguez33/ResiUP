@@ -38,6 +38,9 @@ import pe.upeu.resi.resiup.domain.repository.LimpiezaRepository
 import pe.upeu.resi.resiup.domain.repository.PermisoRepository
 import pe.upeu.resi.resiup.domain.repository.ResidenteRepository
 import pe.upeu.resi.resiup.presentation.personal.AsistenciaCultoViewModel
+import pe.upeu.resi.resiup.presentation.personal.DiasSinCultoViewModel
+import pe.upeu.resi.resiup.presentation.perfil.PerfilCuentaViewModel
+import pe.upeu.resi.resiup.presentation.perfil.VerificacionCorreoViewModel
 import pe.upeu.resi.resiup.presentation.personal.GaritaEscanerViewModel
 import pe.upeu.resi.resiup.presentation.personal.HistorialGaritaViewModel
 import pe.upeu.resi.resiup.presentation.personal.InicioPreceptorViewModel
@@ -85,16 +88,20 @@ fun datosModule(config: ConfigEntorno) = module {
     single { LimpiezaApi(get()) }
     single { FamiliaApi(get()) }
     single { GaritaApi(get()) }
+    single { pe.upeu.resi.resiup.data.remote.PerfilCuentaApi(get()) }
+    single { pe.upeu.resi.resiup.data.remote.CalendarioApi(get()) }
     single<ResidenteRepository> { ResidenteRepositoryImpl(get(), get()) }
     single<PermisoRepository> { PermisoRepositoryImpl(get()) }
     single<CultoRepository> { CultoRepositoryImpl(get()) }
     single<LimpiezaRepository> { LimpiezaRepositoryImpl(get()) }
     single<FamiliaRepository> { FamiliaRepositoryImpl(get()) }
     single<GaritaRepository> { GaritaRepositoryImpl(get()) }
+    single<pe.upeu.resi.resiup.domain.repository.PerfilCuentaRepository> { pe.upeu.resi.resiup.data.repository.PerfilCuentaRepositoryImpl(get()) }
+    single<pe.upeu.resi.resiup.domain.repository.CalendarioRepository> { pe.upeu.resi.resiup.data.repository.CalendarioRepositoryImpl(get()) }
     single { ResiDb(get<SqlDriver>()) }
     single { DatosLocales(get()) }
     single<ConsultasResidenteRepository> {
-        ConsultasResidenteRepositoryImpl(get(), get(), get()) { Clock.System.now().toEpochMilliseconds() }
+        ConsultasResidenteRepositoryImpl(get(), get(), get(), get()) { Clock.System.now().toEpochMilliseconds() }
     }
     single<AuthRepository> { AuthRepositoryImpl(get(), get()) { Clock.System.now().toEpochMilliseconds() } }
 }
@@ -137,6 +144,10 @@ val presentacionModule = module {
     viewModelOf(::PermisosEnEsperaViewModel)
     viewModelOf(::PermisosTodosViewModel)
     viewModelOf(::EditarPerfilViewModel)
+    // Cuenta de cualquier rol
+    viewModelOf(::PerfilCuentaViewModel)
+    viewModelOf(::VerificacionCorreoViewModel)
+    viewModelOf(::DiasSinCultoViewModel)
     viewModelOf(::LimpiezaPreceptorViewModel)
     viewModel { (id: Long) -> SolicitudRevisionViewModel(id, get()) }
     // Garita

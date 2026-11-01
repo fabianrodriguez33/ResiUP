@@ -43,6 +43,9 @@ interface PermisoRepository {
     suspend fun listar(estado: EstadoSolicitud?, pagina: Int): Result<Pagina<SolicitudPermiso>>
     suspend fun enlaceApoderado(id: Long): Result<EnlaceApoderado>
     suspend fun resumenDelResidente(id: Long): Result<ResumenResidente>
+
+    /** Solo el pastor: anula un permiso aprobado que el residente todavía no usó. */
+    suspend fun anular(id: Long, motivo: String): Result<SolicitudPermiso>
 }
 
 /** Perfil de padres de familia: sus hijos y los permisos de ellos. */

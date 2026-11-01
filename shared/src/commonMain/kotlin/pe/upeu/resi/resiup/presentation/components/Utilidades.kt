@@ -110,5 +110,6 @@ fun EstadoSolicitud.aEstadoVisual(): EstadoVisual = when (this) {
     EstadoSolicitud.Aprobado -> EstadoVisual.Exito
     EstadoSolicitud.PendienteApoderado, EstadoSolicitud.PendientePreceptor, EstadoSolicitud.Borrador -> EstadoVisual.Advertencia
     EstadoSolicitud.Rechazado -> EstadoVisual.Error
+    EstadoSolicitud.Anulado -> EstadoVisual.Error
     EstadoSolicitud.Cancelado, EstadoSolicitud.Vencido -> EstadoVisual.Neutro
 }

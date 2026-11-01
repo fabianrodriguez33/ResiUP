@@ -8,6 +8,7 @@ import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import pe.upeu.resi.resiup.data.remote.dto.AbrirSesionRequestDto
+import pe.upeu.resi.resiup.data.remote.dto.AnulacionRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.AsistenciaDto
 import pe.upeu.resi.resiup.data.remote.dto.PerfilRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.EnlaceDto
@@ -63,6 +64,8 @@ class PermisoApi(private val client: HttpClient) {
         }.body()
     suspend fun enlaceApoderado(id: Long): EnlaceDto = client.post("${BASE}permisos/solicitudes/$id/enlace-apoderado").body()
     suspend fun resumen(id: Long): ResumenResidenteDto = client.get("${BASE}permisos/solicitudes/$id/resumen-residente").body()
+    suspend fun anular(id: Long, motivo: String): SolicitudDto =
+        client.post("${BASE}permisos/solicitudes/$id/anular") { setBody(AnulacionRequestDto(motivo)) }.body()
 }
 
 class FamiliaApi(private val client: HttpClient) {

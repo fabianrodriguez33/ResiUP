@@ -95,8 +95,9 @@ data class InicioResidenteUi(
 
 class InicioResidenteViewModel(private val consultas: ConsultasResidenteRepository, private val sync: Sincronizador) : ViewModel() {
     val estado = compartir(
-        combine(consultas.perfil(), consultas.resumenLimpieza(), consultas.asistencias(), consultas.solicitudes()) { perfil, resumen, asistencias, solicitudes ->
-            perfil?.let { InicioResidenteUi(it, resumen, asistencias.firstOrNull(), solicitudes.firstOrNull(), calcularEstadisticas(asistencias, hoyLima())) }
+        combine(consultas.perfil(), consultas.resumenLimpieza(), consultas.asistencias(), consultas.solicitudes(), consultas.diasSinCulto()) { perfil, resumen, asistencias, solicitudes, sinCulto ->
+            val feriados = sinCulto.mapNotNull { runCatching { kotlinx.datetime.LocalDate.parse(it.fecha) }.getOrNull() }.toSet()
+            perfil?.let { InicioResidenteUi(it, resumen, asistencias.firstOrNull(), solicitudes.firstOrNull(), calcularEstadisticas(asistencias, hoyLima(), feriados)) }
         }.comoConsulta(sync.estado, consultas.ultimaSincronizacion()),
     )
     init { sync.refrescar() }

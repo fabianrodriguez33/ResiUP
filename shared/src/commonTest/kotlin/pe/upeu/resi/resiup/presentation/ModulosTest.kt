@@ -128,6 +128,7 @@ class ModulosTest {
         override suspend fun listar(estado: EstadoSolicitud?, pagina: Int) = Result.success(Pagina<SolicitudPermiso>(emptyList(), 0, 0, true))
         override suspend fun enlaceApoderado(id: Long) = fallo(ErrorApi.NoEncontrado)
         override suspend fun resumenDelResidente(id: Long) = fallo(ErrorApi.NoEncontrado)
+        override suspend fun anular(id: Long, motivo: String) = respuesta
     }
 
     private fun solicitud(id: Long = 1) = SolicitudPermiso(

@@ -54,6 +54,7 @@ class PermisosFamiliaTest {
         override suspend fun listar(estado: EstadoSolicitud?, pagina: Int) = Result.success(Pagina<SolicitudPermiso>(emptyList(), 0, 0, true))
         override suspend fun enlaceApoderado(id: Long) = Result.failure<pe.upeu.resi.resiup.domain.model.EnlaceApoderado>(pe.upeu.resi.resiup.domain.error.ErrorApiException(ErrorApi.NoEncontrado))
         override suspend fun resumenDelResidente(id: Long) = Result.failure<pe.upeu.resi.resiup.domain.model.ResumenResidente>(pe.upeu.resi.resiup.domain.error.ErrorApiException(ErrorApi.NoEncontrado))
+        override suspend fun anular(id: Long, motivo: String) = Result.success(solicitud(id))
     }
 
     private class FamiliaFalsa(val hijos: List<Hijo>, val pendientes: MutableList<SolicitudPermiso> = mutableListOf()) : FamiliaRepository {

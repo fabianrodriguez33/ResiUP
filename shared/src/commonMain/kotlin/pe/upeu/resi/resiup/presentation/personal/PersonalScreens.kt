@@ -125,6 +125,7 @@ fun InicioPreceptorScreen(nombre: String, onIr: (String) -> Unit, vm: InicioPrec
                     ModuloUi("Asistencia a cultos", ResiIconos.Escanear, Acento.Verde, { onIr("escanear") }),
                     ModuloUi("Permisos", ResiIconos.Solicitudes, Acento.Azul, { onIr("solicitudes") }, insignia = ui.enEspera.takeIf { it > 0 }?.toString()),
                     ModuloUi("Limpieza", ResiIconos.Limpieza, Acento.Naranja, { onIr("limpieza") }),
+                    ModuloUi("Días sin culto", ResiIconos.Calendario, Acento.Turquesa, { onIr("mas") }),
                     ModuloUi("Mi cuenta", ResiIconos.Perfil, Acento.Rosa, { onIr("mas") }),
                 ),
             )
@@ -226,6 +227,7 @@ private fun DetallePermisoPastor(id: Long, onVolver: () -> Unit) {
     val vm = koinViewModel<SolicitudRevisionViewModel>(key = "revision-$id", parameters = { parametersOf(id) })
     val estado by vm.estado.collectAsState()
     val accion by vm.accion.collectAsState()
+    var anulando by remember { mutableStateOf(false) }
     LaunchedEffect(id) { vm.recargar() }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         ResiBoton("Volver", onVolver, variante = VarianteBoton.Terciario)
@@ -248,12 +250,30 @@ private fun DetallePermisoPastor(id: Long, onVolver: () -> Unit) {
                             }
                         }
                     }
-                    EstadoSolicitud.Aprobado -> BannerMensaje("Aprobado: garita lo verá como autorizado en el horario indicado.", EstadoVisual.Exito)
+                    EstadoSolicitud.Aprobado -> {
+                        BannerMensaje("Aprobado: garita lo verá como autorizado en el horario indicado.", EstadoVisual.Exito)
+                        ResiBoton("Anular permiso", { anulando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo, cargando = accion.trabajando)
+                    }
+                    EstadoSolicitud.Anulado -> BannerMensaje(
+                        "Anulado por el pastor" + (s.comentarioDecision?.let { ": $it" } ?: "") + ". Garita ya no lo autoriza.", EstadoVisual.Error,
+                    )
                     else -> {}
                 }
                 accion.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
+                accion.mensaje?.let { BannerMensaje(it, EstadoVisual.Exito) }
             }
         }
+    }
+    if (anulando) {
+        pe.upeu.resi.resiup.presentation.components.DialogoMotivo(
+            titulo = "Anular permiso",
+            mensaje = "Garita ya no dejará salir al residente con este permiso. Escribe el motivo; lo verá el residente.",
+            etiqueta = "Motivo de la anulación",
+            textoConfirmar = "Anular",
+            onConfirmar = { anulando = false; vm.anular(it) },
+            onCancelar = { anulando = false },
+            destructivo = true,
+        )
     }
 }
 

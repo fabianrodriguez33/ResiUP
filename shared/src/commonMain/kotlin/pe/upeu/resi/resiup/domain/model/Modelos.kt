@@ -13,10 +13,26 @@ data class HabitacionResumen(val id: Long, val numero: String, val cama: String?
 data class Perfil(
     val id: Long, val codigo: String, val nombreCompleto: String, val telefono: String?, val habitacion: HabitacionResumen?,
     val puedeSolicitarSolo: Boolean = false, val email: String? = null, val carrera: String? = null, val ciclo: Int? = null,
+    val dni: String? = null, val fechaNacimiento: String? = null, val emailVerificado: Boolean = false,
 )
 
-/** Lo que el residente puede editar de su perfil. Una cadena vacía borra el dato; el ciclo va de 1 a 14. */
-data class PerfilEditable(val email: String, val telefono: String, val codigo: String, val carrera: String, val ciclo: Int?)
+/**
+ * Lo que el residente puede editar de su perfil. Una cadena vacía borra el dato; el ciclo va de 1 a 14;
+ * [fechaNacimiento] es «AAAA-MM-DD» o null si no cambia. El código universitario y el DNI los cambia solo la administración.
+ */
+data class PerfilEditable(val email: String, val telefono: String, val fechaNacimiento: String?, val carrera: String, val ciclo: Int?)
+
+/** Datos personales de la cuenta de cualquier rol (pastor, garita, padre/madre…). */
+data class PerfilCuenta(
+    val usuario: String, val nombreCompleto: String, val dni: String?, val fechaNacimiento: String?,
+    val email: String?, val emailVerificado: Boolean, val telefono: String?,
+)
+
+/** Cambios de contacto de la cuenta; mismas reglas que [PerfilEditable]. */
+data class ContactoEditable(val email: String, val telefono: String, val fechaNacimiento: String?)
+
+/** Día de lunes a viernes sin cultos (feriado, vacaciones). No corta la racha de asistencia. */
+data class DiaSinCulto(val fecha: String, val motivo: String)
 
 /** Contenido del QR emitido por el servidor. Se muestra tal cual; la app no lo interpreta. */
 /** [guardado] indica que se muestra la copia cifrada del teléfono porque no hubo conexión. */
@@ -54,7 +70,7 @@ const val CORTO_MAX_MINUTOS = 120
 
 enum class EstadoSolicitud(val etiqueta: String) {
     Borrador("Borrador"), PendienteApoderado("Esperando al padre/madre"), PendientePreceptor("Pendiente del pastor"),
-    Aprobado("Aprobado"), Rechazado("Rechazado"), Cancelado("Cancelado"), Vencido("Vencido"),
+    Aprobado("Aprobado"), Rechazado("Rechazado"), Cancelado("Cancelado"), Vencido("Vencido"), Anulado("Anulado"),
 }
 
 enum class EstadoRevision(val etiqueta: String) { Pendiente("Pendiente"), Aprobada("Aprobada"), Rechazada("Rechazada") }

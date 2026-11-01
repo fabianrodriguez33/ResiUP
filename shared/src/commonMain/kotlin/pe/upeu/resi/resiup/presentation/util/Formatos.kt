@@ -36,6 +36,9 @@ fun String.fechaLegible(): String = runCatching { LocalDate.parse(this).legible(
 
 fun hoyLima(): LocalDate = Clock.System.todayIn(ZonaResidencia)
 
+/** Fecha «AAAA-MM-DD» de los milisegundos UTC a medianoche que entrega el selector de fecha. */
+fun Long.aFechaIso(): String = Instant.fromEpochMilliseconds(this).toLocalDateTime(TimeZone.UTC).date.toString()
+
 fun ahora(): Instant = Clock.System.now()
 
 /** Combina fecha (milisegundos UTC a medianoche del selector) y hora local de Lima en un instante. */

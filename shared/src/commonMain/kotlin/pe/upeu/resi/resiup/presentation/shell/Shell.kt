@@ -34,6 +34,7 @@ import pe.upeu.resi.resiup.presentation.components.ResiTarjeta
 import pe.upeu.resi.resiup.presentation.components.TituloPantalla
 import pe.upeu.resi.resiup.presentation.components.VarianteBoton
 import pe.upeu.resi.resiup.presentation.navigation.Destinos
+import pe.upeu.resi.resiup.presentation.perfil.PerfilCuentaScreen
 import pe.upeu.resi.resiup.presentation.familia.InicioFamiliaScreen
 import pe.upeu.resi.resiup.presentation.familia.NuevoPermisoFamiliaScreen
 import pe.upeu.resi.resiup.presentation.familia.SolicitudesFamiliaScreen
@@ -93,25 +94,25 @@ private fun ContenidoReal(rol: Rol, sesion: Sesion, destino: String, irA: (Strin
             Destinos.Escanear -> AsistenciaCultoScreen()
             Destinos.Solicitudes -> SolicitudesPreceptorScreen()
             Destinos.Limpieza -> LimpiezaPreceptorScreen()
-            else -> PantallaCuenta(rol, sesion, onCerrarSesion)
+            else -> PerfilCuentaScreen(rol, onCerrarSesion)
         }
         Rol.Garita -> when (destino) {
             Destinos.Escanear -> EscanerGaritaScreen()
             Destinos.Historial -> HistorialGaritaScreen()
-            else -> PantallaCuenta(rol, sesion, onCerrarSesion)
+            else -> PerfilCuentaScreen(rol, onCerrarSesion)
         }
         Rol.Apoderado -> when (destino) {
             Destinos.Inicio -> InicioFamiliaScreen(sesion.nombreCompleto, irA)
             Destinos.Solicitudes -> SolicitudesFamiliaScreen()
             Destinos.Nuevo -> NuevoPermisoFamiliaScreen(irA)
-            else -> PantallaCuenta(rol, sesion, onCerrarSesion)
+            else -> PerfilCuentaScreen(rol, onCerrarSesion)
         }
         Rol.Administrador -> when (destino) {
             Destinos.Inicio -> Column(Modifier.fillMaxSize().padding(Espacio.l)) {
                 TituloPantalla("Administración", subtitulo = sesion.nombreCompleto)
                 EstadoVacio("Gestión desde el panel web", "La administración de usuarios, residentes y habitaciones se hará desde un panel web que todavía no está aprobado ni construido. La API ya la soporta.")
             }
-            else -> PantallaCuenta(rol, sesion, onCerrarSesion)
+            else -> PerfilCuentaScreen(rol, onCerrarSesion)
         }
     }
 }

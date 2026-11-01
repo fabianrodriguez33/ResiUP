@@ -104,6 +104,17 @@ class SolicitudRevisionViewModel(private val id: Long, private val repo: Permiso
         cargar()
     }
 
+    /** Anula un permiso aprobado que el residente todavía no usó; garita deja de autorizarlo. */
+    fun anular(motivo: String) {
+        if (_accion.value.trabajando) return
+        _accion.value = RevisionAccion(trabajando = true)
+        viewModelScope.launch {
+            repo.anular(id, motivo)
+                .onSuccess { _accion.value = RevisionAccion(mensaje = "Permiso anulado"); cargar() }
+                .onFailure { _accion.value = RevisionAccion(error = it.aErrorApi()) }
+        }
+    }
+
     fun generarEnlace() {
         if (_accion.value.trabajando) return
         _accion.value = RevisionAccion(trabajando = true)

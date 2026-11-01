@@ -56,7 +56,7 @@ class ResidenteRepositoryImpl(private val api: ResidenteApi, private val sesione
     override suspend fun resumenLimpieza() = ejecutarLlamada { api.resumenLimpieza().aDominio() }
     override suspend fun movimientos(pagina: Int) = ejecutarLlamada { api.movimientos(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
     override suspend fun actualizarPerfil(cambios: PerfilEditable) = ejecutarLlamada {
-        api.actualizarPerfil(PerfilRequestDto(cambios.email.trim(), cambios.telefono.trim(), cambios.codigo.trim(), cambios.carrera.trim(), cambios.ciclo)).aPerfil()
+        api.actualizarPerfil(PerfilRequestDto(cambios.email.trim(), cambios.telefono.trim(), cambios.fechaNacimiento, cambios.carrera.trim(), cambios.ciclo)).aPerfil()
     }
     override suspend fun listarResidentes() = ejecutarLlamada { api.listar(0, 100).contenido.filter { it.activo }.map { it.aResumen() } }
 }
@@ -73,6 +73,7 @@ class PermisoRepositoryImpl(private val api: PermisoApi) : PermisoRepository {
         ejecutarLlamada { api.listar(estado?.aApi(), pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
     override suspend fun enlaceApoderado(id: Long) = ejecutarLlamada { api.enlaceApoderado(id).aDominio() }
     override suspend fun resumenDelResidente(id: Long) = ejecutarLlamada { api.resumen(id).aDominio() }
+    override suspend fun anular(id: Long, motivo: String) = ejecutarLlamada { api.anular(id, motivo.trim()).aDominio() }
 }
 
 private fun NuevaSolicitud.aDto() = SolicitudRequestDto(

@@ -26,6 +26,7 @@ import pe.upeu.resi.resiup.domain.repository.ResidenteRepository
 import pe.upeu.resi.resiup.presentation.residente.EditarPerfilViewModel
 import pe.upeu.resi.resiup.presentation.util.Sincronizador
 import pe.upeu.resi.resiup.presentation.util.calcularEstadisticas
+import pe.upeu.resi.resiup.presentation.util.validarContacto
 
 /** Racha y estadísticas de cultos, y la edición del perfil del residente. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -117,7 +118,7 @@ class EstadisticasPerfilTest {
         override suspend fun actualizarPerfil(cambios: PerfilEditable): Result<Perfil> { recibido = cambios; return respuesta }
     }
 
-    private val perfil = Perfil(1, "202410411", "Julián Andrés Rojas Paredes", "968110411", null, false, "j@upeu.edu.pe", "Ingeniería de Sistemas", 6)
+    private val perfil = Perfil(1, "202410411", "Julián Andrés Rojas Paredes", "968110411", null, false, "j@upeu.edu.pe", "Ingeniería de Sistemas", 6, "72345678", "2004-05-17", false)
 
     private fun sincFalso() = Sincronizador(object : pe.upeu.resi.resiup.domain.repository.ConsultasResidenteRepository {
         override fun perfil() = kotlinx.coroutines.flow.flowOf<Perfil?>(null)
@@ -125,6 +126,7 @@ class EstadisticasPerfilTest {
         override fun evaluaciones() = kotlinx.coroutines.flow.flowOf(emptyList<pe.upeu.resi.resiup.domain.model.EvaluacionLimpieza>())
         override fun resumenLimpieza() = kotlinx.coroutines.flow.flowOf<pe.upeu.resi.resiup.domain.model.ResumenLimpieza?>(null)
         override fun solicitudes() = kotlinx.coroutines.flow.flowOf(emptyList<pe.upeu.resi.resiup.domain.model.SolicitudPermiso>())
+        override fun diasSinCulto() = kotlinx.coroutines.flow.flowOf(emptyList<pe.upeu.resi.resiup.domain.model.DiaSinCulto>())
         override fun ultimaSincronizacion() = kotlinx.coroutines.flow.flowOf<Long?>(null)
         override suspend fun sincronizar() = Result.success(Unit)
         override fun borrarTodo() {}
@@ -132,27 +134,58 @@ class EstadisticasPerfilTest {
     }, { 0L })
 
     @Test
-    fun `el formulario parte de los datos actuales y valida codigo correo telefono y ciclo`() = runTest {
+    fun `el formulario parte de los datos actuales y valida correo telefono nacimiento y ciclo`() = runTest {
         val repo = ResidenteFalso(Result.success(perfil))
         val vm = EditarPerfilViewModel(repo, sincFalso())
         vm.iniciar(perfil)
-        assertEquals("202410411", vm.estado.value.codigo)
+        assertEquals("2004-05-17", vm.estado.value.fechaNacimiento)
         assertEquals("6", vm.estado.value.ciclo)
 
-        vm.codigo("20241035"); vm.email("no-es-correo"); vm.telefono("123"); vm.ciclo("15")
+        vm.email("no-es-correo"); vm.telefono("123"); vm.ciclo("15"); vm.fechaNacimiento("2999-01-01")
         vm.guardar()
-        assertEquals(setOf("codigo", "email", "telefono", "ciclo"), vm.estado.value.errores.keys)
+        assertEquals(setOf("email", "telefono", "ciclo", "fechaNacimiento"), vm.estado.value.errores.keys)
         assertNull(repo.recibido, "no se llama al servidor con datos inválidos")
     }
 
     @Test
-    fun `el codigo solo admite digitos y nueve como maximo`() = runTest {
+    fun `el ciclo solo admite digitos y dos como maximo`() = runTest {
         val vm = EditarPerfilViewModel(ResidenteFalso(Result.success(perfil)), sincFalso())
         vm.iniciar(perfil)
-        vm.codigo("2024-1035-4 abc 99")
-        assertEquals("202410354", vm.estado.value.codigo)
         vm.ciclo("1a2b3")
         assertEquals("12", vm.estado.value.ciclo)
+    }
+
+    @Test
+    fun `el contacto valida correo telefono y fecha de nacimiento`() {
+        val hoy = LocalDate(2026, 11, 1)
+        assertEquals(emptyMap(), validarContacto("", "", "", hoy), "todo es opcional")
+        assertEquals(emptyMap(), validarContacto(" ana@upeu.edu.pe ", "968 110 422", "2004-05-17", hoy))
+        assertEquals(setOf("email"), validarContacto("ana@upeu", "", "", hoy).keys)
+        assertEquals(setOf("telefono"), validarContacto("", "12345", "", hoy).keys)
+        assertEquals(setOf("fechaNacimiento"), validarContacto("", "", "2026-11-01", hoy).keys, "hoy no es nacimiento")
+        assertEquals(setOf("fechaNacimiento"), validarContacto("", "", "2031-01-01", hoy).keys)
+        assertEquals(setOf("fechaNacimiento"), validarContacto("", "", "1850-01-01", hoy).keys)
+        assertEquals(setOf("fechaNacimiento"), validarContacto("", "", "17/05/2004", hoy).keys)
+    }
+
+    @Test
+    fun `los dias sin culto no cortan la racha ni cuentan en el mes`() {
+        // Jueves 8 de octubre de 2026 marcado como feriado: nadie asiste ese día.
+        val feriado = LocalDate(2026, 10, 8)
+        val sinFalta = octubre.filter { it != feriado }.map { culto(it.toString()) }
+        val sinMarcar = calcularEstadisticas(sinFalta, LocalDate(2026, 11, 1))
+        assertEquals(16, sinMarcar.racha, "sin marcar el feriado, la racha se corta el jueves 8")
+        val marcado = calcularEstadisticas(sinFalta, LocalDate(2026, 11, 1), setOf(feriado))
+        assertEquals(21, marcado.racha)
+        assertEquals(21, marcado.diasAsistidosMes)
+        assertEquals(21, marcado.diasHabilesMes, "octubre tiene 22 días hábiles y uno es feriado")
+    }
+
+    @Test
+    fun `un feriado el mismo dia de hoy tampoco rompe la racha`() {
+        val hastaAyer = listOf(27, 28, 29).map { culto(LocalDate(2026, 10, it).toString()) }
+        // Hoy viernes 30 es feriado y nadie asistió: la racha sigue en 3.
+        assertEquals(3, calcularEstadisticas(hastaAyer, LocalDate(2026, 10, 30), setOf(LocalDate(2026, 10, 30))).racha)
     }
 
     @Test
@@ -160,26 +193,26 @@ class EstadisticasPerfilTest {
         val repo = ResidenteFalso(Result.success(perfil.copy(ciclo = 7)))
         val vm = EditarPerfilViewModel(repo, sincFalso())
         vm.iniciar(perfil)
-        vm.email("  julio@upeu.edu.pe "); vm.carrera("Ingeniería de Sistemas"); vm.ciclo("7"); vm.telefono("968 110 422"); vm.codigo("202410354")
+        vm.email("  julio@upeu.edu.pe "); vm.carrera("Ingeniería de Sistemas"); vm.ciclo("7"); vm.telefono("968 110 422"); vm.fechaNacimiento("2004-05-17")
         vm.guardar()
-        assertEquals(PerfilEditable("  julio@upeu.edu.pe ", "968 110 422", "202410354", "Ingeniería de Sistemas", 7), repo.recibido)
+        assertEquals(PerfilEditable("  julio@upeu.edu.pe ", "968 110 422", "2004-05-17", "Ingeniería de Sistemas", 7), repo.recibido)
         assertTrue(vm.estado.value.guardado)
     }
 
     @Test
-    fun `un codigo repetido o la falta de conexion se informan sin perder lo escrito`() = runTest {
-        val repo = ResidenteFalso(Result.failure(ErrorApiException(ErrorApi.Conflicto("Ya existe un residente con el código 202410354"))))
+    fun `un conflicto o la falta de conexion se informan sin perder lo escrito`() = runTest {
+        val repo = ResidenteFalso(Result.failure(ErrorApiException(ErrorApi.Conflicto("No se pudo guardar"))))
         val vm = EditarPerfilViewModel(repo, sincFalso())
         vm.iniciar(perfil)
-        vm.codigo("202410354")
+        vm.carrera("Ingeniería Civil")
         vm.guardar()
-        assertEquals(ErrorApi.Conflicto("Ya existe un residente con el código 202410354"), vm.estado.value.error)
-        assertEquals("202410354", vm.estado.value.codigo)
+        assertEquals(ErrorApi.Conflicto("No se pudo guardar"), vm.estado.value.error)
+        assertEquals("Ingeniería Civil", vm.estado.value.carrera)
         assertTrue(!vm.estado.value.guardado && !vm.estado.value.guardando)
 
         repo.respuesta = Result.failure(ErrorApiException(ErrorApi.SinConexion))
         vm.guardar()
         assertEquals(ErrorApi.SinConexion, vm.estado.value.error)
-        assertNotNull(vm.estado.value.codigo)
+        assertNotNull(vm.estado.value.carrera)
     }
 }

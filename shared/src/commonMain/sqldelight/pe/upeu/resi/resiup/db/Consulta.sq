@@ -17,7 +17,15 @@ CREATE TABLE perfil (
     puede_solicitar_solo INTEGER NOT NULL DEFAULT 0,
     email             TEXT,
     carrera           TEXT,
-    ciclo             INTEGER
+    ciclo             INTEGER,
+    dni               TEXT,
+    fecha_nacimiento  TEXT,
+    email_verificado  INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE dia_sin_culto (
+    fecha  TEXT NOT NULL PRIMARY KEY,
+    motivo TEXT NOT NULL
 );
 
 CREATE TABLE asistencia (
@@ -74,7 +82,8 @@ observarPerfil:
 SELECT * FROM perfil LIMIT 1;
 
 guardarPerfil:
-INSERT OR REPLACE INTO perfil (id, codigo, nombre, telefono, habitacion_id, habitacion_numero, habitacion_cama, puede_solicitar_solo, email, carrera, ciclo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO perfil (id, codigo, nombre, telefono, habitacion_id, habitacion_numero, habitacion_cama, puede_solicitar_solo, email, carrera, ciclo, dni, fecha_nacimiento, email_verificado)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 borrarPerfil:
 DELETE FROM perfil;
@@ -115,3 +124,12 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 borrarSolicitudes:
 DELETE FROM solicitud;
+
+observarDiasSinCulto:
+SELECT * FROM dia_sin_culto ORDER BY fecha ASC;
+
+guardarDiaSinCulto:
+INSERT OR REPLACE INTO dia_sin_culto (fecha, motivo) VALUES (?, ?);
+
+borrarDiasSinCulto:
+DELETE FROM dia_sin_culto;

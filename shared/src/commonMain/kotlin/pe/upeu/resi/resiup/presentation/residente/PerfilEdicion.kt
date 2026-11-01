@@ -28,6 +28,7 @@ import pe.upeu.resi.resiup.domain.model.Perfil
 import pe.upeu.resi.resiup.domain.model.PerfilEditable
 import pe.upeu.resi.resiup.domain.repository.ResidenteRepository
 import pe.upeu.resi.resiup.presentation.components.BannerMensaje
+import pe.upeu.resi.resiup.presentation.components.CampoFecha
 import pe.upeu.resi.resiup.presentation.components.EstadoVisual
 import pe.upeu.resi.resiup.presentation.components.ResiBoton
 import pe.upeu.resi.resiup.presentation.components.ResiCampoTexto
@@ -37,12 +38,15 @@ import pe.upeu.resi.resiup.presentation.login.aMensaje
 import pe.upeu.resi.resiup.presentation.theme.Espacio
 import pe.upeu.resi.resiup.presentation.util.Sincronizador
 import pe.upeu.resi.resiup.presentation.util.aErrorApi
+import pe.upeu.resi.resiup.presentation.util.hoyLima
+import pe.upeu.resi.resiup.presentation.util.validarContacto
 
 data class EditarPerfilState(
     val iniciado: Boolean = false,
     val email: String = "",
     val telefono: String = "",
-    val codigo: String = "",
+    /** «AAAA-MM-DD» o vacío si todavía no se registró. */
+    val fechaNacimiento: String = "",
     val carrera: String = "",
     val ciclo: String = "",
     val errores: Map<String, String> = emptyMap(),
@@ -51,7 +55,10 @@ data class EditarPerfilState(
     val guardado: Boolean = false,
 )
 
-/** Edita correo, teléfono, código universitario (9 dígitos), carrera y ciclo. Requiere conexión: es una operación de escritura. */
+/**
+ * Edita correo, teléfono, fecha de nacimiento, carrera y ciclo. El código universitario y el DNI no se editan aquí:
+ * los cambia solo la administración. Requiere conexión: es una operación de escritura.
+ */
 class EditarPerfilViewModel(private val repo: ResidenteRepository, private val sync: Sincronizador) : ViewModel() {
     private val _estado = MutableStateFlow(EditarPerfilState())
     val estado: StateFlow<EditarPerfilState> = _estado.asStateFlow()
@@ -59,7 +66,10 @@ class EditarPerfilViewModel(private val repo: ResidenteRepository, private val s
     /** Carga los valores actuales una sola vez por pantalla. */
     fun iniciar(p: Perfil) = _estado.update {
         if (it.iniciado) it
-        else EditarPerfilState(iniciado = true, email = p.email.orEmpty(), telefono = p.telefono.orEmpty(), codigo = p.codigo, carrera = p.carrera.orEmpty(), ciclo = p.ciclo?.toString().orEmpty())
+        else EditarPerfilState(
+            iniciado = true, email = p.email.orEmpty(), telefono = p.telefono.orEmpty(), fechaNacimiento = p.fechaNacimiento.orEmpty(),
+            carrera = p.carrera.orEmpty(), ciclo = p.ciclo?.toString().orEmpty(),
+        )
     }
 
     /** Vuelve a pedir los valores al abrir la pantalla de nuevo. */
@@ -67,7 +77,7 @@ class EditarPerfilViewModel(private val repo: ResidenteRepository, private val s
 
     fun email(v: String) = _estado.update { it.copy(email = v.take(150), errores = it.errores - "email", error = null) }
     fun telefono(v: String) = _estado.update { it.copy(telefono = v.filter { c -> c.isDigit() || c == '+' || c == ' ' }.take(20), errores = it.errores - "telefono", error = null) }
-    fun codigo(v: String) = _estado.update { it.copy(codigo = v.filter { c -> c.isDigit() }.take(9), errores = it.errores - "codigo", error = null) }
+    fun fechaNacimiento(v: String) = _estado.update { it.copy(fechaNacimiento = v, errores = it.errores - "fechaNacimiento", error = null) }
     fun carrera(v: String) = _estado.update { it.copy(carrera = v.take(100), errores = it.errores - "carrera", error = null) }
     fun ciclo(v: String) = _estado.update { it.copy(ciclo = v.filter { c -> c.isDigit() }.take(2), errores = it.errores - "ciclo", error = null) }
 
@@ -81,7 +91,7 @@ class EditarPerfilViewModel(private val repo: ResidenteRepository, private val s
         }
         _estado.update { it.copy(guardando = true, error = null, errores = emptyMap()) }
         viewModelScope.launch {
-            repo.actualizarPerfil(PerfilEditable(s.email, s.telefono, s.codigo, s.carrera, s.ciclo.toIntOrNull()))
+            repo.actualizarPerfil(PerfilEditable(s.email, s.telefono, s.fechaNacimiento.takeIf { it.isNotBlank() }, s.carrera, s.ciclo.toIntOrNull()))
                 .onSuccess { sync.refrescar(forzar = true); _estado.update { it.copy(guardando = false, guardado = true) } }
                 .onFailure { e ->
                     val err = e.aErrorApi()
@@ -94,9 +104,7 @@ class EditarPerfilViewModel(private val repo: ResidenteRepository, private val s
     }
 
     private fun validar(s: EditarPerfilState): Map<String, String> = buildMap {
-        if (s.email.isNotBlank() && !s.email.trim().matches(Regex("[^@\\s]+@[^@\\s]+\\.[^@\\s]+"))) put("email", "Escribe un correo válido, por ejemplo nombre@upeu.edu.pe")
-        if (s.telefono.isNotBlank() && s.telefono.count { it.isDigit() } < 6) put("telefono", "Escribe un teléfono válido")
-        if (s.codigo.length != 9) put("codigo", "El código universitario tiene 9 dígitos, por ejemplo 202410354")
+        putAll(validarContacto(s.email, s.telefono, s.fechaNacimiento, hoyLima()))
         val ciclo = s.ciclo.toIntOrNull()
         if (s.ciclo.isNotBlank() && (ciclo == null || ciclo !in 1..14)) put("ciclo", "El ciclo va de 1 a 14")
     }
@@ -109,10 +117,14 @@ fun EditarPerfilScreen(perfil: Perfil, onTerminar: () -> Unit, vm: EditarPerfilV
     LaunchedEffect(s.guardado) { if (s.guardado) onTerminar() }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla("Editar perfil", subtitulo = perfil.nombreCompleto)
-        Text("Tu nombre completo lo gestiona la administración de la residencia.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        ResiCampoTexto(s.codigo, vm::codigo, "Código universitario", error = s.errores["codigo"], ayuda = "9 dígitos, por ejemplo 202410354", tipoTeclado = KeyboardType.Number, habilitado = !s.guardando)
-        ResiCampoTexto(s.email, vm::email, "Correo electrónico", error = s.errores["email"], tipoTeclado = KeyboardType.Email, habilitado = !s.guardando)
+        Text("Tu nombre, tu DNI y tu código universitario los gestiona la administración de la residencia.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ResiCampoTexto(perfil.codigo, {}, "Código universitario", habilitado = false)
+        ResiCampoTexto(s.email, vm::email, "Correo electrónico", error = s.errores["email"], ayuda = "Si lo cambias, tendrás que verificarlo otra vez", tipoTeclado = KeyboardType.Email, habilitado = !s.guardando)
         ResiCampoTexto(s.telefono, vm::telefono, "Teléfono", error = s.errores["telefono"], tipoTeclado = KeyboardType.Phone, habilitado = !s.guardando)
+        CampoFecha(
+            "Fecha de nacimiento", s.fechaNacimiento, vm::fechaNacimiento, error = s.errores["fechaNacimiento"], habilitado = !s.guardando,
+            anios = 1940..hoyLima().year, mesInicialMillis = null,
+        )
         ResiCampoTexto(s.carrera, vm::carrera, "Carrera universitaria", error = s.errores["carrera"], habilitado = !s.guardando)
         ResiCampoTexto(s.ciclo, vm::ciclo, "Ciclo", error = s.errores["ciclo"], ayuda = "De 1 a 14", tipoTeclado = KeyboardType.Number, habilitado = !s.guardando)
         s.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else if (it == ErrorApi.SinConexion || it == ErrorApi.TiempoAgotado) "Necesitas conexión para guardar los cambios." else it.aMensaje(), EstadoVisual.Error) }

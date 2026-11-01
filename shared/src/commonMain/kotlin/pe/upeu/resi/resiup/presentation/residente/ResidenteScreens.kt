@@ -1,6 +1,7 @@
 package pe.upeu.resi.resiup.presentation.residente
 
 import pe.upeu.resi.resiup.presentation.theme.Acento
+import pe.upeu.resi.resiup.presentation.perfil.VerificarCorreoDialogo
 import pe.upeu.resi.resiup.presentation.components.ResiIcono
 import pe.upeu.resi.resiup.presentation.components.TarjetaHero
 import pe.upeu.resi.resiup.presentation.components.TarjetaDato
@@ -77,6 +78,7 @@ import pe.upeu.resi.resiup.presentation.util.unDecimal
 @Composable
 fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
+    var verQr by remember { mutableStateOf(false) }
     ContenidoConsulta(estado, vm::reintentar) { datos ->
         val ui = datos ?: return@ContenidoConsulta IndicadorCarga()
         val e = ui.estadisticas
@@ -91,7 +93,7 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
                     )
                 }
             }
-            TarjetaHero("Mi código QR", "Para culto y garita", "Mostrar", { onIr(Destinos.Perfil) }, ResiIconos.Qr)
+            TarjetaHero("Mi código QR", "Para culto y garita", "Mostrar", { verQr = true }, ResiIconos.Qr)
             Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
                 TarjetaDato(e.racha.toString(), "Racha de cultos", ResiIconos.Racha, Acento.Naranja, Modifier.weight(1f), detalle = if (e.racha == 1) "día seguido" else "días seguidos")
                 TarjetaDato("${e.diasAsistidosMes}/${e.diasHabilesMes}", if (e.delMesAnterior) "Mes pasado" else "Este mes", ResiIconos.Asistencias, Acento.Verde, Modifier.weight(1f), detalle = "días con culto")
@@ -100,7 +102,7 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
             EncabezadoSeccion("Accesos")
             CuadriculaModulos(
                 listOf(
-                    ModuloUi("Mi QR", ResiIconos.Qr, Acento.Violeta, { onIr(Destinos.Perfil) }),
+                    ModuloUi("Mi QR", ResiIconos.Qr, Acento.Violeta, { verQr = true }),
                     ModuloUi("Permisos", ResiIconos.Permisos, Acento.Azul, { onIr(Destinos.Permisos) }),
                     ModuloUi("Asistencias", ResiIconos.Calendario, Acento.Verde, { onIr(Destinos.Asistencias) }),
                     ModuloUi("Limpieza", ResiIconos.Limpieza, Acento.Naranja, { onIr(Destinos.Limpieza) }),
@@ -129,6 +131,7 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
                 )
             }
         }
+        if (verQr) QrFlotante({ verQr = false })
     }
 }
 
@@ -136,9 +139,10 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
 @Composable
 fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: PerfilViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
-    val qr by vm.qr.collectAsState()
     var confirmar by remember { mutableStateOf(false) }
     var editando by remember { mutableStateOf(false) }
+    var verQr by remember { mutableStateOf(false) }
+    var verificando by remember { mutableStateOf(false) }
     BackHandler(enabled = editando) { editando = false }
     ContenidoConsulta(estado, vm::reintentar) { datos ->
         val perfil = datos ?: return@ContenidoConsulta IndicadorCarga()
@@ -155,45 +159,33 @@ fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: Perfi
                     ChipEstado(Rol.Residente.etiqueta, EstadoVisual.Info, Modifier.padding(top = Espacio.xs))
                 }
             }
+            ResiBoton("Mostrar mi código QR", { verQr = true }, Modifier.fillMaxWidth())
             ResiTarjeta {
+                DatoPerfil("DNI", perfil.dni, ResiIconos.Perfil, Acento.Azul)
+                DatoPerfil("Fecha de nacimiento", perfil.fechaNacimiento?.fechaLegible(), ResiIconos.Calendario, Acento.Rosa)
                 DatoPerfil("Carrera", perfil.carrera, ResiIconos.Perfil, Acento.Violeta)
                 DatoPerfil("Ciclo", perfil.ciclo?.let { "${it}.º ciclo" }, ResiIconos.Calendario, Acento.Turquesa)
-                DatoPerfil("Correo electrónico", perfil.email, ResiIconos.Correo, Acento.Azul)
+                DatoPerfil(
+                    "Correo electrónico", perfil.email, ResiIconos.Correo, Acento.Azul,
+                    final = if (perfil.email.isNullOrBlank()) null else { { ChipEstado(if (perfil.emailVerificado) "Verificado" else "Sin verificar", if (perfil.emailVerificado) EstadoVisual.Exito else EstadoVisual.Advertencia) } },
+                )
                 DatoPerfil("Teléfono", perfil.telefono, ResiIconos.Telefono, Acento.Verde)
                 DatoPerfil("Habitación", perfil.habitacion?.let { listOfNotNull(it.numero, it.etiquetaCama).joinToString(" · ") }, ResiIconos.Inicio, Acento.Naranja)
             }
-            ResiBoton("Editar perfil", { editando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
-            ResiTarjeta {
-                Text("Mi código QR", style = MaterialTheme.typography.titleMedium)
-                when (val q = qr) {
-                    is Carga.Cargando -> Text("Cargando…", Modifier.padding(vertical = Espacio.m), style = MaterialTheme.typography.bodyMedium)
-                    is Carga.Fallo -> {
-                        val sinRed = q.error == ErrorApi.SinConexion || q.error == ErrorApi.TiempoAgotado
-                        BannerMensaje(
-                            if (sinRed) "Aún no hay un QR guardado en este teléfono. Conéctate una vez para descargarlo; después se podrá mostrar sin internet." else q.error.aMensaje(),
-                            EstadoVisual.Advertencia, Modifier.padding(top = Espacio.s),
-                        )
-                        ResiBoton("Reintentar", vm::cargarQr, Modifier.padding(top = Espacio.s), variante = VarianteBoton.Secundario)
-                    }
-                    is Carga.Exito -> {
-                        val matriz = crearMatrizQr(q.datos.contenido)
-                        if (matriz == null) {
-                            BannerMensaje("No se pudo generar el QR en este dispositivo.", EstadoVisual.Advertencia, Modifier.padding(top = Espacio.s))
-                        } else {
-                            Box(Modifier.fillMaxWidth().padding(vertical = Espacio.m), contentAlignment = Alignment.Center) { QrVista(matriz, Modifier.widthIn(max = 280.dp).fillMaxWidth()) }
-                            if (q.datos.guardado) {
-                                BannerMensaje("Sin conexión: se muestra el QR guardado en este teléfono. Sigue siendo válido mientras no lo hayan regenerado.", EstadoVisual.Info, Modifier.padding(bottom = Espacio.s))
-                            }
-                            Text(
-                                "Preséntalo al preceptor o en garita. Es personal: no lo compartas ni lo publiques. Si lo perdiste, pide que lo regeneren.",
-                                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
+            if (!perfil.email.isNullOrBlank() && !perfil.emailVerificado) {
+                ResiBoton("Verificar mi correo", { verificando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
             }
+            ResiBoton("Editar perfil", { editando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
+            Text(
+                "El nombre, el DNI y el código universitario los gestiona la administración de la residencia.",
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             sesion?.let { Text("Sesión: ${it.usuario}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             ResiBoton("Cerrar sesión", { confirmar = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
+        }
+        if (verQr) QrFlotante({ verQr = false })
+        if (verificando && perfil.email != null) {
+            VerificarCorreoDialogo(perfil.email, { verificando = false }, { verificando = false; vm.reintentar() })
         }
     }
     if (confirmar) {
@@ -201,9 +193,12 @@ fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: Perfi
     }
 }
 
-/** Fila del perfil: ícono de color, etiqueta y valor; si falta el dato se invita a completarlo. */
+/** Fila del perfil: ícono de color, etiqueta y valor; si falta el dato se invita a completarlo. [final] es un detalle al final de la fila. */
 @Composable
-private fun DatoPerfil(etiqueta: String, valor: String?, icono: androidx.compose.ui.graphics.vector.ImageVector, acento: Acento) {
+internal fun DatoPerfil(
+    etiqueta: String, valor: String?, icono: androidx.compose.ui.graphics.vector.ImageVector, acento: Acento,
+    final: (@Composable () -> Unit)? = null,
+) {
     Row(Modifier.fillMaxWidth().padding(vertical = Espacio.xs), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
         Box(Modifier.size(36.dp).background(acento.suave(), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
             ResiIcono(icono, null, tint = acento.color(), tamano = 20.dp)
@@ -213,6 +208,7 @@ private fun DatoPerfil(etiqueta: String, valor: String?, icono: androidx.compose
             if (valor.isNullOrBlank()) Text("Sin completar", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             else Text(valor, style = MaterialTheme.typography.bodyLarge)
         }
+        final?.invoke()
     }
 }
 

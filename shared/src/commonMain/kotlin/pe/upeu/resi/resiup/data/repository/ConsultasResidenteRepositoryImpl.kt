@@ -14,6 +14,7 @@ private const val MAX_PAGINAS = 3
 class ConsultasResidenteRepositoryImpl(
     private val remoto: ResidenteRepository,
     private val permisos: PermisoRepository,
+    private val calendario: pe.upeu.resi.resiup.domain.repository.CalendarioRepository,
     private val local: DatosLocales,
     private val ahoraMillis: () -> Long,
 ) : ConsultasResidenteRepository {
@@ -23,6 +24,7 @@ class ConsultasResidenteRepositoryImpl(
     override fun evaluaciones() = local.evaluaciones()
     override fun resumenLimpieza() = local.resumenLimpieza()
     override fun solicitudes() = local.solicitudes()
+    override fun diasSinCulto() = local.diasSinCulto()
     override fun ultimaSincronizacion() = local.ultimaSincronizacion()
     override fun borrarTodo() = local.borrarTodo()
     override fun asegurarPropietario(usuario: String) = local.asegurarPropietario(usuario)
@@ -33,6 +35,7 @@ class ConsultasResidenteRepositoryImpl(
         val evaluaciones = async { traerTodo { remoto.limpieza(it) } }
         val resumen = async { remoto.resumenLimpieza() }
         val solicitudes = async { traerTodo { permisos.mias(it) } }
+        val diasSinCulto = async { calendario.diasSinCulto() }
 
         var primerError: Throwable? = null
         fun <T> Result<T>.guardar(accion: (T) -> Unit) {
@@ -43,6 +46,7 @@ class ConsultasResidenteRepositoryImpl(
         evaluaciones.await().guardar { local.reemplazarEvaluaciones(it) }
         resumen.await().guardar { local.reemplazarResumen(it) }
         solicitudes.await().guardar { local.reemplazarSolicitudes(it) }
+        diasSinCulto.await().guardar { local.reemplazarDiasSinCulto(it) }
 
         // La copia sólo se considera vigente si TODO se descargó; así nunca se mezcla una mitad nueva con una vieja sin avisar.
         val error = primerError

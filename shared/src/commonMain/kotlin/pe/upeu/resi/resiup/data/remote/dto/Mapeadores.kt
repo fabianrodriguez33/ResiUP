@@ -57,6 +57,7 @@ private fun String.aEstadoSolicitud(): EstadoSolicitud = when (this) {
     "APROBADO" -> EstadoSolicitud.Aprobado
     "RECHAZADO" -> EstadoSolicitud.Rechazado
     "CANCELADO" -> EstadoSolicitud.Cancelado
+    "ANULADO" -> EstadoSolicitud.Anulado
     else -> EstadoSolicitud.Vencido
 }
 
@@ -74,7 +75,7 @@ private fun String.aEstadoRevision(): EstadoRevision = when (this) {
 
 fun <D, M> PaginaDto<D>.aDominio(mapeo: (D) -> M) = Pagina(contenido.map(mapeo), pagina, totalElementos, ultima)
 
-fun ResidenteDto.aPerfil() = Perfil(id, codigo, nombreCompleto, telefono, habitacion?.let { HabitacionResumen(it.id, it.numero, it.cama) }, puedeSolicitarSolo, email, carrera, ciclo)
+fun ResidenteDto.aPerfil() = Perfil(id, codigo, nombreCompleto, telefono, habitacion?.let { HabitacionResumen(it.id, it.numero, it.cama) }, puedeSolicitarSolo, email, carrera, ciclo, dni, fechaNacimiento, emailVerificado)
 
 fun ResidenteDto.aResumen() = ResidenteResumen(id, codigo, nombreCompleto, habitacion?.numero, activo)
 

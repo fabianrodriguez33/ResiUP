@@ -34,7 +34,7 @@ class DatosLocales(db: ResiDb) {
     // ---------------------------------------------------------------- lectura reactiva
 
     fun perfil(): Flow<Perfil?> = q.observarPerfil().asFlow().mapToOneOrNull(Dispatchers.Default).map { f ->
-        f?.let { Perfil(it.id, it.codigo, it.nombre, it.telefono, it.habitacion_id?.let { id -> HabitacionResumen(id, it.habitacion_numero.orEmpty(), it.habitacion_cama) }, it.puede_solicitar_solo != 0L, it.email, it.carrera, it.ciclo?.toInt()) }
+        f?.let { Perfil(it.id, it.codigo, it.nombre, it.telefono, it.habitacion_id?.let { id -> HabitacionResumen(id, it.habitacion_numero.orEmpty(), it.habitacion_cama) }, it.puede_solicitar_solo != 0L, it.email, it.carrera, it.ciclo?.toInt(), it.dni, it.fecha_nacimiento, it.email_verificado != 0L) }
     }
 
     fun asistencias(): Flow<List<AsistenciaCulto>> = q.observarAsistencias().asFlow().mapToList(Dispatchers.Default).map { filas ->
@@ -62,6 +62,10 @@ class DatosLocales(db: ResiDb) {
         }
     }
 
+    fun diasSinCulto(): Flow<List<pe.upeu.resi.resiup.domain.model.DiaSinCulto>> = q.observarDiasSinCulto().asFlow().mapToList(Dispatchers.Default).map { filas ->
+        filas.map { pe.upeu.resi.resiup.domain.model.DiaSinCulto(it.fecha, it.motivo) }
+    }
+
     /** Milisegundos de la última sincronización completa, o null si nunca se completó. */
     fun ultimaSincronizacion(): Flow<Long?> = q.leerMeta(SINCRONIZADO_EN).asFlow().mapToOneOrNull(Dispatchers.Default).map { it?.toLongOrNull() }
 
@@ -69,7 +73,7 @@ class DatosLocales(db: ResiDb) {
 
     fun reemplazarPerfil(p: Perfil) = q.transaction {
         q.borrarPerfil()
-        q.guardarPerfil(p.id, p.codigo, p.nombreCompleto, p.telefono, p.habitacion?.id, p.habitacion?.numero, p.habitacion?.cama, if (p.puedeSolicitarSolo) 1L else 0L, p.email, p.carrera, p.ciclo?.toLong())
+        q.guardarPerfil(p.id, p.codigo, p.nombreCompleto, p.telefono, p.habitacion?.id, p.habitacion?.numero, p.habitacion?.cama, if (p.puedeSolicitarSolo) 1L else 0L, p.email, p.carrera, p.ciclo?.toLong(), p.dni, p.fechaNacimiento, if (p.emailVerificado) 1L else 0L)
     }
 
     fun reemplazarAsistencias(lista: List<AsistenciaCulto>) = q.transaction {
@@ -98,6 +102,11 @@ class DatosLocales(db: ResiDb) {
         }
     }
 
+    fun reemplazarDiasSinCulto(lista: List<pe.upeu.resi.resiup.domain.model.DiaSinCulto>) = q.transaction {
+        q.borrarDiasSinCulto()
+        lista.forEach { q.guardarDiaSinCulto(it.fecha, it.motivo) }
+    }
+
     fun marcarSincronizado(ahoraMillis: Long) = q.guardarMeta(SINCRONIZADO_EN, ahoraMillis.toString())
 
     // ---------------------------------------------------------------- propietario y limpieza
@@ -113,7 +122,7 @@ class DatosLocales(db: ResiDb) {
     }
 
     fun borrarTodo() = q.transaction {
-        q.borrarPerfil(); q.borrarAsistencias(); q.borrarEvaluaciones(); q.borrarResumen(); q.borrarSolicitudes(); q.borrarMeta()
+        q.borrarPerfil(); q.borrarAsistencias(); q.borrarEvaluaciones(); q.borrarResumen(); q.borrarSolicitudes(); q.borrarDiasSinCulto(); q.borrarMeta()
     }
 }
 
