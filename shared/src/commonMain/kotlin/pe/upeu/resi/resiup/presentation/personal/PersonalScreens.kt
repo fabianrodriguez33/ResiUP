@@ -25,6 +25,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.unit.dp
+import pe.upeu.resi.resiup.presentation.util.unDecimal
+import pe.upeu.resi.resiup.domain.model.ResumenResidente
+import pe.upeu.resi.resiup.presentation.util.Carga
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.size
@@ -97,7 +100,7 @@ fun InicioPreceptorScreen(nombre: String, onIr: (String) -> Unit, vm: InicioPrec
     val estado by vm.estado.collectAsState()
     ContenidoCarga(estado, vm::cargar) { ui ->
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
-            TituloPantalla("Hola, ${nombre.substringBefore(' ')}", subtitulo = "Panel del preceptor")
+            TituloPantalla("Hola, ${nombre.substringBefore(' ')}", subtitulo = "Panel del pastor")
             Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
                 Box(Modifier.weight(1f)) {
                     ResiTarjeta(onClick = { onIr("solicitudes") }) {
@@ -108,7 +111,7 @@ fun InicioPreceptorScreen(nombre: String, onIr: (String) -> Unit, vm: InicioPrec
                 }
                 Box(Modifier.weight(1f)) {
                     ResiTarjeta(onClick = { onIr("solicitudes") }) {
-                        Text("Con apoderado", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Con padres", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(ui.conApoderado.toString(), style = pe.upeu.resi.resiup.presentation.theme.ResiEstilos.Numero)
                         Text("pendientes", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -163,7 +166,7 @@ private sealed interface RutaSolicitudes {
     data class Revision(val id: Long) : RutaSolicitudes
 }
 
-private enum class FiltroSolicitudes(val etiqueta: String) { PorRevisar("Por revisar"), ConApoderado("Con apoderado") }
+private enum class FiltroSolicitudes(val etiqueta: String) { PorRevisar("Por revisar"), ConApoderado("Con padres") }
 
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
@@ -209,8 +212,9 @@ private fun RevisionSolicitudScreen(id: Long, onVolver: () -> Unit) {
                 TituloPantalla(s.residenteNombre, subtitulo = "${s.tipo.etiqueta} · ${s.destino}")
                 ChipEstado(s.estado.etiqueta, s.estado.aEstadoVisual())
                 ResiTarjeta { DatosSolicitud(s) }
+                ResumenDelResidente(vm.resumen.collectAsState().value)
                 if (s.estado == EstadoSolicitud.PendienteApoderado) {
-                    BannerMensaje("Falta la autorización del apoderado. Genera un enlace de un solo uso y entrégalo por el medio institucional.", EstadoVisual.Info)
+                    BannerMensaje("Falta que el padre/madre acepte el permiso (desde su cuenta o con el enlace de un solo uso). Genera un enlace de un solo uso y entrégalo por el medio institucional.", EstadoVisual.Info)
                     ResiBoton("Generar enlace para el apoderado", vm::generarEnlace, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario, cargando = accion.trabajando)
                     accion.enlace?.let { e ->
                         ResiTarjeta {
@@ -228,6 +232,29 @@ private fun RevisionSolicitudScreen(id: Long, onVolver: () -> Unit) {
                 }
                 accion.mensaje?.let { BannerMensaje(it, EstadoVisual.Exito) }
                 accion.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
+            }
+        }
+    }
+}
+
+/** Cultos y limpieza de los últimos 30 días; es informativo: el pastor decide. */
+@Composable
+private fun ResumenDelResidente(estado: Carga<ResumenResidente>) {
+    ResiTarjeta {
+        Text("Últimos 30 días", style = MaterialTheme.typography.titleMedium)
+        when (estado) {
+            is Carga.Cargando -> Text("Cargando…", style = MaterialTheme.typography.bodyMedium)
+            is Carga.Fallo -> Text("No se pudo cargar el resumen.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            is Carga.Exito -> {
+                val r = estado.datos
+                Text(
+                    "Cultos: asistió a ${r.asistencias} de ${r.cultosRealizados}" + if (r.despuesDelCorte > 0) " (${r.despuesDelCorte} después del corte)" else "",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Text(
+                    r.promedioLimpieza?.let { "Limpieza: promedio ${it.unDecimal()}/20 en ${r.evaluaciones} ${if (r.evaluaciones == 1L) "evaluación" else "evaluaciones"}" } ?: "Limpieza: sin evaluaciones",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
             }
         }
     }

@@ -24,6 +24,7 @@ data class ResidenteDto(
     val telefono: String? = null,
     val activo: Boolean = true,
     val habitacion: HabitacionResumenDto? = null,
+    val puedeSolicitarSolo: Boolean = false,
 )
 
 @Serializable
@@ -76,10 +77,32 @@ data class SolicitudDto(
     val creadoEn: String,
     val ampliaciones: List<AmpliacionDto>? = null,
     val justificaciones: List<JustificacionDto>? = null,
+    val origen: String? = null,
+    val responsableNombre: String? = null,
+    val responsableCelular: String? = null,
+    val acompanante: String? = null,
 )
 
 @Serializable
-data class SolicitudRequestDto(val tipo: String, val motivo: String, val destino: String, val salida: String, val retorno: String)
+data class SolicitudRequestDto(
+    val tipo: String, val motivo: String, val destino: String, val salida: String, val retorno: String,
+    val residenteId: Long? = null, val responsableNombre: String? = null, val responsableCelular: String? = null, val acompanante: String? = null,
+)
+
+@Serializable
+data class DecisionApoderadoRequestDto(val aprobar: Boolean)
+
+@Serializable
+data class HijoDto(
+    val residenteId: Long, val codigo: String, val nombreCompleto: String, val habitacion: String? = null, val cama: String? = null,
+    val puedeSolicitarSolo: Boolean = false, val pendientes: Long = 0,
+)
+
+@Serializable
+data class ResumenResidenteDto(
+    val dias: Int = 30, val cultosRealizados: Long = 0, val asistencias: Long = 0, val despuesDelCorte: Long = 0,
+    val promedioLimpieza: Double? = null, val evaluaciones: Long = 0,
+)
 
 @Serializable
 data class DecisionRequestDto(val aprobar: Boolean, val comentario: String? = null)

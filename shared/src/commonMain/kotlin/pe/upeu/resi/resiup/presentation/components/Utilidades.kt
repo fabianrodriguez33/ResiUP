@@ -31,6 +31,8 @@ import kotlin.time.Instant
 import pe.upeu.resi.resiup.domain.model.EstadoSolicitud
 import pe.upeu.resi.resiup.presentation.theme.Espacio
 import pe.upeu.resi.resiup.presentation.util.combinarFechaHora
+import pe.upeu.resi.resiup.presentation.util.conHoraLima
+import pe.upeu.resi.resiup.presentation.util.soloHoraLima
 import pe.upeu.resi.resiup.presentation.util.formatoLima
 
 /** Dibuja la matriz de un QR en negro sobre blanco, con zona de silencio, para que sea legible por cualquier lector. */
@@ -84,6 +86,24 @@ fun CampoFechaHora(etiqueta: String, valor: Instant?, error: String?, onElegido:
     }
     if (paso == 1) SelectorFecha({ fechaMillis = it; paso = 2 }, { paso = 0 })
     if (paso == 2) SelectorHora({ h, m -> onElegido(combinarFechaHora(fechaMillis, h, m)); paso = 0 }, { paso = 0 })
+}
+
+/** Botón que abre el selector de hora; la fecha es la de [base] (la salida), en hora de Lima. */
+@Composable
+fun CampoHora(etiqueta: String, valor: Instant?, base: Instant?, error: String?, onElegido: (Instant) -> Unit, modifier: Modifier = Modifier) {
+    var abierto by remember { mutableStateOf(false) }
+    androidx.compose.foundation.layout.Column(modifier) {
+        ResiBoton(
+            texto = "$etiqueta: ${valor?.soloHoraLima() ?: "elegir hora"}",
+            onClick = { abierto = true },
+            modifier = Modifier.fillMaxWidth(),
+            variante = VarianteBoton.Secundario,
+            habilitado = base != null,
+        )
+        if (base == null) Text("Elige primero la fecha y hora de salida", Modifier.padding(start = Espacio.l, top = Espacio.xs), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (error != null) Text(error, Modifier.padding(start = Espacio.l, top = Espacio.xs), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+    }
+    if (abierto && base != null) SelectorHora({ h, m -> onElegido(base.conHoraLima(h, m)); abierto = false }, { abierto = false })
 }
 
 fun EstadoSolicitud.aEstadoVisual(): EstadoVisual = when (this) {

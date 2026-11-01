@@ -2,6 +2,7 @@ package pe.upeu.resi.resiup.data.repository
 
 import pe.upeu.resi.resiup.data.remote.CultoApi
 import pe.upeu.resi.resiup.data.remote.GaritaApi
+import pe.upeu.resi.resiup.data.remote.FamiliaApi
 import pe.upeu.resi.resiup.data.remote.LimpiezaApi
 import pe.upeu.resi.resiup.data.remote.PermisoApi
 import pe.upeu.resi.resiup.data.remote.ResidenteApi
@@ -27,6 +28,7 @@ import pe.upeu.resi.resiup.domain.model.TipoCulto
 import pe.upeu.resi.resiup.domain.model.TipoMovimiento
 import pe.upeu.resi.resiup.domain.repository.CultoRepository
 import pe.upeu.resi.resiup.domain.repository.GaritaRepository
+import pe.upeu.resi.resiup.domain.repository.FamiliaRepository
 import pe.upeu.resi.resiup.domain.repository.LimpiezaRepository
 import pe.upeu.resi.resiup.domain.repository.PermisoRepository
 import pe.upeu.resi.resiup.domain.repository.ResidenteRepository
@@ -57,7 +59,7 @@ class ResidenteRepositoryImpl(private val api: ResidenteApi, private val sesione
 
 class PermisoRepositoryImpl(private val api: PermisoApi) : PermisoRepository {
     override suspend fun crear(solicitud: NuevaSolicitud) = ejecutarLlamada {
-        api.crear(SolicitudRequestDto(solicitud.tipo.aApi(), solicitud.motivo, solicitud.destino, solicitud.salida.toString(), solicitud.retorno.toString())).aDominio()
+        api.crear(solicitud.aDto()).aDominio()
     }
     override suspend fun mias(pagina: Int) = ejecutarLlamada { api.mias(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
     override suspend fun detalle(id: Long) = ejecutarLlamada { api.detalle(id).aDominio() }
@@ -68,6 +70,22 @@ class PermisoRepositoryImpl(private val api: PermisoApi) : PermisoRepository {
     override suspend fun decidir(id: Long, aprobar: Boolean, comentario: String?) =
         ejecutarLlamada { api.decidir(id, DecisionRequestDto(aprobar, comentario?.takeIf { it.isNotBlank() })).aDominio() }
     override suspend fun enlaceApoderado(id: Long) = ejecutarLlamada { api.enlaceApoderado(id).aDominio() }
+    override suspend fun resumenDelResidente(id: Long) = ejecutarLlamada { api.resumen(id).aDominio() }
+}
+
+private fun NuevaSolicitud.aDto() = SolicitudRequestDto(
+    tipo.aApi(), motivo, destino, salida.toString(), retorno.toString(),
+    residenteId, responsableNombre?.takeIf { it.isNotBlank() }, responsableCelular?.takeIf { it.isNotBlank() }, acompanante?.takeIf { it.isNotBlank() },
+)
+
+class FamiliaRepositoryImpl(private val api: FamiliaApi) : FamiliaRepository {
+    override suspend fun hijos() = ejecutarLlamada { api.hijos().map { it.aDominio() } }
+    override suspend fun solicitudes(estado: EstadoSolicitud?, pagina: Int) =
+        ejecutarLlamada { api.solicitudes(estado?.aApi(), pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
+    override suspend fun detalle(id: Long) = ejecutarLlamada { api.detalle(id).aDominio() }
+    override suspend fun crear(solicitud: NuevaSolicitud) = ejecutarLlamada { api.crear(solicitud.aDto()).aDominio() }
+    override suspend fun decidir(id: Long, aprobar: Boolean) = ejecutarLlamada { api.decidir(id, aprobar).aDominio() }
+    override suspend fun cancelar(id: Long) = ejecutarLlamada { api.cancelar(id).aDominio() }
 }
 
 class CultoRepositoryImpl(private val api: CultoApi) : CultoRepository {

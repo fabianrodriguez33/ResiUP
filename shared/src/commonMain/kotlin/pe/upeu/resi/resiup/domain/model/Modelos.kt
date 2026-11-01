@@ -10,7 +10,7 @@ data class HabitacionResumen(val id: Long, val numero: String, val cama: String?
     val etiquetaCama: String? get() = cama?.let { "Cama $numero-$it" }
 }
 
-data class Perfil(val id: Long, val codigo: String, val nombreCompleto: String, val telefono: String?, val habitacion: HabitacionResumen?)
+data class Perfil(val id: Long, val codigo: String, val nombreCompleto: String, val telefono: String?, val habitacion: HabitacionResumen?, val puedeSolicitarSolo: Boolean = false)
 
 /** Contenido del QR emitido por el servidor. Se muestra tal cual; la app no lo interpreta. */
 /** [guardado] indica que se muestra la copia cifrada del teléfono porque no hubo conexión. */
@@ -37,10 +37,17 @@ data class EvaluacionLimpieza(
 data class ResumenLimpieza(val evaluaciones: Long, val promedio: Double?, val ultimoTotal: Int?, val ultimaFecha: String?)
 
 // ---- Permisos ----
-enum class TipoPermiso(val etiqueta: String) { Corto("Corto"), Largo("Largo"), Especial("Especial") }
+/** Corto: hasta 2 horas. Largo: más de 2 horas. Pernocte: duerme fuera (lo envía el padre/madre). */
+enum class TipoPermiso(val etiqueta: String) { Corto("Corto"), Largo("Largo"), Pernocte("Pernoctar fuera") }
+
+/** Quién envió la solicitud. */
+enum class OrigenSolicitud { Residente, Apoderado }
+
+/** Duración máxima de un permiso corto; si se pasa, debe pedirse uno largo. */
+const val CORTO_MAX_MINUTOS = 120
 
 enum class EstadoSolicitud(val etiqueta: String) {
-    Borrador("Borrador"), PendienteApoderado("Pendiente del apoderado"), PendientePreceptor("Pendiente del preceptor"),
+    Borrador("Borrador"), PendienteApoderado("Esperando al padre/madre"), PendientePreceptor("Pendiente del pastor"),
     Aprobado("Aprobado"), Rechazado("Rechazado"), Cancelado("Cancelado"), Vencido("Vencido"),
 }
 
@@ -66,9 +73,24 @@ data class SolicitudPermiso(
     val creadoEn: Instant,
     val ampliaciones: List<Ampliacion>,
     val justificaciones: List<Justificacion>,
+    val origen: OrigenSolicitud = OrigenSolicitud.Residente,
+    /** Solo en permisos de pernoctar fuera. */
+    val responsableNombre: String? = null,
+    val responsableCelular: String? = null,
+    val acompanante: String? = null,
 )
 
-data class NuevaSolicitud(val tipo: TipoPermiso, val motivo: String, val destino: String, val salida: Instant, val retorno: Instant)
+/** [residenteId] solo lo envía el padre/madre (a qué hijo corresponde); los datos de la casa, solo en pernoctar. */
+data class NuevaSolicitud(
+    val tipo: TipoPermiso, val motivo: String, val destino: String, val salida: Instant, val retorno: Instant,
+    val residenteId: Long? = null, val responsableNombre: String? = null, val responsableCelular: String? = null, val acompanante: String? = null,
+)
+
+/** Hijo/a de un padre o madre con cuenta en la app. */
+data class Hijo(val id: Long, val codigo: String, val nombre: String, val habitacion: String?, val cama: String?, val puedeSolicitarSolo: Boolean, val pendientes: Long)
+
+/** Cultos y limpieza de los últimos [dias] días: lo que el pastor mira antes de aprobar un permiso. */
+data class ResumenResidente(val dias: Int, val cultosRealizados: Long, val asistencias: Long, val despuesDelCorte: Long, val promedioLimpieza: Double?, val evaluaciones: Long)
 
 data class EnlaceApoderado(val token: String, val ruta: String, val expiraEn: Instant, val apoderado: String)
 

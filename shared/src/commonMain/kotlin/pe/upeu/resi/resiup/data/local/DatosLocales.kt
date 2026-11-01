@@ -34,7 +34,7 @@ class DatosLocales(db: ResiDb) {
     // ---------------------------------------------------------------- lectura reactiva
 
     fun perfil(): Flow<Perfil?> = q.observarPerfil().asFlow().mapToOneOrNull(Dispatchers.Default).map { f ->
-        f?.let { Perfil(it.id, it.codigo, it.nombre, it.telefono, it.habitacion_id?.let { id -> HabitacionResumen(id, it.habitacion_numero.orEmpty(), it.habitacion_cama) }) }
+        f?.let { Perfil(it.id, it.codigo, it.nombre, it.telefono, it.habitacion_id?.let { id -> HabitacionResumen(id, it.habitacion_numero.orEmpty(), it.habitacion_cama) }, it.puede_solicitar_solo != 0L) }
     }
 
     fun asistencias(): Flow<List<AsistenciaCulto>> = q.observarAsistencias().asFlow().mapToList(Dispatchers.Default).map { filas ->
@@ -53,7 +53,7 @@ class DatosLocales(db: ResiDb) {
         filas.map {
             SolicitudPermiso(
                 id = it.id, residenteCodigo = it.residente_codigo, residenteNombre = it.residente_nombre,
-                tipo = enumONull<TipoPermiso>(it.tipo) ?: TipoPermiso.Especial, motivo = it.motivo, destino = it.destino,
+                tipo = enumONull<TipoPermiso>(it.tipo) ?: TipoPermiso.Pernocte, motivo = it.motivo, destino = it.destino,
                 salida = Instant.parse(it.salida), retornoSolicitado = Instant.parse(it.retorno_solicitado),
                 retornoAutorizado = Instant.parse(it.retorno_autorizado), estado = enumONull<EstadoSolicitud>(it.estado) ?: EstadoSolicitud.Vencido,
                 requiereApoderado = it.requiere_apoderado != 0L, comentarioDecision = it.comentario_decision, creadoEn = Instant.parse(it.creado_en),
@@ -69,7 +69,7 @@ class DatosLocales(db: ResiDb) {
 
     fun reemplazarPerfil(p: Perfil) = q.transaction {
         q.borrarPerfil()
-        q.guardarPerfil(p.id, p.codigo, p.nombreCompleto, p.telefono, p.habitacion?.id, p.habitacion?.numero, p.habitacion?.cama)
+        q.guardarPerfil(p.id, p.codigo, p.nombreCompleto, p.telefono, p.habitacion?.id, p.habitacion?.numero, p.habitacion?.cama, if (p.puedeSolicitarSolo) 1L else 0L)
     }
 
     fun reemplazarAsistencias(lista: List<AsistenciaCulto>) = q.transaction {

@@ -14,6 +14,7 @@ object Destinos {
     const val Solicitudes = "solicitudes"
     const val Mas = "mas"
     const val Historial = "historial"
+    const val Nuevo = "nuevo"
 }
 
 /** Cada rol ve únicamente las opciones que puede usar. */
@@ -35,6 +36,13 @@ fun Rol.destinos(): List<ItemNavegacion> = when (this) {
     Rol.Garita -> listOf(
         ItemNavegacion(Destinos.Escanear, "Escanear", ResiIconos.Escanear),
         ItemNavegacion(Destinos.Historial, "Historial", ResiIconos.Historial),
+        ItemNavegacion(Destinos.Mas, "Cuenta", ResiIconos.Perfil),
+    )
+    // Padres de familia: aceptan los permisos de sus hijos y envían los de pernoctar fuera.
+    Rol.Apoderado -> listOf(
+        ItemNavegacion(Destinos.Inicio, "Inicio", ResiIconos.Inicio),
+        ItemNavegacion(Destinos.Solicitudes, "Permisos", ResiIconos.Solicitudes),
+        ItemNavegacion(Destinos.Nuevo, "Enviar", ResiIconos.Permisos),
         ItemNavegacion(Destinos.Mas, "Cuenta", ResiIconos.Perfil),
     )
     // El administrador gestiona principalmente desde el panel web (pendiente de aprobación).

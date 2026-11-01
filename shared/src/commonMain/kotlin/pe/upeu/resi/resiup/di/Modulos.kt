@@ -21,16 +21,19 @@ import pe.upeu.resi.resiup.data.local.SesionStore
 import pe.upeu.resi.resiup.data.remote.AuthApi
 import pe.upeu.resi.resiup.data.remote.CultoApi
 import pe.upeu.resi.resiup.data.remote.GaritaApi
+import pe.upeu.resi.resiup.data.remote.FamiliaApi
 import pe.upeu.resi.resiup.data.remote.LimpiezaApi
 import pe.upeu.resi.resiup.data.remote.PermisoApi
 import pe.upeu.resi.resiup.data.remote.ResidenteApi
 import pe.upeu.resi.resiup.data.repository.CultoRepositoryImpl
 import pe.upeu.resi.resiup.data.repository.GaritaRepositoryImpl
+import pe.upeu.resi.resiup.data.repository.FamiliaRepositoryImpl
 import pe.upeu.resi.resiup.data.repository.LimpiezaRepositoryImpl
 import pe.upeu.resi.resiup.data.repository.PermisoRepositoryImpl
 import pe.upeu.resi.resiup.data.repository.ResidenteRepositoryImpl
 import pe.upeu.resi.resiup.domain.repository.CultoRepository
 import pe.upeu.resi.resiup.domain.repository.GaritaRepository
+import pe.upeu.resi.resiup.domain.repository.FamiliaRepository
 import pe.upeu.resi.resiup.domain.repository.LimpiezaRepository
 import pe.upeu.resi.resiup.domain.repository.PermisoRepository
 import pe.upeu.resi.resiup.domain.repository.ResidenteRepository
@@ -39,6 +42,10 @@ import pe.upeu.resi.resiup.presentation.personal.GaritaEscanerViewModel
 import pe.upeu.resi.resiup.presentation.personal.HistorialGaritaViewModel
 import pe.upeu.resi.resiup.presentation.personal.InicioPreceptorViewModel
 import pe.upeu.resi.resiup.presentation.personal.LimpiezaPreceptorViewModel
+import pe.upeu.resi.resiup.presentation.familia.FamiliaDetalleViewModel
+import pe.upeu.resi.resiup.presentation.familia.FamiliaInicioViewModel
+import pe.upeu.resi.resiup.presentation.familia.FamiliaNuevoViewModel
+import pe.upeu.resi.resiup.presentation.familia.FamiliaSolicitudesViewModel
 import pe.upeu.resi.resiup.presentation.personal.SolicitudRevisionViewModel
 import pe.upeu.resi.resiup.presentation.personal.SolicitudesConApoderadoViewModel
 import pe.upeu.resi.resiup.presentation.personal.SolicitudesPorRevisarViewModel
@@ -74,11 +81,13 @@ fun datosModule(config: ConfigEntorno) = module {
     single { PermisoApi(get()) }
     single { CultoApi(get()) }
     single { LimpiezaApi(get()) }
+    single { FamiliaApi(get()) }
     single { GaritaApi(get()) }
     single<ResidenteRepository> { ResidenteRepositoryImpl(get(), get()) }
     single<PermisoRepository> { PermisoRepositoryImpl(get()) }
     single<CultoRepository> { CultoRepositoryImpl(get()) }
     single<LimpiezaRepository> { LimpiezaRepositoryImpl(get()) }
+    single<FamiliaRepository> { FamiliaRepositoryImpl(get()) }
     single<GaritaRepository> { GaritaRepositoryImpl(get()) }
     single { ResiDb(get<SqlDriver>()) }
     single { DatosLocales(get()) }
@@ -113,7 +122,11 @@ val presentacionModule = module {
     viewModelOf(::LimpiezaResidenteViewModel)
     viewModelOf(::MisSolicitudesViewModel)
     viewModelOf(::MovimientosViewModel)
-    viewModel { SolicitudFormViewModel(get()) { get<Sincronizador>().refrescar(forzar = true) } }
+    viewModel { SolicitudFormViewModel(get(), get()) { get<Sincronizador>().refrescar(forzar = true) } }
+    viewModelOf(::FamiliaInicioViewModel)
+    viewModelOf(::FamiliaSolicitudesViewModel)
+    viewModelOf(::FamiliaNuevoViewModel)
+    viewModel { (id: Long) -> FamiliaDetalleViewModel(id, get()) }
     viewModel { (id: Long) -> SolicitudDetalleViewModel(id, get()) { get<Sincronizador>().refrescar(forzar = true) } }
     // Preceptor
     viewModelOf(::InicioPreceptorViewModel)

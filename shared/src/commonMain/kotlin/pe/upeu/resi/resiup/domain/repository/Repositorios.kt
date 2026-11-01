@@ -13,7 +13,9 @@ import pe.upeu.resi.resiup.domain.model.Pagina
 import pe.upeu.resi.resiup.domain.model.Perfil
 import pe.upeu.resi.resiup.domain.model.QrPersonal
 import pe.upeu.resi.resiup.domain.model.ResidenteResumen
+import pe.upeu.resi.resiup.domain.model.Hijo
 import pe.upeu.resi.resiup.domain.model.ResumenLimpieza
+import pe.upeu.resi.resiup.domain.model.ResumenResidente
 import pe.upeu.resi.resiup.domain.model.SesionCulto
 import pe.upeu.resi.resiup.domain.model.SolicitudPermiso
 import pe.upeu.resi.resiup.domain.model.TipoCulto
@@ -39,6 +41,17 @@ interface PermisoRepository {
     suspend fun listar(estado: EstadoSolicitud?, pagina: Int): Result<Pagina<SolicitudPermiso>>
     suspend fun decidir(id: Long, aprobar: Boolean, comentario: String?): Result<SolicitudPermiso>
     suspend fun enlaceApoderado(id: Long): Result<EnlaceApoderado>
+    suspend fun resumenDelResidente(id: Long): Result<ResumenResidente>
+}
+
+/** Perfil de padres de familia: sus hijos y los permisos de ellos. */
+interface FamiliaRepository {
+    suspend fun hijos(): Result<List<Hijo>>
+    suspend fun solicitudes(estado: EstadoSolicitud?, pagina: Int): Result<Pagina<SolicitudPermiso>>
+    suspend fun detalle(id: Long): Result<SolicitudPermiso>
+    suspend fun crear(solicitud: NuevaSolicitud): Result<SolicitudPermiso>
+    suspend fun decidir(id: Long, aprobar: Boolean): Result<SolicitudPermiso>
+    suspend fun cancelar(id: Long): Result<SolicitudPermiso>
 }
 
 interface CultoRepository {

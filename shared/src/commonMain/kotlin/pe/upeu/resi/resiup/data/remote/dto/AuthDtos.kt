@@ -32,6 +32,7 @@ fun String.aRol(): Rol? = when (this) {
     "RESIDENTE" -> Rol.Residente
     "PRECEPTOR" -> Rol.Preceptor
     "GARITA" -> Rol.Garita
+    "APODERADO" -> Rol.Apoderado
     "ADMINISTRADOR" -> Rol.Administrador
     else -> null
 }

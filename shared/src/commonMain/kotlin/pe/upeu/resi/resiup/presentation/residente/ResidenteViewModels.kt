@@ -115,59 +115,6 @@ class LimpiezaResidenteViewModel(private val consultas: ConsultasResidenteReposi
 
 // ---------------------------------------------------------------- permisos: formulario y detalle
 
-data class SolicitudFormState(
-    val tipo: TipoPermiso = TipoPermiso.Corto,
-    val motivo: String = "",
-    val destino: String = "",
-    val salida: kotlin.time.Instant? = null,
-    val retorno: kotlin.time.Instant? = null,
-    val errores: Map<String, String> = emptyMap(),
-    val enviando: Boolean = false,
-    val error: ErrorApi? = null,
-    val creada: SolicitudPermiso? = null,
-)
-
-class SolicitudFormViewModel(private val repo: PermisoRepository, private val alCrear: () -> Unit = {}) : ViewModel() {
-    private val _estado = MutableStateFlow(SolicitudFormState())
-    val estado: StateFlow<SolicitudFormState> = _estado.asStateFlow()
-
-    fun tipo(v: TipoPermiso) = _estado.update { it.copy(tipo = v) }
-    fun motivo(v: String) = _estado.update { it.copy(motivo = v.take(300), errores = it.errores - "motivo", error = null) }
-    fun destino(v: String) = _estado.update { it.copy(destino = v.take(200), errores = it.errores - "destino", error = null) }
-    fun salida(v: kotlin.time.Instant) = _estado.update { it.copy(salida = v, errores = it.errores - "salida", error = null) }
-    fun retorno(v: kotlin.time.Instant) = _estado.update { it.copy(retorno = v, errores = it.errores - "retorno", error = null) }
-
-    /** Valida lo básico en el cliente; las reglas reales (duración, anticipación, superposición) las aplica el servidor. */
-    fun enviar() {
-        val s = _estado.value
-        if (s.enviando) return
-        val errores = buildMap {
-            if (s.motivo.isBlank()) put("motivo", "Indica el motivo")
-            if (s.destino.isBlank()) put("destino", "Indica el destino")
-            if (s.salida == null) put("salida", "Elige fecha y hora de salida")
-            else if (s.salida < ahora().minus(kotlin.time.Duration.parse("5m"))) put("salida", "La salida no puede estar en el pasado")
-            if (s.retorno == null) put("retorno", "Elige fecha y hora de retorno")
-            else if (s.salida != null && s.retorno <= s.salida) put("retorno", "El retorno debe ser posterior a la salida")
-        }
-        if (errores.isNotEmpty()) {
-            _estado.update { it.copy(errores = errores) }
-            return
-        }
-        _estado.update { it.copy(enviando = true, error = null, errores = emptyMap()) }
-        viewModelScope.launch {
-            repo.crear(NuevaSolicitud(s.tipo, s.motivo.trim(), s.destino.trim(), s.salida!!, s.retorno!!))
-                .onSuccess { c -> alCrear(); _estado.update { it.copy(enviando = false, creada = c) } }
-                .onFailure { e ->
-                    val err = e.aErrorApi()
-                    _estado.update {
-                        if (err is ErrorApi.Validacion) it.copy(enviando = false, errores = err.porCampo)
-                        else it.copy(enviando = false, error = err)
-                    }
-                }
-        }
-    }
-}
-
 data class DetalleAccionState(val trabajando: Boolean = false, val error: ErrorApi? = null, val mensaje: String? = null)
 
 class SolicitudDetalleViewModel(private val id: Long, private val repo: PermisoRepository, private val alCambiar: () -> Unit = {}) : ViewModel() {

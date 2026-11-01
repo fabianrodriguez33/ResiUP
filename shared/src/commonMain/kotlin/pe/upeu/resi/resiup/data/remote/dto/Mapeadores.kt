@@ -11,6 +11,9 @@ import pe.upeu.resi.resiup.domain.model.EstadoSolicitud
 import pe.upeu.resi.resiup.domain.model.EvaluacionLimpieza
 import pe.upeu.resi.resiup.domain.model.HabitacionLimpieza
 import pe.upeu.resi.resiup.domain.model.HabitacionResumen
+import pe.upeu.resi.resiup.domain.model.Hijo
+import pe.upeu.resi.resiup.domain.model.OrigenSolicitud
+import pe.upeu.resi.resiup.domain.model.ResumenResidente
 import pe.upeu.resi.resiup.domain.model.ResidenteLimpieza
 import pe.upeu.resi.resiup.domain.model.Justificacion
 import pe.upeu.resi.resiup.domain.model.MovimientoRegistrado
@@ -45,7 +48,7 @@ fun CriterioLimpieza.aApi(): String = when (this) {
 
 private fun String.aCriterio(): CriterioLimpieza? = CriterioLimpieza.entries.firstOrNull { it.aApi() == this }
 
-private fun String.aTipoPermiso(): TipoPermiso = TipoPermiso.entries.firstOrNull { it.aApi() == this } ?: TipoPermiso.Especial
+private fun String.aTipoPermiso(): TipoPermiso = TipoPermiso.entries.firstOrNull { it.aApi() == this } ?: TipoPermiso.Pernocte
 
 private fun String.aEstadoSolicitud(): EstadoSolicitud = when (this) {
     "BORRADOR" -> EstadoSolicitud.Borrador
@@ -71,7 +74,7 @@ private fun String.aEstadoRevision(): EstadoRevision = when (this) {
 
 fun <D, M> PaginaDto<D>.aDominio(mapeo: (D) -> M) = Pagina(contenido.map(mapeo), pagina, totalElementos, ultima)
 
-fun ResidenteDto.aPerfil() = Perfil(id, codigo, nombreCompleto, telefono, habitacion?.let { HabitacionResumen(it.id, it.numero, it.cama) })
+fun ResidenteDto.aPerfil() = Perfil(id, codigo, nombreCompleto, telefono, habitacion?.let { HabitacionResumen(it.id, it.numero, it.cama) }, puedeSolicitarSolo)
 
 fun ResidenteDto.aResumen() = ResidenteResumen(id, codigo, nombreCompleto, habitacion?.numero, activo)
 
@@ -94,7 +97,13 @@ fun SolicitudDto.aDominio() = SolicitudPermiso(
     comentarioDecision = comentarioDecision, creadoEn = creadoEn.instante(),
     ampliaciones = ampliaciones.orEmpty().map { Ampliacion(it.id, it.motivo, it.retornoNuevo.instante(), it.estado.aEstadoRevision()) },
     justificaciones = justificaciones.orEmpty().map { Justificacion(it.id, it.motivo, it.estado.aEstadoRevision(), it.comentario) },
+    origen = if (origen == "APODERADO") OrigenSolicitud.Apoderado else OrigenSolicitud.Residente,
+    responsableNombre = responsableNombre, responsableCelular = responsableCelular, acompanante = acompanante,
 )
+
+fun HijoDto.aDominio() = Hijo(residenteId, codigo, nombreCompleto, habitacion, cama, puedeSolicitarSolo, pendientes)
+
+fun ResumenResidenteDto.aDominio() = ResumenResidente(dias, cultosRealizados, asistencias, despuesDelCorte, promedioLimpieza, evaluaciones)
 
 fun EnlaceDto.aDominio() = EnlaceApoderado(token, ruta, expiraEn.instante(), apoderado)
 

@@ -26,6 +26,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import pe.upeu.resi.resiup.domain.model.EstadoRevision
 import pe.upeu.resi.resiup.domain.model.EstadoSolicitud
+import pe.upeu.resi.resiup.domain.model.OrigenSolicitud
 import pe.upeu.resi.resiup.domain.model.SolicitudPermiso
 import pe.upeu.resi.resiup.domain.model.TipoPermiso
 import pe.upeu.resi.resiup.presentation.components.BannerMensaje
@@ -113,18 +114,23 @@ private fun ListaPermisos(onNueva: () -> Unit, onDetalle: (Long) -> Unit) {
 private fun SolicitudNuevaScreen(onVolver: () -> Unit, onCreada: (Long) -> Unit) {
     val vm = koinViewModel<SolicitudFormViewModel>()
     val s by vm.estado.collectAsState()
+    val privilegio by vm.puedeSolicitarSolo.collectAsState()
     LaunchedEffect(s.creada) { s.creada?.let { onCreada(it.id) } }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         ResiBoton("Volver", onVolver, variante = VarianteBoton.Terciario)
-        TituloPantalla("Nueva solicitud", subtitulo = "El servidor valida las reglas vigentes de la residencia")
-        Text("Tipo de permiso", style = MaterialTheme.typography.labelMedium)
-        Segmentos(TipoPermiso.entries, s.tipo, { it.etiqueta }, vm::tipo)
-        ResiCampoTexto(s.motivo, vm::motivo, "Motivo", error = s.errores["motivo"], habilitado = !s.enviando)
-        ResiCampoTexto(s.destino, vm::destino, "Destino", error = s.errores["destino"], habilitado = !s.enviando)
-        CampoFechaHora("Salida", s.salida, s.errores["salida"], vm::salida)
-        CampoFechaHora("Retorno", s.retorno, s.errores["retorno"], vm::retorno)
+        TituloPantalla("Nuevo permiso", subtitulo = "Salida corta o larga")
+        BannerMensaje(
+            if (privilegio == true) "Tu solicitud irá directo al pastor para su aprobación."
+            else "Tu solicitud irá primero a tu padre/madre para que la acepte y después al pastor.",
+            EstadoVisual.Info,
+        )
+        CamposPermiso(s, vm)
         s.error?.let { BannerMensaje(it.aMensaje(), EstadoVisual.Error) }
         ResiBoton("Enviar solicitud", vm::enviar, Modifier.fillMaxWidth(), cargando = s.enviando)
+        Text(
+            "¿Vas a pernoctar fuera? Ese permiso lo envía tu padre o madre desde su cuenta.",
+            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -143,9 +149,9 @@ private fun SolicitudDetalleScreen(id: Long, onVolver: () -> Unit) {
                 TituloPantalla(s.destino, subtitulo = "Permiso ${s.tipo.etiqueta.lowercase()}")
                 ChipEstado(s.estado.etiqueta, s.estado.aEstadoVisual())
                 ResiTarjeta { DatosSolicitud(s) }
-                s.comentarioDecision?.let { BannerMensaje("Comentario del preceptor: $it", EstadoVisual.Info) }
+                s.comentarioDecision?.let { BannerMensaje("Comentario del pastor: $it", EstadoVisual.Info) }
                 if (s.estado == EstadoSolicitud.PendienteApoderado) {
-                    BannerMensaje("Esperando la autorización de tu apoderado. El personal le hará llegar el enlace.", EstadoVisual.Info)
+                    BannerMensaje("Esperando a tu padre/madre: debe aceptar este permiso desde su cuenta (o con el enlace que le dé el personal).", EstadoVisual.Info)
                 }
                 s.ampliaciones.forEach { BannerMensaje("Ampliación hasta ${it.retornoNuevo.formatoLima()}: ${it.estado.etiqueta}", EstadoVisual.Info) }
                 s.justificaciones.forEach { BannerMensaje("Justificación: ${it.estado.etiqueta}${it.comentario?.let { c -> " — $c" } ?: ""}", if (it.estado == EstadoRevision.Aprobada) EstadoVisual.Exito else EstadoVisual.Info) }
@@ -154,7 +160,7 @@ private fun SolicitudDetalleScreen(id: Long, onVolver: () -> Unit) {
                 if (vencido && s.justificaciones.none { it.estado == EstadoRevision.Pendiente }) {
                     ResiTarjeta {
                         Text("El permiso venció", style = MaterialTheme.typography.titleMedium)
-                        Text("Si regresaste fuera de horario, cuéntanos qué ocurrió. No cambia el horario autorizado; el preceptor la revisará.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Si regresaste fuera de horario, cuéntanos qué ocurrió. No cambia el horario autorizado; el pastor la revisará.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         ResiCampoTexto(motivoJustificacion, { motivoJustificacion = it.take(300) }, "Justificación", Modifier.padding(top = Espacio.s), error = (accion.error as? pe.upeu.resi.resiup.domain.error.ErrorApi.Validacion)?.porCampo?.get("motivo"), unaLinea = false)
                         ResiBoton("Enviar justificación", { vm.justificar(motivoJustificacion) }, Modifier.fillMaxWidth().padding(top = Espacio.s), cargando = accion.trabajando)
                     }
@@ -176,12 +182,20 @@ private fun SolicitudDetalleScreen(id: Long, onVolver: () -> Unit) {
 @Composable
 internal fun DatosSolicitud(s: SolicitudPermiso) {
     Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+        Dato("Tipo", s.tipo.etiqueta)
+        Dato("Lugar", s.destino)
         Dato("Motivo", s.motivo)
+        if (s.tipo == TipoPermiso.Pernocte) {
+            s.responsableNombre?.let { Dato("Responsable de la casa", it) }
+            s.responsableCelular?.let { Dato("Celular del responsable", it) }
+            s.acompanante?.let { Dato("Acompañado de", it) }
+        }
         Dato("Salida", s.salida.formatoLima())
-        Dato("Retorno solicitado", s.retornoSolicitado.formatoLima())
-        if (s.retornoAutorizado != s.retornoSolicitado) Dato("Retorno autorizado", s.retornoAutorizado.formatoLima())
+        Dato("Ingreso solicitado", s.retornoSolicitado.formatoLima())
+        if (s.retornoAutorizado != s.retornoSolicitado) Dato("Ingreso autorizado", s.retornoAutorizado.formatoLima())
         if (s.residenteNombre.isNotBlank()) Dato("Residente", "${s.residenteNombre} (${s.residenteCodigo})")
-        Dato("Registrada", "${s.creadoEn.formatoLima()}")
+        Dato("Enviado por", if (s.origen == OrigenSolicitud.Apoderado) "Padre/madre/apoderado" else "El residente")
+        Dato("Registrada", s.creadoEn.formatoLima())
     }
 }
 

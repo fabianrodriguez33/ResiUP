@@ -34,6 +34,9 @@ import pe.upeu.resi.resiup.presentation.components.ResiTarjeta
 import pe.upeu.resi.resiup.presentation.components.TituloPantalla
 import pe.upeu.resi.resiup.presentation.components.VarianteBoton
 import pe.upeu.resi.resiup.presentation.navigation.Destinos
+import pe.upeu.resi.resiup.presentation.familia.InicioFamiliaScreen
+import pe.upeu.resi.resiup.presentation.familia.NuevoPermisoFamiliaScreen
+import pe.upeu.resi.resiup.presentation.familia.SolicitudesFamiliaScreen
 import pe.upeu.resi.resiup.presentation.personal.AsistenciaCultoScreen
 import pe.upeu.resi.resiup.presentation.personal.EscanerGaritaScreen
 import pe.upeu.resi.resiup.presentation.personal.HistorialGaritaScreen
@@ -95,6 +98,12 @@ private fun ContenidoReal(rol: Rol, sesion: Sesion, destino: String, irA: (Strin
         Rol.Garita -> when (destino) {
             Destinos.Escanear -> EscanerGaritaScreen()
             Destinos.Historial -> HistorialGaritaScreen()
+            else -> PantallaCuenta(rol, sesion, onCerrarSesion)
+        }
+        Rol.Apoderado -> when (destino) {
+            Destinos.Inicio -> InicioFamiliaScreen(sesion.nombreCompleto, irA)
+            Destinos.Solicitudes -> SolicitudesFamiliaScreen()
+            Destinos.Nuevo -> NuevoPermisoFamiliaScreen(irA)
             else -> PantallaCuenta(rol, sesion, onCerrarSesion)
         }
         Rol.Administrador -> when (destino) {

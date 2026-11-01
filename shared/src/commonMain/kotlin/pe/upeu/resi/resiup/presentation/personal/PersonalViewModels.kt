@@ -22,6 +22,7 @@ import pe.upeu.resi.resiup.domain.model.PuntajePersonal
 import pe.upeu.resi.resiup.domain.model.CRITERIOS_PERSONALES
 import pe.upeu.resi.resiup.domain.model.ResidenteResumen
 import pe.upeu.resi.resiup.domain.model.SesionCulto
+import pe.upeu.resi.resiup.domain.model.ResumenResidente
 import pe.upeu.resi.resiup.domain.model.SolicitudPermiso
 import pe.upeu.resi.resiup.domain.model.TipoCulto
 import pe.upeu.resi.resiup.domain.model.TipoMovimiento
@@ -81,12 +82,18 @@ class SolicitudRevisionViewModel(private val id: Long, private val repo: Permiso
     val estado: StateFlow<Carga<SolicitudPermiso>> = _estado.asStateFlow()
     private val _accion = MutableStateFlow(RevisionAccion())
     val accion: StateFlow<RevisionAccion> = _accion.asStateFlow()
+    private val _resumen = MutableStateFlow<Carga<ResumenResidente>>(Carga.Cargando)
+
+    /** Asistencia a cultos y limpieza de los últimos 30 días: lo que el pastor revisa antes de aprobar. */
+    val resumen: StateFlow<Carga<ResumenResidente>> = _resumen.asStateFlow()
 
     init { cargar() }
 
     fun cargar() {
         _estado.value = Carga.Cargando
+        _resumen.value = Carga.Cargando
         viewModelScope.launch { _estado.value = repo.detalle(id).aCarga() }
+        viewModelScope.launch { _resumen.value = repo.resumenDelResidente(id).aCarga() }
     }
 
     fun recargar() {

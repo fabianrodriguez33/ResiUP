@@ -2,8 +2,9 @@ package pe.upeu.resi.resiup.domain.model
 
 enum class Rol(val etiqueta: String) {
     Residente("Residente"),
-    Preceptor("Preceptor"),
+    Preceptor("Pastor"),
     Garita("Garita"),
+    Apoderado("Padre/madre"),
     Administrador("Administrador"),
 }
 

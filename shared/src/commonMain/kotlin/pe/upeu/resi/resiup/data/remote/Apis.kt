@@ -12,7 +12,10 @@ import pe.upeu.resi.resiup.data.remote.dto.DecisionRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.EnlaceDto
 import pe.upeu.resi.resiup.data.remote.dto.EvaluacionDto
 import pe.upeu.resi.resiup.data.remote.dto.JustificacionRequestDto
+import pe.upeu.resi.resiup.data.remote.dto.DecisionApoderadoRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.HabitacionLimpiezaDto
+import pe.upeu.resi.resiup.data.remote.dto.HijoDto
+import pe.upeu.resi.resiup.data.remote.dto.ResumenResidenteDto
 import pe.upeu.resi.resiup.data.remote.dto.LimpiezaHabitacionRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.MovimientoDto
 import pe.upeu.resi.resiup.data.remote.dto.MovimientoRequestDto
@@ -58,6 +61,21 @@ class PermisoApi(private val client: HttpClient) {
         }.body()
     suspend fun decidir(id: Long, r: DecisionRequestDto): SolicitudDto = client.post("${BASE}permisos/solicitudes/$id/decision") { setBody(r) }.body()
     suspend fun enlaceApoderado(id: Long): EnlaceDto = client.post("${BASE}permisos/solicitudes/$id/enlace-apoderado").body()
+    suspend fun resumen(id: Long): ResumenResidenteDto = client.get("${BASE}permisos/solicitudes/$id/resumen-residente").body()
+}
+
+class FamiliaApi(private val client: HttpClient) {
+    suspend fun hijos(): List<HijoDto> = client.get("${BASE}familia/hijos").body()
+    suspend fun solicitudes(estado: String?, pagina: Int, tamanio: Int): PaginaDto<SolicitudDto> =
+        client.get("${BASE}familia/solicitudes") {
+            estado?.let { parameter("estado", it) }
+            parameter("pagina", pagina); parameter("tamanio", tamanio)
+        }.body()
+    suspend fun detalle(id: Long): SolicitudDto = client.get("${BASE}familia/solicitudes/$id").body()
+    suspend fun crear(r: SolicitudRequestDto): SolicitudDto = client.post("${BASE}familia/solicitudes") { setBody(r) }.body()
+    suspend fun decidir(id: Long, aprobar: Boolean): SolicitudDto =
+        client.post("${BASE}familia/solicitudes/$id/decision") { setBody(DecisionApoderadoRequestDto(aprobar)) }.body()
+    suspend fun cancelar(id: Long): SolicitudDto = client.post("${BASE}familia/solicitudes/$id/cancelar").body()
 }
 
 class CultoApi(private val client: HttpClient) {

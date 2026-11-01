@@ -83,6 +83,7 @@ private class PermisosRemoto(val remoto: ResidenteRemoto) : PermisoRepository {
     override suspend fun listar(estado: EstadoSolicitud?, pagina: Int) = pagina<SolicitudPermiso>(emptyList())
     override suspend fun decidir(id: Long, aprobar: Boolean, comentario: String?) = Result.success(solicitud(id))
     override suspend fun enlaceApoderado(id: Long) = Result.failure<pe.upeu.resi.resiup.domain.model.EnlaceApoderado>(ErrorApiException(ErrorApi.NoEncontrado))
+    override suspend fun resumenDelResidente(id: Long) = Result.failure<pe.upeu.resi.resiup.domain.model.ResumenResidente>(ErrorApiException(ErrorApi.NoEncontrado))
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

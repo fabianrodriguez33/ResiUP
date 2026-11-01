@@ -44,6 +44,12 @@ fun combinarFechaHora(fechaMillisUtc: Long, hora: Int, minuto: Int): Instant {
     return LocalDateTime(fecha, LocalTime(hora, minuto)).toInstant(ZonaResidencia)
 }
 
+/** Misma fecha (en Lima) pero a la hora indicada: el ingreso de un permiso corto es el mismo día que la salida. */
+fun Instant.conHoraLima(hora: Int, minuto: Int): Instant {
+    val f = toLocalDateTime(ZonaResidencia)
+    return LocalDateTime(f.date, LocalTime(hora, minuto)).toInstant(ZonaResidencia)
+}
+
 /** Un decimal con coma («17,5»), sin depender de la configuración regional de la plataforma. */
 fun Double.unDecimal(): String {
     val decimas = kotlin.math.round(this * 10).toInt()

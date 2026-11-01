@@ -128,6 +128,7 @@ class ModulosTest {
         override suspend fun listar(estado: EstadoSolicitud?, pagina: Int) = Result.success(Pagina<SolicitudPermiso>(emptyList(), 0, 0, true))
         override suspend fun decidir(id: Long, aprobar: Boolean, comentario: String?) = respuesta
         override suspend fun enlaceApoderado(id: Long) = fallo(ErrorApi.NoEncontrado)
+        override suspend fun resumenDelResidente(id: Long) = fallo(ErrorApi.NoEncontrado)
     }
 
     private fun solicitud(id: Long = 1) = SolicitudPermiso(
@@ -168,7 +169,7 @@ class ModulosTest {
 
         val rechazada = PermisoFalso(fallo(ErrorApi.Validacion(mapOf("retorno" to "Excede las 8 horas permitidas"))))
         val vm2 = SolicitudFormViewModel(rechazada)
-        vm2.motivo("x"); vm2.destino("y"); vm2.salida(ahora() + 1.hours); vm2.retorno(ahora() + 20.hours)
+        vm2.tipo(TipoPermiso.Largo); vm2.motivo("x"); vm2.destino("y"); vm2.salida(ahora() + 1.hours); vm2.retorno(ahora() + 20.hours)
         vm2.enviar()
         assertEquals("Excede las 8 horas permitidas", vm2.estado.value.errores["retorno"])
         assertNull(vm2.estado.value.creada)
