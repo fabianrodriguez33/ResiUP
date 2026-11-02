@@ -127,6 +127,7 @@ fun PerfilCuentaScreen(rol: Rol, onCerrarSesion: () -> Unit, vm: PerfilCuentaVie
     var confirmar by remember { mutableStateOf(false) }
     var verificando by remember { mutableStateOf(false) }
     var verDias by remember { mutableStateOf(false) }
+    var cambiandoClave by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { vm.cargar() }
     BackHandler(enabled = verDias || form != null) { if (verDias) verDias = false else vm.cancelar() }
 
@@ -159,6 +160,7 @@ fun PerfilCuentaScreen(rol: Rol, onCerrarSesion: () -> Unit, vm: PerfilCuentaVie
                     ResiBoton("Verificar mi correo", { verificando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
                 }
                 ResiBoton("Editar mis datos", { vm.editar(p) }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
+                ResiBoton("Cambiar contraseña", { cambiandoClave = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
                 Text(
                     "Tu nombre y tu DNI los gestiona la administración de la residencia.",
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -183,6 +185,7 @@ fun PerfilCuentaScreen(rol: Rol, onCerrarSesion: () -> Unit, vm: PerfilCuentaVie
             VerificarCorreoDialogo(p.email, { verificando = false }, { verificando = false; vm.refrescar() })
         }
     }
+    if (cambiandoClave) pe.upeu.resi.resiup.presentation.clave.CambiarClaveDialogo(onCerrar = { cambiandoClave = false })
     if (confirmar) {
         DialogoConfirmacion("Cerrar sesión", "¿Deseas salir de ResiUP en este dispositivo?", "Cerrar sesión", { confirmar = false; onCerrarSesion() }, { confirmar = false }, destructivo = true)
     }

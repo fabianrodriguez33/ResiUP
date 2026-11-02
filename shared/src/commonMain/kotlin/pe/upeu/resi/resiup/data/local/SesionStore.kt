@@ -14,6 +14,7 @@ private data class SesionGuardada(
     val permisos: List<String>,
     val expiraEnMillis: Long,
     val qr: String? = null,
+    val debeCambiarClave: Boolean = false,
 )
 
 /**
@@ -28,7 +29,7 @@ class SesionStore(private val almacen: AlmacenSeguro) {
     private var cargada = false
 
     fun guardar(sesion: Sesion) {
-        val s = SesionGuardada(sesion.token, sesion.usuario, sesion.nombreCompleto, sesion.rol.name.uppercase(), sesion.permisos.toList(), sesion.expiraEnMillis, null)
+        val s = SesionGuardada(sesion.token, sesion.usuario, sesion.nombreCompleto, sesion.rol.name.uppercase(), sesion.permisos.toList(), sesion.expiraEnMillis, null, sesion.debeCambiarClave)
         qrGuardado = null
         almacen.guardar(json.encodeToString(SesionGuardada.serializer(), s))
         cache = sesion
@@ -40,7 +41,7 @@ class SesionStore(private val almacen: AlmacenSeguro) {
         cache = almacen.leer()?.let { texto ->
             runCatching { json.decodeFromString(SesionGuardada.serializer(), texto) }.getOrNull()?.let { g ->
                 qrGuardado = g.qr
-                g.rol.aRol()?.let { rol -> Sesion(g.token, g.usuario, g.nombreCompleto, rol, g.permisos.toSet(), g.expiraEnMillis) }
+                g.rol.aRol()?.let { rol -> Sesion(g.token, g.usuario, g.nombreCompleto, rol, g.permisos.toSet(), g.expiraEnMillis, g.debeCambiarClave) }
             }
         }
         if (cache == null) almacen.borrar()
@@ -51,9 +52,18 @@ class SesionStore(private val almacen: AlmacenSeguro) {
     /** QR personal cifrado junto a la sesión: se borra con ella (cierre, expiración o cambio de usuario). */
     fun guardarQr(contenido: String) {
         val sesion = leer() ?: return
-        val s = SesionGuardada(sesion.token, sesion.usuario, sesion.nombreCompleto, sesion.rol.name.uppercase(), sesion.permisos.toList(), sesion.expiraEnMillis, contenido)
+        val s = SesionGuardada(sesion.token, sesion.usuario, sesion.nombreCompleto, sesion.rol.name.uppercase(), sesion.permisos.toList(), sesion.expiraEnMillis, contenido, sesion.debeCambiarClave)
         almacen.guardar(json.encodeToString(SesionGuardada.serializer(), s))
         qrGuardado = contenido
+    }
+
+    /** Ya eligió una contraseña nueva: se conserva todo lo demás de la sesión (incluido el QR guardado). */
+    fun claveCambiada() {
+        val sesion = leer() ?: return
+        val nueva = sesion.copy(debeCambiarClave = false)
+        val s = SesionGuardada(nueva.token, nueva.usuario, nueva.nombreCompleto, nueva.rol.name.uppercase(), nueva.permisos.toList(), nueva.expiraEnMillis, qrGuardado, false)
+        almacen.guardar(json.encodeToString(SesionGuardada.serializer(), s))
+        cache = nueva
     }
 
     fun qr(): String? = leer()?.let { qrGuardado }

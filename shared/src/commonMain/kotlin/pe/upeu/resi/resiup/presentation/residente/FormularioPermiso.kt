@@ -56,6 +56,8 @@ data class SolicitudFormState(
     val enviando: Boolean = false,
     val error: ErrorApi? = null,
     val creada: SolicitudPermiso? = null,
+    /** Sin conexión: el permiso quedó guardado y se enviará solo cuando vuelva la red. */
+    val enCola: Boolean = false,
 )
 
 /** Lógica común del formulario; el residente y el padre/madre solo cambian a quién se envía y qué tipos puede elegir. */
@@ -64,6 +66,7 @@ abstract class PermisoFormViewModel(
     private val exigeHijo: Boolean,
     private val enviarSolicitud: suspend (NuevaSolicitud) -> Result<SolicitudPermiso>,
     private val alCrear: () -> Unit = {},
+    private val cola: pe.upeu.resi.resiup.data.repository.ColaPermisos? = null,
 ) : ViewModel() {
     protected val _estado = MutableStateFlow(SolicitudFormState(tipo = tiposPermitidos.first()))
     val estado: StateFlow<SolicitudFormState> = _estado.asStateFlow()
@@ -103,16 +106,22 @@ abstract class PermisoFormViewModel(
         _estado.update { it.copy(enviando = true, error = null, errores = emptyMap()) }
         val pernocta = s.tipo == TipoPermiso.Pernocte
         viewModelScope.launch {
-            enviarSolicitud(
-                NuevaSolicitud(
-                    s.tipo, s.motivo.trim(), s.destino.trim(), s.salida!!, s.retorno!!, if (exigeHijo) s.residenteId else null,
-                    if (pernocta) s.responsableNombre.trim() else null, if (pernocta) s.responsableCelular.trim() else null,
-                    if (pernocta) s.acompanante.trim().ifBlank { "Nadie" } else null,
-                ),
+            val nueva = NuevaSolicitud(
+                s.tipo, s.motivo.trim(), s.destino.trim(), s.salida!!, s.retorno!!, if (exigeHijo) s.residenteId else null,
+                if (pernocta) s.responsableNombre.trim() else null, if (pernocta) s.responsableCelular.trim() else null,
+                if (pernocta) s.acompanante.trim().ifBlank { "Nadie" } else null,
+                claveCliente = cola?.nuevaClave(),
             )
+            enviarSolicitud(nueva)
                 .onSuccess { c -> alCrear(); _estado.update { it.copy(enviando = false, creada = c) } }
                 .onFailure { e ->
                     val err = e.aErrorApi()
+                    if (cola != null && (err == ErrorApi.SinConexion || err == ErrorApi.TiempoAgotado)) {
+                        // Sin red: el permiso queda pendiente y la app lo envía sola cuando vuelva la conexión.
+                        cola.encolar(nueva)
+                        _estado.update { it.copy(enviando = false, enCola = true) }
+                        return@onFailure
+                    }
                     _estado.update {
                         if (err is ErrorApi.Validacion) it.copy(enviando = false, errores = err.porCampo)
                         else it.copy(enviando = false, error = err)
@@ -151,7 +160,8 @@ class SolicitudFormViewModel(
     repo: PermisoRepository,
     consultas: ConsultasResidenteRepository? = null,
     alCrear: () -> Unit = {},
-) : PermisoFormViewModel(listOf(TipoPermiso.Corto, TipoPermiso.Largo), false, { repo.crear(it) }, alCrear) {
+    cola: pe.upeu.resi.resiup.data.repository.ColaPermisos? = null,
+) : PermisoFormViewModel(listOf(TipoPermiso.Corto, TipoPermiso.Largo), false, { repo.crear(it) }, alCrear, cola) {
     private val _privilegio = MutableStateFlow<Boolean?>(null)
 
     /** Verdadero si el residente tiene el privilegio de enviar sus permisos sin pasar antes por su padre/madre (null = aún no se sabe). */

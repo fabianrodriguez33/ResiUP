@@ -79,6 +79,7 @@ class PermisoRepositoryImpl(private val api: PermisoApi) : PermisoRepository {
 private fun NuevaSolicitud.aDto() = SolicitudRequestDto(
     tipo.aApi(), motivo, destino, salida.toString(), retorno.toString(),
     residenteId, responsableNombre?.takeIf { it.isNotBlank() }, responsableCelular?.takeIf { it.isNotBlank() }, acompanante?.takeIf { it.isNotBlank() },
+    claveCliente,
 )
 
 class FamiliaRepositoryImpl(private val api: FamiliaApi) : FamiliaRepository {

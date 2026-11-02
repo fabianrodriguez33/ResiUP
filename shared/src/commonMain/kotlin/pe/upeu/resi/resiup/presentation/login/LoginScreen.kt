@@ -56,6 +56,7 @@ fun LoginScreen(
     onClave: (String) -> Unit,
     onIngresar: () -> Unit,
     aviso: String?,
+    onOlvide: () -> Unit = {},
 ) {
     val entrada = remember { Animatable(0f) }
     LaunchedEffect(Unit) { entrada.animateTo(1f, tween(450, easing = FastOutSlowInEasing)) }
@@ -87,6 +88,7 @@ fun LoginScreen(
                 ResiCampoTexto(estado.clave, onClave, "Contraseña", error = estado.claveError, esClave = true, habilitado = !estado.cargando)
                 estado.error?.let { BannerMensaje(it, EstadoVisual.Error) }
                 ResiBoton("Ingresar", onIngresar, Modifier.fillMaxWidth(), cargando = estado.cargando)
+                ResiBoton("Olvidé mi contraseña", onOlvide, Modifier.fillMaxWidth(), variante = VarianteBoton.Terciario, habilitado = !estado.cargando)
                 Text(
                     "¿No tienes cuenta? La administración de la residencia te la crea.",
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,

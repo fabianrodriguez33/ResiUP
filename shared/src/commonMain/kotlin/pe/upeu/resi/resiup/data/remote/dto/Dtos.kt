@@ -119,6 +119,7 @@ data class SolicitudDto(
 data class SolicitudRequestDto(
     val tipo: String, val motivo: String, val destino: String, val salida: String, val retorno: String,
     val residenteId: Long? = null, val responsableNombre: String? = null, val responsableCelular: String? = null, val acompanante: String? = null,
+    val claveCliente: String? = null,
 )
 
 @Serializable

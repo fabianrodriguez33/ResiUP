@@ -38,6 +38,12 @@ class GestorSesion(
         _estado.value = EstadoSesion.Activa(sesion)
     }
 
+    /** Eligió su contraseña nueva: deja de exigírsela. */
+    fun claveCambiada() {
+        val actual = _estado.value
+        if (actual is EstadoSesion.Activa) _estado.value = EstadoSesion.Activa(actual.sesion.copy(debeCambiarClave = false))
+    }
+
     suspend fun cerrarSesion(aviso: String? = null) {
         cerrar()
         alCerrar() // se borra la copia local de consulta: otro usuario no debe ver datos del anterior

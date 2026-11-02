@@ -18,7 +18,14 @@ data class LoginResponseDto(
     val nombreCompleto: String,
     val roles: List<String>,
     val permisos: List<String> = emptyList(),
+    val debeCambiarClave: Boolean = false,
 )
+
+@Serializable
+data class OlvideClaveRequestDto(val username: String)
+
+@Serializable
+data class CambiarClaveRequestDto(val claveActual: String, val claveNueva: String)
 
 @Serializable
 data class ErrorResponseDto(
@@ -47,5 +54,6 @@ fun LoginResponseDto.aSesion(ahoraMillis: Long): Sesion {
         rol = rol,
         permisos = permisos.toSet(),
         expiraEnMillis = ahoraMillis + expiraEnSegundos * 1000,
+        debeCambiarClave = debeCambiarClave,
     )
 }

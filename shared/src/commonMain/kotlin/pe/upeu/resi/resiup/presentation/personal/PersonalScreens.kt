@@ -177,6 +177,7 @@ fun AsistenciaCultoScreen(vm: AsistenciaCultoViewModel = koinViewModel()) {
 private sealed interface RutaSolicitudes {
     data object Lista : RutaSolicitudes
     data class Revision(val id: Long) : RutaSolicitudes
+    data object Tramites : RutaSolicitudes
 }
 
 private enum class FiltroPermisos(val etiqueta: String) { Aprobados("Aprobados"), EnEspera("En espera"), Todos("Todos") }
@@ -187,7 +188,8 @@ fun SolicitudesPreceptorScreen() {
     var ruta by remember { mutableStateOf<RutaSolicitudes>(RutaSolicitudes.Lista) }
     BackHandler(enabled = ruta != RutaSolicitudes.Lista) { ruta = RutaSolicitudes.Lista }
     when (val r = ruta) {
-        RutaSolicitudes.Lista -> ListaPermisosPastor { ruta = RutaSolicitudes.Revision(it) }
+        RutaSolicitudes.Lista -> ListaPermisosPastor(onAbrir = { ruta = RutaSolicitudes.Revision(it) }, onTramites = { ruta = RutaSolicitudes.Tramites })
+        RutaSolicitudes.Tramites -> pe.upeu.resi.resiup.presentation.tramites.RevisionTramitesScreen(onVolver = { ruta = RutaSolicitudes.Lista })
         is RutaSolicitudes.Revision -> DetallePermisoPastor(r.id) { ruta = RutaSolicitudes.Lista }
     }
 }
@@ -200,7 +202,12 @@ private fun TipoPermiso.acento() = when (this) {
 
 /** El pastor solo consulta: aquí no se aprueba nada. */
 @Composable
-private fun ListaPermisosPastor(onAbrir: (Long) -> Unit) {
+private fun ListaPermisosPastor(onAbrir: (Long) -> Unit, onTramites: () -> Unit) {
+    val tramites = koinViewModel<pe.upeu.resi.resiup.presentation.tramites.RevisionTramitesViewModel>()
+    val ampliaciones by tramites.ampliaciones.collectAsState()
+    val justificaciones by tramites.justificaciones.collectAsState()
+    val porRevisar = tramites.total(ampliaciones, justificaciones)
+    LaunchedEffect(Unit) { tramites.cargar() }
     var filtro by remember { mutableStateOf(FiltroPermisos.Aprobados) }
     val aprobados = koinViewModel<PermisosAprobadosViewModel>()
     val enEspera = koinViewModel<PermisosEnEsperaViewModel>()
@@ -210,6 +217,12 @@ private fun ListaPermisosPastor(onAbrir: (Long) -> Unit) {
     val estado by vm.estado.collectAsState()
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla("Permisos", Modifier.padding(top = Espacio.l), subtitulo = "Lista de permisos generados")
+        ResiTarjeta(onClick = onTramites) {
+            ElementoLista(
+                "Ampliaciones y justificaciones", subtitulo = "Pedidos de más tiempo y explicaciones de tardanza", icono = ResiIconos.Solicitudes, acento = Acento.Naranja,
+                final = { if (porRevisar != null && porRevisar > 0) ChipEstado("$porRevisar por revisar", EstadoVisual.Advertencia) },
+            )
+        }
         Segmentos(FiltroPermisos.entries, filtro, { it.etiqueta }, { filtro = it })
         ListaPaginada(estado, vm::refrescar, vm::cargarMas, "Sin permisos", "No hay permisos en esta lista.") { s ->
             ResiTarjeta(onClick = { onAbrir(s.id) }) {

@@ -29,4 +29,11 @@ class AuthRepositoryImpl(
     }
 
     override suspend fun cerrarSesion() = store.borrar()
+
+    override suspend fun olvideClave(usuario: String) = ejecutarLlamada(esLogin = true) { api.olvideClave(usuario.trim()) }
+
+    override suspend fun cambiarClave(actual: String, nueva: String): Result<Unit> = ejecutarLlamada {
+        api.cambiarClave(actual, nueva)
+        store.claveCambiada()
+    }
 }

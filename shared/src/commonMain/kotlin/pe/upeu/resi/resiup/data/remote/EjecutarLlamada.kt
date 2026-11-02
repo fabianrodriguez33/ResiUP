@@ -32,6 +32,7 @@ suspend fun <T> ejecutarLlamada(esLogin: Boolean = false, bloque: suspend () -> 
         403 -> ErrorApi.SinPermiso
         404 -> ErrorApi.NoEncontrado
         408 -> ErrorApi.TiempoAgotado
+        429 -> ErrorApi.Conflicto(cuerpo?.message?.takeIf { it.isNotBlank() } ?: "Demasiados intentos. Espera un momento.")
         409 -> ErrorApi.Conflicto(cuerpo?.message?.takeIf { it.isNotBlank() } ?: "La operación entra en conflicto con el estado actual")
         else -> ErrorApi.Servidor
     }

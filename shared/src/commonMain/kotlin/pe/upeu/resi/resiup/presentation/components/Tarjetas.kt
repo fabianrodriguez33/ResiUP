@@ -150,7 +150,8 @@ fun ChipEstado(texto: String, estado: EstadoVisual, modifier: Modifier = Modifie
 
 @Composable
 fun TituloPantalla(titulo: String, modifier: Modifier = Modifier, subtitulo: String? = null) {
-    Column(modifier.fillMaxWidth()) {
+    // Deja libre el borde derecho: ahí flota la campana de notificaciones.
+    Column(modifier.fillMaxWidth().padding(end = 44.dp)) {
         Text(titulo, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
         if (subtitulo != null) {
             Text(subtitulo, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

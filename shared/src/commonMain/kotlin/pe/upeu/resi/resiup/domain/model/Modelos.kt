@@ -106,6 +106,14 @@ data class SolicitudPermiso(
 data class NuevaSolicitud(
     val tipo: TipoPermiso, val motivo: String, val destino: String, val salida: Instant, val retorno: Instant,
     val residenteId: Long? = null, val responsableNombre: String? = null, val responsableCelular: String? = null, val acompanante: String? = null,
+    /** Clave que la app genera al pedir sin conexión: el servidor no duplica la solicitud si el envío se repite. */
+    val claveCliente: String? = null,
+)
+
+/** Permiso pedido sin conexión que espera para enviarse. [error] es lo que respondió el servidor si lo rechazó. */
+data class PermisoPendiente(
+    val clave: String, val tipo: TipoPermiso, val motivo: String, val destino: String,
+    val salida: Instant, val retorno: Instant, val creadaEn: Instant, val error: String? = null,
 )
 
 /** Hijo/a de un padre o madre con cuenta en la app. */

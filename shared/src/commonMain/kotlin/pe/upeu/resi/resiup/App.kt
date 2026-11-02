@@ -10,6 +10,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import pe.upeu.resi.resiup.presentation.clave.CambiarClaveForzadaScreen
+import pe.upeu.resi.resiup.presentation.clave.OlvideClaveDialogo
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -59,13 +61,19 @@ fun App(
         Crossfade(estado) { e ->
             when {
                 e is EstadoSesion.Arrancando -> Box(Modifier.fillMaxSize().background(androidx.compose.material3.MaterialTheme.colorScheme.background))
+                e is EstadoSesion.Activa && e.sesion.debeCambiarClave -> StoreDeSesion(e.sesion.token) {
+                    CambiarClaveForzadaScreen(onCerrarSesion = { alcance.launch { gestor.cerrarSesion() } })
+                }
                 e is EstadoSesion.Activa -> StoreDeSesion(e.sesion.token) {
                     ShellPrincipal(e.sesion.rol, e.sesion) { alcance.launch { gestor.cerrarSesion() } }
                 }
                 else -> {
                     val vm = koinViewModel<LoginViewModel>()
                     val login by vm.estado.collectAsState()
+                    var olvido by remember { mutableStateOf(false) }
+                    if (olvido) OlvideClaveDialogo(onCerrar = { olvido = false })
                     LoginScreen(
+                        onOlvide = { olvido = true },
                         estado = login,
                         onUsuario = vm::alCambiarUsuario,
                         onClave = vm::alCambiarClave,

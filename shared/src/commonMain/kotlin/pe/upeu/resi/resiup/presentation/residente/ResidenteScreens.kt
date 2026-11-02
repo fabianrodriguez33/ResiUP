@@ -150,6 +150,7 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
 fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: PerfilViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
     var confirmar by remember { mutableStateOf(false) }
+    var cambiandoClave by remember { mutableStateOf(false) }
     var editando by remember { mutableStateOf(false) }
     var verQr by remember { mutableStateOf(false) }
     var verificando by remember { mutableStateOf(false) }
@@ -186,6 +187,7 @@ fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: Perfi
                 ResiBoton("Verificar mi correo", { verificando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
             }
             ResiBoton("Editar perfil", { editando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
+            ResiBoton("Cambiar contraseña", { cambiandoClave = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
             Text(
                 "El nombre, el DNI y el código universitario los gestiona la administración de la residencia.",
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -198,6 +200,7 @@ fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: Perfi
             VerificarCorreoDialogo(perfil.email, { verificando = false }, { verificando = false; vm.reintentar() })
         }
     }
+    if (cambiandoClave) pe.upeu.resi.resiup.presentation.clave.CambiarClaveDialogo(onCerrar = { cambiandoClave = false })
     if (confirmar) {
         DialogoConfirmacion("Cerrar sesión", "Se borrarán los datos guardados en este teléfono. ¿Deseas salir de ResiUP?", "Cerrar sesión", { confirmar = false; onCerrarSesion() }, { confirmar = false }, destructivo = true)
     }

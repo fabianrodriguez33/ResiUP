@@ -10,4 +10,12 @@ import pe.upeu.resi.resiup.data.remote.dto.LoginResponseDto
 class AuthApi(private val client: HttpClient) {
     suspend fun login(request: LoginRequestDto): LoginResponseDto =
         client.post("api/v1/auth/login") { setBody(request) }.body()
+
+    suspend fun olvideClave(usuario: String) {
+        client.post("api/v1/auth/olvide-clave") { setBody(pe.upeu.resi.resiup.data.remote.dto.OlvideClaveRequestDto(usuario)) }
+    }
+
+    suspend fun cambiarClave(actual: String, nueva: String) {
+        client.post("api/v1/auth/cambiar-clave") { setBody(pe.upeu.resi.resiup.data.remote.dto.CambiarClaveRequestDto(actual, nueva)) }
+    }
 }

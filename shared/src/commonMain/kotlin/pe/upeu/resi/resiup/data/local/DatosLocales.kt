@@ -62,6 +62,18 @@ class DatosLocales(db: ResiDb) {
         }
     }
 
+    fun pendientes(): Flow<List<pe.upeu.resi.resiup.domain.model.PermisoPendiente>> =
+        q.observarPendientes().asFlow().mapToList(Dispatchers.Default).map { filas -> filas.mapNotNull { it.aDominio() } }
+
+    fun pendientesPorEnviar(): List<pe.upeu.resi.resiup.domain.model.PermisoPendiente> =
+        q.pendientesPorEnviar().executeAsList().mapNotNull { it.aDominio() }
+
+    fun guardarPendiente(p: pe.upeu.resi.resiup.domain.model.PermisoPendiente) =
+        q.guardarPendiente(p.clave, p.tipo.name, p.motivo, p.destino, p.salida.toEpochMilliseconds(), p.retorno.toEpochMilliseconds(), p.creadaEn.toEpochMilliseconds())
+
+    fun marcarErrorPendiente(clave: String, error: String) = q.marcarErrorPendiente(error, clave)
+    fun borrarPendiente(clave: String) = q.borrarPendiente(clave)
+
     fun diasSinCulto(): Flow<List<pe.upeu.resi.resiup.domain.model.DiaSinCulto>> = q.observarDiasSinCulto().asFlow().mapToList(Dispatchers.Default).map { filas ->
         filas.map { pe.upeu.resi.resiup.domain.model.DiaSinCulto(it.fecha, it.motivo) }
     }
@@ -122,8 +134,12 @@ class DatosLocales(db: ResiDb) {
     }
 
     fun borrarTodo() = q.transaction {
-        q.borrarPerfil(); q.borrarAsistencias(); q.borrarEvaluaciones(); q.borrarResumen(); q.borrarSolicitudes(); q.borrarDiasSinCulto(); q.borrarMeta()
+        q.borrarPerfil(); q.borrarAsistencias(); q.borrarEvaluaciones(); q.borrarResumen(); q.borrarSolicitudes(); q.borrarDiasSinCulto(); q.borrarPendientes(); q.borrarMeta()
     }
+}
+
+private fun pe.upeu.resi.resiup.db.Solicitud_pendiente.aDominio() = enumONull<TipoPermiso>(tipo)?.let {
+    pe.upeu.resi.resiup.domain.model.PermisoPendiente(clave, it, motivo, destino, Instant.fromEpochMilliseconds(salida_ms), Instant.fromEpochMilliseconds(retorno_ms), Instant.fromEpochMilliseconds(creada_ms), error)
 }
 
 private inline fun <reified E : Enum<E>> enumONull(nombre: String): E? = enumValues<E>().firstOrNull { it.name == nombre }

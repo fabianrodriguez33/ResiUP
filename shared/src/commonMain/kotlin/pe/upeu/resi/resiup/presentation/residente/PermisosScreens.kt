@@ -47,6 +47,7 @@ import pe.upeu.resi.resiup.presentation.components.VarianteBoton
 import pe.upeu.resi.resiup.presentation.components.aEstadoVisual
 import pe.upeu.resi.resiup.presentation.login.aMensaje
 import pe.upeu.resi.resiup.presentation.theme.Espacio
+import pe.upeu.resi.resiup.presentation.tramites.TramiteResidente
 import pe.upeu.resi.resiup.presentation.util.ContenidoCarga
 import pe.upeu.resi.resiup.presentation.util.ContenidoConsulta
 import pe.upeu.resi.resiup.presentation.util.ahora
@@ -82,6 +83,21 @@ private fun ListaPermisos(onNueva: () -> Unit, onDetalle: (Long) -> Unit) {
         Segmentos(Seccion.entries, seccion, { it.etiqueta }, { seccion = it })
         if (seccion == Seccion.Solicitudes) {
             ResiBoton("Solicitar permiso", onNueva, Modifier.fillMaxWidth())
+            val pendientes by vm.pendientes.collectAsState()
+            pendientes.forEach { p ->
+                ResiTarjeta {
+                    ElementoLista(
+                        p.destino, subtitulo = "${p.tipo.etiqueta} · ${p.salida.formatoLima()}", icono = ResiIconos.Permisos,
+                        final = { ChipEstado(if (p.error == null) "Pendiente de envío" else "No enviado", if (p.error == null) EstadoVisual.Advertencia else EstadoVisual.Error) },
+                    )
+                    if (p.error == null) {
+                        Text("Sin conexión: se enviará solo cuando vuelva la red.", Modifier.padding(top = Espacio.s), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        BannerMensaje(p.error, EstadoVisual.Error, Modifier.padding(top = Espacio.s))
+                        ResiBoton("Descartar", { vm.descartar(p.clave) }, Modifier.fillMaxWidth().padding(top = Espacio.s), variante = VarianteBoton.Secundario)
+                    }
+                }
+            }
             val estado by vm.estado.collectAsState()
             ContenidoConsulta(estado, vm::reintentar) { lista ->
                 if (lista.isEmpty()) {
@@ -116,6 +132,7 @@ private fun SolicitudNuevaScreen(onVolver: () -> Unit, onCreada: (Long) -> Unit)
     val s by vm.estado.collectAsState()
     val privilegio by vm.puedeSolicitarSolo.collectAsState()
     LaunchedEffect(s.creada) { s.creada?.let { onCreada(it.id) } }
+    LaunchedEffect(s.enCola) { if (s.enCola) onVolver() }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         ResiBoton("Volver", onVolver, variante = VarianteBoton.Terciario)
         TituloPantalla("Nuevo permiso", subtitulo = "Salida corta o larga")
@@ -140,7 +157,6 @@ private fun SolicitudDetalleScreen(id: Long, onVolver: () -> Unit) {
     val estado by vm.estado.collectAsState()
     val accion by vm.accion.collectAsState()
     LaunchedEffect(id) { vm.recargar() }
-    var motivoJustificacion by remember { mutableStateOf("") }
     var confirmarCancelar by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         ResiBoton("Volver", onVolver, variante = VarianteBoton.Terciario)
@@ -156,16 +172,12 @@ private fun SolicitudDetalleScreen(id: Long, onVolver: () -> Unit) {
                 s.ampliaciones.forEach { BannerMensaje("Ampliación hasta ${it.retornoNuevo.formatoLima()}: ${it.estado.etiqueta}", EstadoVisual.Info) }
                 s.justificaciones.forEach { BannerMensaje("Justificación: ${it.estado.etiqueta}${it.comentario?.let { c -> " — $c" } ?: ""}", if (it.estado == EstadoRevision.Aprobada) EstadoVisual.Exito else EstadoVisual.Info) }
 
-                val vencido = s.estado == EstadoSolicitud.Aprobado && ahora() > s.retornoAutorizado
+                val aprobado = s.estado == EstadoSolicitud.Aprobado
+                val vencido = aprobado && ahora() > s.retornoAutorizado
                 if (vencido && s.justificaciones.none { it.estado == EstadoRevision.Pendiente }) {
-                    ResiTarjeta {
-                        Text("El permiso venció", style = MaterialTheme.typography.titleMedium)
-                        Text("Si regresaste fuera de horario, cuéntanos qué ocurrió. No cambia el horario autorizado; el pastor la revisará.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        ResiCampoTexto(motivoJustificacion, { motivoJustificacion = it.take(300) }, "Justificación", Modifier.padding(top = Espacio.s), error = (accion.error as? pe.upeu.resi.resiup.domain.error.ErrorApi.Validacion)?.porCampo?.get("motivo"), unaLinea = false)
-                        ResiBoton("Enviar justificación", { vm.justificar(motivoJustificacion) }, Modifier.fillMaxWidth().padding(top = Espacio.s), cargando = accion.trabajando)
-                    }
-                } else if (s.estado == EstadoSolicitud.Aprobado) {
-                    BannerMensaje("La ampliación de horario con fotografía estará disponible en una próxima versión.", EstadoVisual.Neutro)
+                    TramiteResidente(s.id, justificacion = true, retornoAutorizado = s.retornoAutorizado, onEnviado = vm::recargar)
+                } else if (aprobado && !vencido && s.ampliaciones.none { it.estado == EstadoRevision.Pendiente }) {
+                    TramiteResidente(s.id, justificacion = false, retornoAutorizado = s.retornoAutorizado, onEnviado = vm::recargar)
                 }
                 val cancelable = s.estado == EstadoSolicitud.PendienteApoderado || s.estado == EstadoSolicitud.Aprobado
                 if (cancelable) ResiBoton("Cancelar solicitud", { confirmarCancelar = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo, habilitado = !accion.trabajando)

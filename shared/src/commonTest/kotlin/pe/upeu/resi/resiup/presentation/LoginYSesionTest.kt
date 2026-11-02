@@ -40,6 +40,8 @@ private class RepoFalso(
     override suspend fun iniciarSesion(credenciales: Credenciales): Result<Sesion> { intentos++; return respuesta() }
     override suspend fun sesionGuardada(): Sesion? = guardada
     override suspend fun cerrarSesion() { cerrada = true; guardada = null }
+    override suspend fun olvideClave(usuario: String) = Result.success(Unit)
+    override suspend fun cambiarClave(actual: String, nueva: String) = Result.success(Unit)
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

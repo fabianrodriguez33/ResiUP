@@ -51,8 +51,18 @@ class AsistenciasViewModel(private val consultas: ConsultasResidenteRepository, 
     fun reintentar() = sync.refrescar(forzar = true)
 }
 
-class MisSolicitudesViewModel(private val consultas: ConsultasResidenteRepository, private val sync: Sincronizador) : ViewModel() {
+class MisSolicitudesViewModel(
+    private val consultas: ConsultasResidenteRepository,
+    private val sync: Sincronizador,
+    private val cola: pe.upeu.resi.resiup.data.repository.ColaPermisos,
+) : ViewModel() {
     val estado = compartir(consultas.solicitudes().comoConsulta(sync.estado, consultas.ultimaSincronizacion()))
+
+    /** Permisos pedidos sin conexión que todavía no se enviaron (o que el servidor rechazó). */
+    val pendientes = cola.pendientes().stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun descartar(clave: String) = cola.descartar(clave)
+    fun reenviar() { viewModelScope.launch { cola.enviarPendientes() } }
     init { sync.refrescar() }
     fun reintentar() = sync.refrescar(forzar = true)
 }

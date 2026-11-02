@@ -18,6 +18,8 @@ data class Sesion(
     val rol: Rol,
     val permisos: Set<String>,
     val expiraEnMillis: Long,
+    /** Entró con una contraseña provisional: la app le exige elegir una nueva antes de seguir. */
+    val debeCambiarClave: Boolean = false,
 ) {
     fun puede(permiso: String): Boolean = permiso in permisos
 

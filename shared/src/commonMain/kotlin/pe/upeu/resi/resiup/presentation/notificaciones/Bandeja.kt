@@ -115,7 +115,7 @@ class BandejaViewModel(private val repo: NotificacionesRepository, private val a
 fun CampanaAvisos(noLeidas: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val descripcion = if (noLeidas > 0) "Notificaciones, $noLeidas sin leer" else "Notificaciones"
     Box(
-        modifier.size(44.dp).semantics { contentDescription = descripcion }.clickable(onClick = onClick),
+        modifier.size(44.dp).background(MaterialTheme.colorScheme.background.copy(alpha = 0.92f), CircleShape).semantics { contentDescription = descripcion }.clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         ResiIcono(ResiIconos.Campana, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -69,6 +69,8 @@ fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
     val noLeidas by avisos.noLeidas.collectAsState()
     var verBandeja by rememberSaveable { mutableStateOf(false) }
     if (sesion != null) LaunchedEffect(sesion.usuario) { avisos.vigilar() }
+    val cola: pe.upeu.resi.resiup.data.repository.ColaPermisos = koinInject()
+    if (sesion != null && rol == Rol.Residente) LaunchedEffect(sesion.usuario) { cola.vigilar() }
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().padding(bottom = 84.dp)) {

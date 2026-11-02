@@ -16,6 +16,8 @@ import pe.upeu.resi.resiup.presentation.notificaciones.GestorAvisos
  */
 class RevisarAvisosWorker(contexto: Context, parametros: WorkerParameters) : CoroutineWorker(contexto, parametros) {
     override suspend fun doWork(): Result {
+        // Primero se envían los permisos que quedaron pendientes sin conexión, luego se revisan los avisos.
+        runCatching { GlobalContext.get().get<pe.upeu.resi.resiup.data.repository.ColaPermisos>().enviarPendientes() }
         runCatching { GlobalContext.get().get<GestorAvisos>().revisar() }
         return Result.success()
     }

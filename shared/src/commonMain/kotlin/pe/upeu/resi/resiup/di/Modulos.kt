@@ -40,6 +40,10 @@ import pe.upeu.resi.resiup.domain.repository.ResidenteRepository
 import pe.upeu.resi.resiup.presentation.personal.AsistenciaCultoViewModel
 import pe.upeu.resi.resiup.presentation.personal.DiasSinCultoViewModel
 import pe.upeu.resi.resiup.presentation.notificaciones.BandejaViewModel
+import pe.upeu.resi.resiup.presentation.tramites.RevisionTramitesViewModel
+import pe.upeu.resi.resiup.presentation.tramites.TramiteViewModel
+import pe.upeu.resi.resiup.presentation.clave.CambiarClaveViewModel
+import pe.upeu.resi.resiup.presentation.clave.OlvideClaveViewModel
 import pe.upeu.resi.resiup.presentation.perfil.PerfilCuentaViewModel
 import pe.upeu.resi.resiup.presentation.perfil.VerificacionCorreoViewModel
 import pe.upeu.resi.resiup.presentation.personal.GaritaEscanerViewModel
@@ -92,6 +96,7 @@ fun datosModule(config: ConfigEntorno) = module {
     single { pe.upeu.resi.resiup.data.remote.PerfilCuentaApi(get()) }
     single { pe.upeu.resi.resiup.data.remote.CalendarioApi(get()) }
     single { pe.upeu.resi.resiup.data.remote.NotificacionesApi(get()) }
+    single { pe.upeu.resi.resiup.data.remote.TramitesApi(get()) }
     single<ResidenteRepository> { ResidenteRepositoryImpl(get(), get()) }
     single<PermisoRepository> { PermisoRepositoryImpl(get()) }
     single<CultoRepository> { CultoRepositoryImpl(get()) }
@@ -100,10 +105,12 @@ fun datosModule(config: ConfigEntorno) = module {
     single<GaritaRepository> { GaritaRepositoryImpl(get()) }
     single<pe.upeu.resi.resiup.domain.repository.PerfilCuentaRepository> { pe.upeu.resi.resiup.data.repository.PerfilCuentaRepositoryImpl(get()) }
     single<pe.upeu.resi.resiup.domain.repository.CalendarioRepository> { pe.upeu.resi.resiup.data.repository.CalendarioRepositoryImpl(get()) }
+    single<pe.upeu.resi.resiup.domain.repository.TramitesRepository> { pe.upeu.resi.resiup.data.repository.TramitesRepositoryImpl(get()) }
     single<pe.upeu.resi.resiup.domain.repository.NotificacionesRepository> { pe.upeu.resi.resiup.data.repository.NotificacionesRepositoryImpl(get()) }
     single { pe.upeu.resi.resiup.presentation.notificaciones.GestorAvisos(get(), get()) }
     single { ResiDb(get<SqlDriver>()) }
     single { DatosLocales(get()) }
+    single { pe.upeu.resi.resiup.data.repository.ColaPermisos(get(), get(), { kotlin.time.Clock.System.now().toEpochMilliseconds() }, { get<Sincronizador>().refrescar(forzar = true) }) }
     single<ConsultasResidenteRepository> {
         ConsultasResidenteRepositoryImpl(get(), get(), get(), get()) { Clock.System.now().toEpochMilliseconds() }
     }
@@ -135,7 +142,7 @@ val presentacionModule = module {
     viewModelOf(::LimpiezaResidenteViewModel)
     viewModelOf(::MisSolicitudesViewModel)
     viewModelOf(::MovimientosViewModel)
-    viewModel { SolicitudFormViewModel(get(), get()) { get<Sincronizador>().refrescar(forzar = true) } }
+    viewModel { SolicitudFormViewModel(get(), get(), { get<Sincronizador>().refrescar(forzar = true) }, get()) }
     viewModelOf(::FamiliaInicioViewModel)
     viewModelOf(::FamiliaSolicitudesViewModel)
     viewModelOf(::FamiliaNuevoViewModel)
@@ -150,6 +157,10 @@ val presentacionModule = module {
     viewModelOf(::EditarPerfilViewModel)
     // Cuenta de cualquier rol
     viewModelOf(::PerfilCuentaViewModel)
+    viewModelOf(::CambiarClaveViewModel)
+    viewModel { (id: Long) -> TramiteViewModel(id, get()) }
+    viewModelOf(::RevisionTramitesViewModel)
+    viewModelOf(::OlvideClaveViewModel)
     viewModelOf(::BandejaViewModel)
     viewModelOf(::VerificacionCorreoViewModel)
     viewModelOf(::DiasSinCultoViewModel)
