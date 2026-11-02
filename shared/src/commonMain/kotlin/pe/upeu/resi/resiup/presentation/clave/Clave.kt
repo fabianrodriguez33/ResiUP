@@ -1,5 +1,6 @@
 package pe.upeu.resi.resiup.presentation.clave
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -104,7 +105,7 @@ private fun CamposClave(vm: CambiarClaveViewModel, s: CambiarClaveUi, etiquetaAc
 fun CambiarClaveForzadaScreen(onCerrarSesion: () -> Unit, vm: CambiarClaveViewModel = koinViewModel()) {
     val s by vm.estado.collectAsState()
     Column(
-        Modifier.fillMaxSize().safeDrawingPadding().imePadding().verticalScroll(rememberScrollState()).padding(Espacio.l),
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding().imePadding().verticalScroll(rememberScrollState()).padding(Espacio.l),
         verticalArrangement = Arrangement.spacedBy(Espacio.m),
     ) {
         TituloPantalla("Elige tu contraseña", subtitulo = "Entraste con una contraseña provisional. Escribe la provisional como contraseña actual y elige una nueva.")
