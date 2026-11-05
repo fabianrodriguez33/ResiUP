@@ -15,6 +15,9 @@ object Destinos {
     const val Mas = "mas"
     const val Historial = "historial"
     const val Nuevo = "nuevo"
+
+    /** Pantalla secundaria del residente (se abre desde los accesos del inicio; no es una pestaña de la barra). */
+    const val Notas = "notas"
 }
 
 /** Cada rol ve únicamente las opciones que puede usar. */

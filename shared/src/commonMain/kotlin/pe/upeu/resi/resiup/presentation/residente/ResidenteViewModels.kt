@@ -112,6 +112,29 @@ private data class Cinco(
 /** Notas del mes en curso y del anterior, tal como las calcula el servidor. */
 data class NotasInicio(val actual: pe.upeu.resi.resiup.domain.model.ResumenNotas, val anterior: pe.upeu.resi.resiup.domain.model.ResumenNotas)
 
+/** Pide al servidor las notas del mes en curso y del anterior; los dos meses o ninguno. */
+suspend fun cargarNotasDelMesYElAnterior(repo: pe.upeu.resi.resiup.domain.repository.NotasRepository): pe.upeu.resi.resiup.presentation.util.Carga<NotasInicio> {
+    val hoy = hoyLima()
+    val anterior = kotlinx.datetime.LocalDate(hoy.year, hoy.month.ordinal + 1, 1).minus(1, kotlinx.datetime.DateTimeUnit.DAY)
+    val actual = repo.resumen(hoy.year, hoy.month.ordinal + 1)
+    val previo = repo.resumen(anterior.year, anterior.month.ordinal + 1)
+    return actual.fold(
+        { a -> previo.fold({ p -> pe.upeu.resi.resiup.presentation.util.Carga.Exito(NotasInicio(a, p)) }, { pe.upeu.resi.resiup.presentation.util.Carga.Fallo(it.aErrorApi()) }) },
+        { pe.upeu.resi.resiup.presentation.util.Carga.Fallo(it.aErrorApi()) },
+    )
+}
+
+/** Pantalla de Notas del residente: mes en curso y mes anterior, con los datos del servidor. */
+class NotasResidenteViewModel(private val notasRepo: pe.upeu.resi.resiup.domain.repository.NotasRepository) : ViewModel() {
+    private val _notas = kotlinx.coroutines.flow.MutableStateFlow<pe.upeu.resi.resiup.presentation.util.Carga<NotasInicio>>(pe.upeu.resi.resiup.presentation.util.Carga.Cargando)
+    val notas: kotlinx.coroutines.flow.StateFlow<pe.upeu.resi.resiup.presentation.util.Carga<NotasInicio>> = _notas
+
+    fun cargar() {
+        _notas.value = pe.upeu.resi.resiup.presentation.util.Carga.Cargando
+        viewModelScope.launch { _notas.value = cargarNotasDelMesYElAnterior(notasRepo) }
+    }
+}
+
 class InicioResidenteViewModel(
     private val consultas: ConsultasResidenteRepository,
     private val sync: Sincronizador,
@@ -123,16 +146,7 @@ class InicioResidenteViewModel(
     /** Las notas se piden al servidor (única fuente de verdad); sin conexión no se muestran. */
     fun cargarNotas() {
         _notas.value = pe.upeu.resi.resiup.presentation.util.Carga.Cargando
-        viewModelScope.launch {
-            val hoy = hoyLima()
-            val anterior = kotlinx.datetime.LocalDate(hoy.year, hoy.month.ordinal + 1, 1).minus(1, kotlinx.datetime.DateTimeUnit.DAY)
-            val actual = notasRepo.resumen(hoy.year, hoy.month.ordinal + 1)
-            val previo = notasRepo.resumen(anterior.year, anterior.month.ordinal + 1)
-            _notas.value = actual.fold(
-                { a -> previo.fold({ p -> pe.upeu.resi.resiup.presentation.util.Carga.Exito(NotasInicio(a, p)) }, { pe.upeu.resi.resiup.presentation.util.Carga.Fallo(it.aErrorApi()) }) },
-                { pe.upeu.resi.resiup.presentation.util.Carga.Fallo(it.aErrorApi()) },
-            )
-        }
+        viewModelScope.launch { _notas.value = cargarNotasDelMesYElAnterior(notasRepo) }
     }
 
     val estado = compartir(

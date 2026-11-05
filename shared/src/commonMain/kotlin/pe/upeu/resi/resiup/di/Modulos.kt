@@ -62,6 +62,7 @@ import pe.upeu.resi.resiup.presentation.personal.PermisosTodosViewModel
 import pe.upeu.resi.resiup.presentation.residente.EditarPerfilViewModel
 import pe.upeu.resi.resiup.presentation.residente.AsistenciasViewModel
 import pe.upeu.resi.resiup.presentation.residente.InicioResidenteViewModel
+import pe.upeu.resi.resiup.presentation.residente.NotasResidenteViewModel
 import pe.upeu.resi.resiup.presentation.residente.LimpiezaResidenteViewModel
 import pe.upeu.resi.resiup.presentation.residente.MisSolicitudesViewModel
 import pe.upeu.resi.resiup.presentation.residente.MovimientosViewModel
@@ -140,6 +141,7 @@ val presentacionModule = module {
     viewModelOf(::LoginViewModel)
     // Residente
     viewModelOf(::InicioResidenteViewModel)
+    viewModelOf(::NotasResidenteViewModel)
     viewModelOf(::PerfilViewModel)
     viewModelOf(::AsistenciasViewModel)
     viewModelOf(::LimpiezaResidenteViewModel)
