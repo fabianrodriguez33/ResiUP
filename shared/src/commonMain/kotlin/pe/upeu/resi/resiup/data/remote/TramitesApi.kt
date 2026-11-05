@@ -38,6 +38,21 @@ data class JustificacionPedidoDto(val motivo: String, val evidenciaId: Long? = n
 @Serializable
 data class DecisionTramiteDto(val aprobar: Boolean, val comentario: String? = null)
 
+@Serializable
+data class HabilitacionDto(val habilitado: Boolean = true, val hasta: String = "", val motivo: String? = null, val faltasNoJustificadas: Int = 0, val promedioLimpieza: Double? = null)
+
+@Serializable
+data class FaltaPendienteDto(val residenteId: Long, val codigo: String, val nombre: String, val fecha: String, val plazo: String)
+
+@Serializable
+data class JustificarFaltaDto(val residenteId: Long, val fecha: String, val motivo: String)
+
+@Serializable
+data class AnularPedidoDto(val motivo: String)
+
+@Serializable
+data class PermisoSuspendidoDto(val id: Long, val residenteNombre: String, val residenteCodigo: String, val tipo: String, val destino: String, val salidaSolicitada: String)
+
 class TramitesApi(private val client: HttpClient) {
     private val base = "api/v1/"
 
@@ -66,6 +81,19 @@ class TramitesApi(private val client: HttpClient) {
 
     suspend fun decidirAmpliacion(id: Long, d: DecisionTramiteDto) {
         client.post("${base}permisos/ampliaciones/$id/decision") { setBody(d) }
+    }
+
+    suspend fun habilitacion(): HabilitacionDto = client.get("${base}residentes/yo/habilitacion").body()
+    suspend fun faltasPorJustificar(): List<FaltaPendienteDto> = client.get("${base}habilitacion/faltas-por-justificar").body()
+
+    suspend fun justificarFalta(r: JustificarFaltaDto) {
+        client.post("${base}habilitacion/faltas/justificar") { setBody(r) }
+    }
+
+    suspend fun permisosDeSuspendidos(): List<PermisoSuspendidoDto> = client.get("${base}permisos/solicitudes/de-suspendidos").body()
+
+    suspend fun anularPermiso(id: Long, r: AnularPedidoDto) {
+        client.post("${base}permisos/solicitudes/$id/anular") { setBody(r) }
     }
 
     suspend fun decidirJustificacion(id: Long, d: DecisionTramiteDto) {

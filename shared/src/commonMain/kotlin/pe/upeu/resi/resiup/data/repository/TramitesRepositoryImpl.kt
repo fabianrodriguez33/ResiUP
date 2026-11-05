@@ -34,6 +34,21 @@ class TramitesRepositoryImpl(private val api: TramitesApi) : TramitesRepository 
         }
     }
 
+    override suspend fun miHabilitacion() = ejecutarLlamada { api.habilitacion().let { pe.upeu.resi.resiup.domain.model.Habilitacion(it.habilitado, it.hasta, it.motivo, it.faltasNoJustificadas, it.promedioLimpieza) } }
+
+    override suspend fun faltasPorJustificar() = ejecutarLlamada {
+        api.faltasPorJustificar().map { pe.upeu.resi.resiup.domain.model.FaltaPendiente(it.residenteId, it.codigo, it.nombre, it.fecha, it.plazo) }
+    }
+
+    override suspend fun justificarFalta(residenteId: Long, fecha: String, motivo: String) =
+        ejecutarLlamada { api.justificarFalta(pe.upeu.resi.resiup.data.remote.JustificarFaltaDto(residenteId, fecha, motivo.trim())) }
+
+    override suspend fun permisosDeSuspendidos() = ejecutarLlamada {
+        api.permisosDeSuspendidos().map { pe.upeu.resi.resiup.domain.model.PermisoDeSuspendido(it.id, it.residenteNombre, it.residenteCodigo, it.tipo, it.destino, Instant.parse(it.salidaSolicitada)) }
+    }
+
+    override suspend fun anularPermiso(id: Long, motivo: String) = ejecutarLlamada { api.anularPermiso(id, pe.upeu.resi.resiup.data.remote.AnularPedidoDto(motivo.trim())) }
+
     override suspend fun decidirAmpliacion(id: Long, aprobar: Boolean, comentario: String?) =
         ejecutarLlamada { api.decidirAmpliacion(id, DecisionTramiteDto(aprobar, comentario?.takeIf { it.isNotBlank() })) }
 

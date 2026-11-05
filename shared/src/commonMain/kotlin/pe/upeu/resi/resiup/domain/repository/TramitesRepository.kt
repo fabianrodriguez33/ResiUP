@@ -18,4 +18,13 @@ interface TramitesRepository {
     suspend fun justificacionesPendientes(): Result<List<JustificacionPendiente>>
     suspend fun decidirAmpliacion(id: Long, aprobar: Boolean, comentario: String?): Result<Unit>
     suspend fun decidirJustificacion(id: Long, aprobar: Boolean, comentario: String?): Result<Unit>
+
+    /** Residente: si puede solicitar permisos esta semana. */
+    suspend fun miHabilitacion(): Result<pe.upeu.resi.resiup.domain.model.Habilitacion>
+
+    /** Pastor: faltas por justificar, y permisos aprobados de residentes suspendidos. */
+    suspend fun faltasPorJustificar(): Result<List<pe.upeu.resi.resiup.domain.model.FaltaPendiente>>
+    suspend fun justificarFalta(residenteId: Long, fecha: String, motivo: String): Result<Unit>
+    suspend fun permisosDeSuspendidos(): Result<List<pe.upeu.resi.resiup.domain.model.PermisoDeSuspendido>>
+    suspend fun anularPermiso(id: Long, motivo: String): Result<Unit>
 }

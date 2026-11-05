@@ -40,6 +40,7 @@ import pe.upeu.resi.resiup.domain.repository.ResidenteRepository
 import pe.upeu.resi.resiup.presentation.personal.AsistenciaCultoViewModel
 import pe.upeu.resi.resiup.presentation.personal.DiasSinCultoViewModel
 import pe.upeu.resi.resiup.presentation.notificaciones.BandejaViewModel
+import pe.upeu.resi.resiup.presentation.residente.HabilitacionViewModel
 import pe.upeu.resi.resiup.presentation.tramites.RevisionTramitesViewModel
 import pe.upeu.resi.resiup.presentation.tramites.TramiteViewModel
 import pe.upeu.resi.resiup.presentation.clave.CambiarClaveViewModel
@@ -160,6 +161,7 @@ val presentacionModule = module {
     viewModelOf(::CambiarClaveViewModel)
     viewModel { (id: Long) -> TramiteViewModel(id, get()) }
     viewModelOf(::RevisionTramitesViewModel)
+    viewModelOf(::HabilitacionViewModel)
     viewModelOf(::OlvideClaveViewModel)
     viewModelOf(::BandejaViewModel)
     viewModelOf(::VerificacionCorreoViewModel)

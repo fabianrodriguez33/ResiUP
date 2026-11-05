@@ -63,6 +63,7 @@ import pe.upeu.resi.resiup.presentation.util.Carga
 import pe.upeu.resi.resiup.presentation.util.ContenidoCarga
 import pe.upeu.resi.resiup.presentation.util.aCarga
 import pe.upeu.resi.resiup.presentation.util.aErrorApi
+import pe.upeu.resi.resiup.presentation.util.fechaLegible
 import pe.upeu.resi.resiup.presentation.util.formatoLima
 
 // ---------------------------------------------------------------- foto
@@ -198,6 +199,10 @@ class RevisionTramitesViewModel(private val repo: TramitesRepository) : ViewMode
     val ampliaciones: StateFlow<Carga<List<AmpliacionPendiente>>> = _ampliaciones.asStateFlow()
     private val _justificaciones = MutableStateFlow<Carga<List<JustificacionPendiente>>>(Carga.Cargando)
     val justificaciones: StateFlow<Carga<List<JustificacionPendiente>>> = _justificaciones.asStateFlow()
+    private val _faltas = MutableStateFlow<Carga<List<pe.upeu.resi.resiup.domain.model.FaltaPendiente>>>(Carga.Cargando)
+    val faltas: StateFlow<Carga<List<pe.upeu.resi.resiup.domain.model.FaltaPendiente>>> = _faltas.asStateFlow()
+    private val _suspendidos = MutableStateFlow<Carga<List<pe.upeu.resi.resiup.domain.model.PermisoDeSuspendido>>>(Carga.Cargando)
+    val suspendidos: StateFlow<Carga<List<pe.upeu.resi.resiup.domain.model.PermisoDeSuspendido>>> = _suspendidos.asStateFlow()
     private val _accion = MutableStateFlow(RevisionUi())
     val accion: StateFlow<RevisionUi> = _accion.asStateFlow()
 
@@ -208,7 +213,19 @@ class RevisionTramitesViewModel(private val repo: TramitesRepository) : ViewMode
     fun cargar() {
         viewModelScope.launch { _ampliaciones.value = repo.ampliacionesPendientes().aCarga() }
         viewModelScope.launch { _justificaciones.value = repo.justificacionesPendientes().aCarga() }
+        viewModelScope.launch { _faltas.value = repo.faltasPorJustificar().aCarga() }
+        viewModelScope.launch { _suspendidos.value = repo.permisosDeSuspendidos().aCarga() }
     }
+
+    /** Todo lo que el pastor tiene por revisar (null mientras carga). */
+    fun total(a: Carga<List<AmpliacionPendiente>>, j: Carga<List<JustificacionPendiente>>, f: Carga<List<pe.upeu.resi.resiup.domain.model.FaltaPendiente>>, s: Carga<List<pe.upeu.resi.resiup.domain.model.PermisoDeSuspendido>>): Int? =
+        if (a is Carga.Exito && j is Carga.Exito && f is Carga.Exito && s is Carga.Exito) a.datos.size + j.datos.size + f.datos.size + s.datos.size else null
+
+    fun justificarFalta(f: pe.upeu.resi.resiup.domain.model.FaltaPendiente, motivo: String) =
+        decidir("Falta justificada") { repo.justificarFalta(f.residenteId, f.fecha, motivo) }
+
+    fun anularPermiso(p: pe.upeu.resi.resiup.domain.model.PermisoDeSuspendido, motivo: String) =
+        decidir("Permiso anulado") { repo.anularPermiso(p.id, motivo) }
 
     fun decidirAmpliacion(a: AmpliacionPendiente, aprobar: Boolean, comentario: String?) =
         decidir(if (aprobar) "Ampliación aprobada" else "Ampliación rechazada") { repo.decidirAmpliacion(a.id, aprobar, comentario) }
@@ -233,13 +250,16 @@ fun RevisionTramitesScreen(onVolver: () -> Unit, vm: RevisionTramitesViewModel =
     val ampliaciones by vm.ampliaciones.collectAsState()
     val justificaciones by vm.justificaciones.collectAsState()
     val accion by vm.accion.collectAsState()
+    val faltas by vm.faltas.collectAsState()
+    val suspendidos by vm.suspendidos.collectAsState()
+    var otroMotivo by remember { mutableStateOf<Triple<String, String, (String) -> Unit>?>(null) }
     var rechazando by remember { mutableStateOf<(String) -> Unit>({}) }
     var pidiendoMotivo by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { vm.cargar() }
     BackHandler(onBack = onVolver)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         ResiBoton("Volver", onVolver, variante = VarianteBoton.Terciario)
-        TituloPantalla("Por revisar", subtitulo = "Ampliaciones de horario y justificaciones de tardanza")
+        TituloPantalla("Por revisar", subtitulo = "Ampliaciones, justificaciones, faltas y residentes inhabilitados")
         accion.mensaje?.let { BannerMensaje(it, EstadoVisual.Exito) }
         accion.error?.let { BannerMensaje(it.aMensaje(), EstadoVisual.Error) }
 
@@ -287,10 +307,42 @@ fun RevisionTramitesScreen(onVolver: () -> Unit, vm: RevisionTramitesViewModel =
                 }
             }
         }
+        Text("Faltas por justificar", Modifier.padding(top = Espacio.s), style = MaterialTheme.typography.titleMedium)
+        Text("Dos días de falta sin justificar en la semana inhabilitan al residente la semana siguiente. Se puede justificar hasta el lunes.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ContenidoCarga(faltas, vm::cargar, Modifier.fillMaxWidth()) { lista ->
+            if (lista.isEmpty()) Text("No hay faltas por justificar.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            lista.forEach { f ->
+                ResiTarjeta {
+                    Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                        ElementoLista(f.nombre, subtitulo = "Código ${f.codigo} · faltó el ${f.fecha.fechaLegible()}", icono = ResiIconos.Asistencias, acento = Acento.Rosa)
+                        Text("Puedes justificarla hasta el ${f.plazo.fechaLegible()}.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        ResiBoton("Justificar", { otroMotivo = Triple("Justificar falta", "Escribe el motivo: es obligatorio.") { m -> vm.justificarFalta(f, m) } }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario, habilitado = !accion.trabajando)
+                    }
+                }
+            }
+        }
+
+        Text("Permisos de residentes inhabilitados", Modifier.padding(top = Espacio.s), style = MaterialTheme.typography.titleMedium)
+        Text("Permisos ya aprobados para esta semana de residentes que están inhabilitados. Decide uno por uno si lo anulas.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ContenidoCarga(suspendidos, vm::cargar, Modifier.fillMaxWidth()) { lista ->
+            if (lista.isEmpty()) Text("No hay permisos que revisar.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            lista.forEach { p ->
+                ResiTarjeta {
+                    Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                        ElementoLista(p.residenteNombre, subtitulo = "Código ${p.residenteCodigo} · ${p.tipo.lowercase()} a ${p.destino}", icono = ResiIconos.Permisos, acento = Acento.Naranja)
+                        Text("Salida: ${p.salida.formatoLima()}", style = MaterialTheme.typography.bodyMedium)
+                        ResiBoton("Anular permiso", { otroMotivo = Triple("Anular permiso", "Escribe el motivo: lo verán el residente y su familia.") { m -> vm.anularPermiso(p, m) } }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario, habilitado = !accion.trabajando)
+                    }
+                }
+            }
+        }
         val a = ampliaciones; val j = justificaciones
-        if (a is Carga.Exito && j is Carga.Exito && a.datos.isEmpty() && j.datos.isEmpty()) {
+        if (a is Carga.Exito && j is Carga.Exito && faltas is Carga.Exito && suspendidos is Carga.Exito && a.datos.isEmpty() && j.datos.isEmpty() && (faltas as Carga.Exito).datos.isEmpty() && (suspendidos as Carga.Exito).datos.isEmpty()) {
             EstadoVacio("Todo al día", "No hay trámites por revisar.")
         }
+    }
+    otroMotivo?.let { (titulo, mensaje, accionConMotivo) ->
+        DialogoMotivo(titulo, mensaje, "Motivo", "Aceptar", { m -> otroMotivo = null; accionConMotivo(m) }, { otroMotivo = null })
     }
     if (pidiendoMotivo) {
         DialogoMotivo(

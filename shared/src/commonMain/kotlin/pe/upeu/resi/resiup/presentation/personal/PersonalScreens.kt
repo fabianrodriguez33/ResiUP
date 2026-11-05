@@ -206,7 +206,9 @@ private fun ListaPermisosPastor(onAbrir: (Long) -> Unit, onTramites: () -> Unit)
     val tramites = koinViewModel<pe.upeu.resi.resiup.presentation.tramites.RevisionTramitesViewModel>()
     val ampliaciones by tramites.ampliaciones.collectAsState()
     val justificaciones by tramites.justificaciones.collectAsState()
-    val porRevisar = tramites.total(ampliaciones, justificaciones)
+    val faltasPend by tramites.faltas.collectAsState()
+    val suspendidosPend by tramites.suspendidos.collectAsState()
+    val porRevisar = tramites.total(ampliaciones, justificaciones, faltasPend, suspendidosPend)
     LaunchedEffect(Unit) { tramites.cargar() }
     var filtro by remember { mutableStateOf(FiltroPermisos.Aprobados) }
     val aprobados = koinViewModel<PermisosAprobadosViewModel>()
@@ -219,7 +221,7 @@ private fun ListaPermisosPastor(onAbrir: (Long) -> Unit, onTramites: () -> Unit)
         TituloPantalla("Permisos", Modifier.padding(top = Espacio.l), subtitulo = "Lista de permisos generados")
         ResiTarjeta(onClick = onTramites) {
             ElementoLista(
-                "Ampliaciones y justificaciones", subtitulo = "Pedidos de más tiempo y explicaciones de tardanza", icono = ResiIconos.Solicitudes, acento = Acento.Naranja,
+                "Por revisar", subtitulo = "Ampliaciones, justificaciones, faltas y residentes inhabilitados", icono = ResiIconos.Solicitudes, acento = Acento.Naranja,
                 final = { if (porRevisar != null && porRevisar > 0) ChipEstado("$porRevisar por revisar", EstadoVisual.Advertencia) },
             )
         }

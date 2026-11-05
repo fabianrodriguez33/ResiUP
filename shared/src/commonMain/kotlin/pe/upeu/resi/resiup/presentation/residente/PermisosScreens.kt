@@ -51,6 +51,7 @@ import pe.upeu.resi.resiup.presentation.tramites.TramiteResidente
 import pe.upeu.resi.resiup.presentation.util.ContenidoCarga
 import pe.upeu.resi.resiup.presentation.util.ContenidoConsulta
 import pe.upeu.resi.resiup.presentation.util.ahora
+import pe.upeu.resi.resiup.presentation.util.fechaLegible
 import pe.upeu.resi.resiup.presentation.util.formatoLima
 
 private sealed interface RutaPermisos {
@@ -77,12 +78,18 @@ fun PermisosResidenteScreen() {
 private fun ListaPermisos(onNueva: () -> Unit, onDetalle: (Long) -> Unit) {
     val vm = koinViewModel<MisSolicitudesViewModel>()
     val movimientos = koinViewModel<MovimientosViewModel>()
+    val habilitacion = koinViewModel<HabilitacionViewModel>()
+    val hab by habilitacion.estado.collectAsState()
+    LaunchedEffect(Unit) { habilitacion.cargar() }
     var seccion by remember { mutableStateOf(Seccion.Solicitudes) }
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla("Permisos", Modifier.padding(top = Espacio.l))
         Segmentos(Seccion.entries, seccion, { it.etiqueta }, { seccion = it })
         if (seccion == Seccion.Solicitudes) {
-            ResiBoton("Solicitar permiso", onNueva, Modifier.fillMaxWidth())
+            hab?.takeIf { !it.habilitado }?.let { h ->
+                BannerMensaje("Estás inhabilitado para solicitar permisos hasta el sábado ${h.hasta.fechaLegible()}: ${h.motivo.orEmpty()}. Si es una falta, el pastor puede justificarla hasta el lunes.", EstadoVisual.Advertencia)
+            }
+            ResiBoton("Solicitar permiso", onNueva, Modifier.fillMaxWidth(), habilitado = hab?.habilitado != false)
             val pendientes by vm.pendientes.collectAsState()
             pendientes.forEach { p ->
                 ResiTarjeta {
