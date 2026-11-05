@@ -3,8 +3,6 @@ package pe.upeu.resi.resiup.presentation.residente
 import kotlinx.datetime.minus
 import pe.upeu.resi.resiup.presentation.util.hoyLima
 import pe.upeu.resi.resiup.presentation.util.calcularEstadisticas
-import pe.upeu.resi.resiup.presentation.util.calcularNotasMes
-import pe.upeu.resi.resiup.presentation.util.NotasMes
 import pe.upeu.resi.resiup.presentation.util.EstadisticasCultos
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -104,8 +102,6 @@ data class InicioResidenteUi(
     val ultimaAsistencia: AsistenciaCulto?,
     val permisoReciente: SolicitudPermiso?,
     val estadisticas: EstadisticasCultos,
-    val notasMes: NotasMes,
-    val notasMesAnterior: NotasMes,
 )
 
 private data class Cinco(
@@ -113,7 +109,32 @@ private data class Cinco(
     val solicitudes: List<SolicitudPermiso>, val sinCulto: List<pe.upeu.resi.resiup.domain.model.DiaSinCulto>,
 )
 
-class InicioResidenteViewModel(private val consultas: ConsultasResidenteRepository, private val sync: Sincronizador) : ViewModel() {
+/** Notas del mes en curso y del anterior, tal como las calcula el servidor. */
+data class NotasInicio(val actual: pe.upeu.resi.resiup.domain.model.ResumenNotas, val anterior: pe.upeu.resi.resiup.domain.model.ResumenNotas)
+
+class InicioResidenteViewModel(
+    private val consultas: ConsultasResidenteRepository,
+    private val sync: Sincronizador,
+    private val notasRepo: pe.upeu.resi.resiup.domain.repository.NotasRepository,
+) : ViewModel() {
+    private val _notas = kotlinx.coroutines.flow.MutableStateFlow<pe.upeu.resi.resiup.presentation.util.Carga<NotasInicio>>(pe.upeu.resi.resiup.presentation.util.Carga.Cargando)
+    val notas: kotlinx.coroutines.flow.StateFlow<pe.upeu.resi.resiup.presentation.util.Carga<NotasInicio>> = _notas
+
+    /** Las notas se piden al servidor (única fuente de verdad); sin conexión no se muestran. */
+    fun cargarNotas() {
+        _notas.value = pe.upeu.resi.resiup.presentation.util.Carga.Cargando
+        viewModelScope.launch {
+            val hoy = hoyLima()
+            val anterior = kotlinx.datetime.LocalDate(hoy.year, hoy.month.ordinal + 1, 1).minus(1, kotlinx.datetime.DateTimeUnit.DAY)
+            val actual = notasRepo.resumen(hoy.year, hoy.month.ordinal + 1)
+            val previo = notasRepo.resumen(anterior.year, anterior.month.ordinal + 1)
+            _notas.value = actual.fold(
+                { a -> previo.fold({ p -> pe.upeu.resi.resiup.presentation.util.Carga.Exito(NotasInicio(a, p)) }, { pe.upeu.resi.resiup.presentation.util.Carga.Fallo(it.aErrorApi()) }) },
+                { pe.upeu.resi.resiup.presentation.util.Carga.Fallo(it.aErrorApi()) },
+            )
+        }
+    }
+
     val estado = compartir(
         combine(
             combine(consultas.perfil(), consultas.resumenLimpieza(), consultas.asistencias(), consultas.solicitudes(), consultas.diasSinCulto()) { perfil, resumen, asistencias, solicitudes, sinCulto ->
@@ -123,18 +144,13 @@ class InicioResidenteViewModel(private val consultas: ConsultasResidenteReposito
         ) { c, evaluaciones ->
             val feriados = c.sinCulto.mapNotNull { runCatching { kotlinx.datetime.LocalDate.parse(it.fecha) }.getOrNull() }.toSet()
             val hoy = hoyLima()
-            val anterior = kotlinx.datetime.LocalDate(hoy.year, hoy.month.ordinal + 1, 1).minus(1, kotlinx.datetime.DateTimeUnit.DAY)
             c.perfil?.let {
-                InicioResidenteUi(
-                    it, c.resumen, c.asistencias.firstOrNull(), c.solicitudes.firstOrNull(), calcularEstadisticas(c.asistencias, hoy, feriados),
-                    calcularNotasMes(c.asistencias, evaluaciones, hoy.year, hoy.month.ordinal + 1),
-                    calcularNotasMes(c.asistencias, evaluaciones, anterior.year, anterior.month.ordinal + 1),
-                )
+                InicioResidenteUi(it, c.resumen, c.asistencias.firstOrNull(), c.solicitudes.firstOrNull(), calcularEstadisticas(c.asistencias, hoy, feriados))
             }
         }.comoConsulta(sync.estado, consultas.ultimaSincronizacion()),
     )
-    init { sync.refrescar() }
-    fun reintentar() = sync.refrescar(forzar = true)
+    init { sync.refrescar(); cargarNotas() }
+    fun reintentar() { sync.refrescar(forzar = true); cargarNotas() }
 }
 
 // ---------------------------------------------------------------- limpieza

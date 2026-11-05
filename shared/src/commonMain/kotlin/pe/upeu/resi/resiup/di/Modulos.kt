@@ -98,6 +98,7 @@ fun datosModule(config: ConfigEntorno) = module {
     single { pe.upeu.resi.resiup.data.remote.CalendarioApi(get()) }
     single { pe.upeu.resi.resiup.data.remote.NotificacionesApi(get()) }
     single { pe.upeu.resi.resiup.data.remote.TramitesApi(get()) }
+    single { pe.upeu.resi.resiup.data.remote.NotasApi(get()) }
     single<ResidenteRepository> { ResidenteRepositoryImpl(get(), get()) }
     single<PermisoRepository> { PermisoRepositoryImpl(get()) }
     single<CultoRepository> { CultoRepositoryImpl(get()) }
@@ -106,6 +107,7 @@ fun datosModule(config: ConfigEntorno) = module {
     single<GaritaRepository> { GaritaRepositoryImpl(get()) }
     single<pe.upeu.resi.resiup.domain.repository.PerfilCuentaRepository> { pe.upeu.resi.resiup.data.repository.PerfilCuentaRepositoryImpl(get()) }
     single<pe.upeu.resi.resiup.domain.repository.CalendarioRepository> { pe.upeu.resi.resiup.data.repository.CalendarioRepositoryImpl(get()) }
+    single<pe.upeu.resi.resiup.domain.repository.NotasRepository> { pe.upeu.resi.resiup.data.repository.NotasRepositoryImpl(get()) }
     single<pe.upeu.resi.resiup.domain.repository.TramitesRepository> { pe.upeu.resi.resiup.data.repository.TramitesRepositoryImpl(get()) }
     single<pe.upeu.resi.resiup.domain.repository.NotificacionesRepository> { pe.upeu.resi.resiup.data.repository.NotificacionesRepositoryImpl(get()) }
     single { pe.upeu.resi.resiup.presentation.notificaciones.GestorAvisos(get(), get()) }
