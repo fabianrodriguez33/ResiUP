@@ -108,6 +108,8 @@ data class NuevaSolicitud(
     val residenteId: Long? = null, val responsableNombre: String? = null, val responsableCelular: String? = null, val acompanante: String? = null,
     /** Clave que la app genera al pedir sin conexión: el servidor no duplica la solicitud si el envío se repite. */
     val claveCliente: String? = null,
+    /** Cuándo se creó en el teléfono (para el horario de envío cuando se pidió sin conexión). */
+    val creadaEn: Instant? = null,
 )
 
 /** Permiso pedido sin conexión que espera para enviarse. [error] es lo que respondió el servidor si lo rechazó. */

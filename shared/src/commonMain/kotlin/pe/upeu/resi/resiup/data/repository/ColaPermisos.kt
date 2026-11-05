@@ -40,7 +40,7 @@ class ColaPermisos(
     suspend fun enviarPendientes(): Int {
         var enviados = 0
         for (p in locales.pendientesPorEnviar()) {
-            val resultado = permisos.crear(NuevaSolicitud(p.tipo, p.motivo, p.destino, p.salida, p.retorno, claveCliente = p.clave))
+            val resultado = permisos.crear(NuevaSolicitud(p.tipo, p.motivo, p.destino, p.salida, p.retorno, claveCliente = p.clave, creadaEn = p.creadaEn))
             val error = resultado.exceptionOrNull()?.aErrorApi()
             when {
                 resultado.isSuccess -> { locales.borrarPendiente(p.clave); enviados++ }

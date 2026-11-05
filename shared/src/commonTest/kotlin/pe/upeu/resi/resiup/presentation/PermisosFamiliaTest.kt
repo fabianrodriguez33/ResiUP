@@ -39,7 +39,10 @@ import pe.upeu.resi.resiup.presentation.util.conHoraLima
 class PermisosFamiliaTest {
 
     @BeforeTest
-    fun antes() = Dispatchers.setMain(UnconfinedTestDispatcher())
+    fun antes() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        pe.upeu.resi.resiup.presentation.util.HorarioEnvio.reloj = { kotlin.time.Instant.parse("2026-11-02T15:00:00Z") } // lunes 10:00 en Lima
+    }
 
     @AfterTest
     fun despues() = Dispatchers.resetMain()

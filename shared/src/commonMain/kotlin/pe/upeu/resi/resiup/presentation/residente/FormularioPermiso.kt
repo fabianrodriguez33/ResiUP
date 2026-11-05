@@ -31,6 +31,7 @@ import pe.upeu.resi.resiup.presentation.components.ResiCampoTexto
 import pe.upeu.resi.resiup.presentation.components.Segmentos
 import pe.upeu.resi.resiup.presentation.theme.Espacio
 import pe.upeu.resi.resiup.presentation.util.ZonaResidencia
+import pe.upeu.resi.resiup.presentation.util.HorarioEnvio
 import pe.upeu.resi.resiup.presentation.util.ahora
 import pe.upeu.resi.resiup.presentation.util.aErrorApi
 import pe.upeu.resi.resiup.presentation.util.conHoraLima
@@ -98,6 +99,10 @@ abstract class PermisoFormViewModel(
     fun enviar() {
         val s = _estado.value
         if (s.enviando) return
+        if (!HorarioEnvio.abierto(HorarioEnvio.reloj())) {
+            _estado.update { it.copy(error = ErrorApi.Conflicto(HorarioEnvio.MENSAJE)) }
+            return
+        }
         val errores = validar(s)
         if (errores.isNotEmpty()) {
             _estado.update { it.copy(errores = errores) }
@@ -110,7 +115,7 @@ abstract class PermisoFormViewModel(
                 s.tipo, s.motivo.trim(), s.destino.trim(), s.salida!!, s.retorno!!, if (exigeHijo) s.residenteId else null,
                 if (pernocta) s.responsableNombre.trim() else null, if (pernocta) s.responsableCelular.trim() else null,
                 if (pernocta) s.acompanante.trim().ifBlank { "Nadie" } else null,
-                claveCliente = cola?.nuevaClave(),
+                claveCliente = cola?.nuevaClave(), creadaEn = HorarioEnvio.reloj(),
             )
             enviarSolicitud(nueva)
                 .onSuccess { c -> alCrear(); _estado.update { it.copy(enviando = false, creada = c) } }

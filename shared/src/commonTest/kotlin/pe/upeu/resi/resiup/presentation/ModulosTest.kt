@@ -73,7 +73,10 @@ private val MOVIMIENTO = MovimientoRegistrado(1, "A001", "Ana Pérez", TipoMovim
 class ModulosTest {
 
     @BeforeTest
-    fun antes() = Dispatchers.setMain(UnconfinedTestDispatcher())
+    fun antes() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        pe.upeu.resi.resiup.presentation.util.HorarioEnvio.reloj = { kotlin.time.Instant.parse("2026-11-02T15:00:00Z") } // lunes 10:00 en Lima
+    }
 
     @AfterTest
     fun despues() = Dispatchers.resetMain()
@@ -154,6 +157,18 @@ class ModulosTest {
         vm.retorno(ahora() + 1.hours)
         vm.enviar()
         assertTrue("salida" in vm.estado.value.errores)
+        assertNull(repo.recibida)
+    }
+
+    @Test
+    fun `fuera del horario de envio la solicitud no se envia ni se encola`() = runTest {
+        val repo = PermisoFalso(Result.success(solicitud(9)))
+        val vm = SolicitudFormViewModel(repo)
+        vm.tipo(TipoPermiso.Corto); vm.motivo("x"); vm.destino("y"); vm.salida(ahora() + 3.hours); vm.retorno(ahora() + 4.hours)
+        pe.upeu.resi.resiup.presentation.util.HorarioEnvio.reloj = { kotlin.time.Instant.parse("2026-11-06T20:00:00Z") } // viernes 15:00 en Lima
+        vm.enviar()
+        assertNull(vm.estado.value.creada)
+        assertIs<ErrorApi.Conflicto>(vm.estado.value.error)
         assertNull(repo.recibida)
     }
 
