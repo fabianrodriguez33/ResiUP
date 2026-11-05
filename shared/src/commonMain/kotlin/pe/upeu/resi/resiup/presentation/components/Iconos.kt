@@ -48,6 +48,7 @@ object ResiIconos {
     val Campana = trazo("campana", "M6 16 V11 A6 6 0 0 1 18 11 V16 L20 18 H4 Z M10 21 H14")
     val Correo = trazo("correo", "M4 6 H20 V18 H4 Z M4 7 L12 13 L20 7")
     val Telefono = trazo("telefono", "M8 3 H16 V21 H8 Z M11 18 H13")
+    val FlechaDiagonal = trazo("flecha_diagonal", "M7 17 L17 7 M9 7 H17 V15")
     val Vacio = trazo("vacio", "M4 7 H20 V20 H4 Z M4 7 L7 3 H17 L20 7 M9 12 H15")
 }
 

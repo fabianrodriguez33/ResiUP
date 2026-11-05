@@ -10,6 +10,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
+import pe.upeu.resi.resiup.presentation.util.conHoraLima
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -161,7 +162,9 @@ class ModulosTest {
         val repo = PermisoFalso(Result.success(solicitud(7)))
         val vm = SolicitudFormViewModel(repo)
         vm.tipo(TipoPermiso.Largo); vm.motivo("  Visita  "); vm.destino("Casa")
-        vm.salida(ahora() + 1.hours); vm.retorno(ahora() + 5.hours)
+        // Mañana 08:00 a 13:00 en Lima: el mismo día sin importar la hora en que corra la prueba.
+        val manana8 = (ahora() + 24.hours).conHoraLima(8, 0)
+        vm.salida(manana8); vm.retorno(manana8 + 5.hours)
         vm.enviar()
         assertEquals(7, vm.estado.value.creada?.id)
         assertEquals("Visita", repo.recibida?.motivo, "se recorta el texto")
@@ -169,9 +172,15 @@ class ModulosTest {
 
         val rechazada = PermisoFalso(fallo(ErrorApi.Validacion(mapOf("retorno" to "Excede las 8 horas permitidas"))))
         val vm2 = SolicitudFormViewModel(rechazada)
-        vm2.tipo(TipoPermiso.Largo); vm2.motivo("x"); vm2.destino("y"); vm2.salida(ahora() + 1.hours); vm2.retorno(ahora() + 20.hours)
+        vm2.tipo(TipoPermiso.Largo); vm2.motivo("x"); vm2.destino("y"); vm2.salida(manana8); vm2.retorno(manana8 + 5.hours)
         vm2.enviar()
         assertEquals("Excede las 8 horas permitidas", vm2.estado.value.errores["retorno"])
+        // Cruzar la medianoche con un largo se detecta en el teléfono.
+        val vmCruza = SolicitudFormViewModel(PermisoFalso(Result.success(solicitud(8))))
+        vmCruza.tipo(TipoPermiso.Largo); vmCruza.motivo("x"); vmCruza.destino("y"); vmCruza.salida(manana8); vmCruza.retorno(manana8 + 17.hours)
+        vmCruza.enviar()
+        assertNull(vmCruza.estado.value.creada)
+        assertTrue(vmCruza.estado.value.errores["retorno"]!!.contains("mismo día"))
         assertNull(vm2.estado.value.creada)
         assertFalse(vm2.estado.value.enviando)
 

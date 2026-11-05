@@ -21,7 +21,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,7 +32,7 @@ import pe.upeu.resi.resiup.presentation.theme.Espacio
 import pe.upeu.resi.resiup.presentation.theme.ResiEstilos
 import pe.upeu.resi.resiup.presentation.theme.ResiTheme
 
-private val FormaTarjeta = RoundedCornerShape(20.dp)
+private val FormaTarjeta = RoundedCornerShape(28.dp)
 
 @Composable
 fun ResiTarjeta(
@@ -40,7 +42,7 @@ fun ResiTarjeta(
 ) {
     val base = modifier.fillMaxWidth()
     Surface(
-        modifier = if (onClick != null) base.clickable(role = Role.Button, onClick = onClick) else base,
+        modifier = (if (onClick != null) base.clickable(role = Role.Button, onClick = onClick) else base).sombraSuave(FormaTarjeta),
         shape = FormaTarjeta,
         color = MaterialTheme.colorScheme.surface,
     ) {
@@ -158,3 +160,9 @@ fun TituloPantalla(titulo: String, modifier: Modifier = Modifier, subtitulo: Str
         }
     }
 }
+
+/** Sombra difusa y de baja opacidad (solo en tema claro; en oscuro la elevación se logra con el color de superficie). */
+@Composable
+fun Modifier.sombraSuave(forma: androidx.compose.ui.graphics.Shape, color: Color = Color(0xFF1B2A4E)): Modifier =
+    if (ResiTheme.oscuro) this
+    else this.shadow(10.dp, forma, ambientColor = color.copy(alpha = 0.08f), spotColor = color.copy(alpha = 0.12f))

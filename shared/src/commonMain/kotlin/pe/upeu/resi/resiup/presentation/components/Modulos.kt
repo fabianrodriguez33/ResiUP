@@ -44,39 +44,46 @@ data class ModuloUi(val titulo: String, val icono: ImageVector, val acento: Acen
 @Composable
 fun TileModulo(modulo: ModuloUi, modifier: Modifier = Modifier) {
     val descripcion = modulo.titulo + (modulo.insignia?.let { ", $it" } ?: "")
+    val forma = RoundedCornerShape(28.dp)
     Column(
         modifier
-            .clip(RoundedCornerShape(16.dp))
+            .sombraSuave(forma)
+            .clip(forma)
+            .background(MaterialTheme.colorScheme.surface)
             .clickable(role = Role.Button, onClick = modulo.onClick)
             .semantics { contentDescription = descripcion }
-            .padding(vertical = Espacio.xs),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Espacio.s),
+            .padding(Espacio.l),
+        verticalArrangement = Arrangement.spacedBy(Espacio.l),
     ) {
-        Box(Modifier.size(64.dp).background(modulo.acento.suave(), RoundedCornerShape(20.dp)), contentAlignment = Alignment.Center) {
-            ResiIcono(modulo.icono, null, tint = modulo.acento.color(), tamano = 30.dp)
-            if (modulo.insignia != null) {
-                Box(
-                    Modifier.align(Alignment.TopEnd).padding(4.dp).heightIn(min = 20.dp).background(MaterialTheme.colorScheme.error, CircleShape).padding(horizontal = 6.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(modulo.insignia, Modifier.clearAndSetSemantics { }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onError, fontWeight = FontWeight.Bold)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Box(Modifier.size(56.dp).sombraSuave(RoundedCornerShape(20.dp), modulo.acento.color()).background(modulo.acento.suave(), RoundedCornerShape(20.dp)), contentAlignment = Alignment.Center) {
+                ResiIcono(modulo.icono, null, tint = modulo.acento.color(), tamano = 28.dp)
+                if (modulo.insignia != null) {
+                    Box(
+                        Modifier.align(Alignment.TopEnd).padding(2.dp).heightIn(min = 20.dp).background(MaterialTheme.colorScheme.error, CircleShape).padding(horizontal = 6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(modulo.insignia, Modifier.clearAndSetSemantics { }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onError, fontWeight = FontWeight.Bold)
+                    }
                 }
+            }
+            Box(Modifier.size(32.dp).background(MaterialTheme.colorScheme.background, CircleShape), contentAlignment = Alignment.Center) {
+                ResiIcono(ResiIconos.FlechaDiagonal, null, tint = modulo.acento.color(), tamano = 16.dp)
             }
         }
         Text(
-            modulo.titulo, Modifier.clearAndSetSemantics { }, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onBackground,
-            textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            modulo.titulo, Modifier.clearAndSetSemantics { }, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 2, overflow = TextOverflow.Ellipsis, minLines = 2,
         )
     }
 }
 
 /** Cuadrícula de accesos sin desplazamiento propio (va dentro de una pantalla que ya se desplaza). */
 @Composable
-fun CuadriculaModulos(modulos: List<ModuloUi>, modifier: Modifier = Modifier, columnas: Int = 3) {
+fun CuadriculaModulos(modulos: List<ModuloUi>, modifier: Modifier = Modifier, columnas: Int = 2) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         modulos.chunked(columnas).forEach { fila ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
                 fila.forEach { TileModulo(it, Modifier.weight(1f)) }
                 repeat(columnas - fila.size) { Spacer(Modifier.weight(1f)) }
             }
@@ -89,7 +96,7 @@ fun CuadriculaModulos(modulos: List<ModuloUi>, modifier: Modifier = Modifier, co
 fun TarjetaDato(valor: String, etiqueta: String, icono: ImageVector, acento: Acento, modifier: Modifier = Modifier, detalle: String? = null) {
     val descripcion = "$etiqueta: $valor" + (detalle?.let { ", $it" } ?: "")
     Column(
-        modifier.clip(RoundedCornerShape(20.dp)).background(acento.suave()).semantics(mergeDescendants = true) { contentDescription = descripcion }.padding(Espacio.m),
+        modifier.clip(RoundedCornerShape(28.dp)).background(acento.suave()).semantics(mergeDescendants = true) { contentDescription = descripcion }.padding(Espacio.m),
         verticalArrangement = Arrangement.spacedBy(Espacio.xs),
     ) {
         Box(Modifier.size(32.dp).background(acento.color(), CircleShape), contentAlignment = Alignment.Center) {

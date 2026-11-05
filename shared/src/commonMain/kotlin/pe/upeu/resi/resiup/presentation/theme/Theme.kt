@@ -24,7 +24,7 @@ private val ResiFormas = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
     small = RoundedCornerShape(12.dp),
     medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(24.dp),
+    large = RoundedCornerShape(28.dp),
     extraLarge = RoundedCornerShape(32.dp),
 )
 
@@ -44,7 +44,7 @@ fun ResiTheme(oscuro: Boolean = isSystemInDarkTheme(), content: @Composable () -
     CompositionLocalProvider(LocalResiColores provides if (oscuro) ResiColoresOscuro else ResiColoresClaro, LocalResiOscuro provides oscuro) {
         MaterialTheme(
             colorScheme = if (oscuro) EsquemaOscuro else EsquemaClaro,
-            typography = ResiTipografia,
+            typography = resiTipografia(),
             shapes = ResiFormas,
         ) {
             // Los textos sin color explícito (fuera de un Surface) deben seguir el tema, no quedar en negro sobre fondo oscuro.

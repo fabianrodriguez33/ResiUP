@@ -39,7 +39,7 @@ import pe.upeu.resi.resiup.presentation.util.formatoLima
 /**
  * Estado del formulario de permiso. Los campos siguen las hojas físicas de la residencia:
  * - Corto: lugar, motivo, fecha y hora de salida, hora de ingreso (el mismo día, máximo 2 horas).
- * - Largo: lugar, motivo, fecha y hora de salida y de ingreso.
+ * - Largo: más de 2 horas, regresando el mismo día (sin tope de horas).
  * - Pernoctar fuera: además, responsable de la casa, su celular y con quién viaja.
  */
 data class SolicitudFormState(
@@ -94,7 +94,7 @@ abstract class PermisoFormViewModel(
 
     fun retorno(v: Instant) = _estado.update { it.copy(retorno = v, errores = it.errores - "retorno", error = null) }
 
-    /** Valida lo básico en el cliente; las reglas reales (anticipación, superposición, límites) las aplica el servidor. */
+    /** Valida lo básico en el cliente; las reglas reales (superposición, tipos) las aplica el servidor. */
     fun enviar() {
         val s = _estado.value
         if (s.enviando) return
@@ -147,6 +147,10 @@ abstract class PermisoFormViewModel(
         else if (s.salida != null && s.retorno <= s.salida) put("retorno", "El ingreso debe ser después de la salida")
         else if (s.salida != null && s.tipo == TipoPermiso.Corto && (s.retorno - s.salida).inWholeMinutes > CORTO_MAX_MINUTOS) {
             put("retorno", "Un permiso corto dura máximo 2 horas. Si necesitas más tiempo, elige «Largo».")
+        } else if (s.salida != null && s.tipo == TipoPermiso.Largo && (s.retorno - s.salida).inWholeMinutes <= CORTO_MAX_MINUTOS) {
+            put("retorno", "Una salida de hasta 2 horas es un permiso «Corto».")
+        } else if (s.salida != null && s.tipo == TipoPermiso.Largo && !mismoDia(s.salida, s.retorno)) {
+            put("retorno", "Un permiso largo debe regresar el mismo día (hasta las 23:59). Si regresas otro día, tu padre o madre debe pedir «Pernoctar fuera».")
         } else if (s.salida != null && s.tipo == TipoPermiso.Pernocte && mismoDia(s.salida, s.retorno)) {
             put("retorno", "Para pernoctar fuera el ingreso debe ser otro día.")
         }
