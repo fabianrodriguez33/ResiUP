@@ -75,13 +75,15 @@ import pe.upeu.resi.resiup.presentation.util.fechaLegible
 import pe.upeu.resi.resiup.presentation.util.formatoLima
 import pe.upeu.resi.resiup.presentation.util.unDecimal
 import pe.upeu.resi.resiup.presentation.util.Nota
-import pe.upeu.resi.resiup.presentation.util.NotasMes
+import pe.upeu.resi.resiup.domain.model.ResumenNotas
+import pe.upeu.resi.resiup.presentation.util.ContenidoCarga
 import pe.upeu.resi.resiup.presentation.util.NOMBRES_MES
 import androidx.compose.foundation.layout.Spacer
 
 @Composable
 fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
+    val notas by vm.notas.collectAsState()
     var verQr by remember { mutableStateOf(false) }
     ContenidoConsulta(estado, vm::reintentar) { datos ->
         val ui = datos ?: return@ContenidoConsulta IndicadorCarga()
@@ -100,14 +102,24 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
             TarjetaHero("Mi código QR", "Para culto y garita", "Mostrar", { verQr = true }, ResiIconos.Qr)
             Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
                 TarjetaDato(e.racha.toString(), "Racha de cultos", ResiIconos.Racha, Acento.Naranja, Modifier.weight(1f), detalle = if (e.racha == 1) "día seguido" else "días seguidos")
-                TarjetaDato("${e.diasAsistidosMes}/${e.diasHabilesMes}", if (e.delMesAnterior) "Mes pasado" else "Este mes", ResiIconos.Asistencias, Acento.Verde, Modifier.weight(1f), detalle = "días con culto")
+                val delServidor = (notas as? Carga.Exito)?.datos?.actual?.takeIf { it.porDias && it.diasAsistidos != null && it.diasConCulto != null }
+                TarjetaDato(delServidor?.let { "${it.diasAsistidos}/${it.diasConCulto}" } ?: "—", "Este mes", ResiIconos.Asistencias, Acento.Verde, Modifier.weight(1f), detalle = "días con culto")
                 TarjetaDato(ui.limpieza?.promedio?.let { it.unDecimal() } ?: "—", "Limpieza", ResiIconos.Limpieza, Acento.Violeta, Modifier.weight(1f), detalle = "promedio sobre 20")
             }
             EncabezadoSeccion("Mis notas")
             ResiTarjeta {
-                NotasDelMes(ui.notasMes, enCurso = true)
-                Spacer(Modifier.height(Espacio.m))
-                NotasDelMes(ui.notasMesAnterior, enCurso = false)
+                when (val n = notas) {
+                    is Carga.Cargando -> Text("Cargando tus notas…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    is Carga.Fallo -> Text(
+                        if (n.error == pe.upeu.resi.resiup.domain.error.ErrorApi.SinConexion) "Necesitas conexión para ver tus notas" else "No se pudieron cargar tus notas",
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    is Carga.Exito -> {
+                        NotasDelMes(n.datos.actual)
+                        Spacer(Modifier.height(Espacio.m))
+                        NotasDelMes(n.datos.anterior)
+                    }
+                }
             }
             EncabezadoSeccion("Accesos")
             CuadriculaModulos(
@@ -305,16 +317,33 @@ private fun Nota.estado() = when (this) {
     Nota.C -> EstadoVisual.Error
 }
 
-/** Resumen de un mes: cuántos cultos y cómo le fue en limpieza, cada uno con su nota (AD, A, B o C). */
+private fun String.aNota(): Nota? = Nota.entries.firstOrNull { it.name == this }
+
+/**
+ * Resumen de un mes con los datos del servidor. Desde noviembre de 2026 los cultos van por días asistidos y porcentaje; mientras el
+ * mes no termina la nota es «Nota a la fecha». Los meses anteriores muestran la escala antigua (cantidad de cultos).
+ */
 @Composable
-private fun NotasDelMes(n: NotasMes, enCurso: Boolean) {
+private fun NotasDelMes(n: ResumenNotas) {
     val mes = NOMBRES_MES[n.mes - 1].replaceFirstChar { it.uppercase() }
     Column(verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
-        Text("$mes ${n.anio}" + if (enCurso) " · en curso" else "", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("$mes ${n.anio}" + if (n.provisional) " · en curso" else "", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s), verticalAlignment = Alignment.CenterVertically) {
-            ChipEstado("Cultos ${n.cultos} · ${n.notaCultos.name}", n.notaCultos.estado())
-            if (n.notaLimpieza == null || n.promedioLimpieza == null) ChipEstado("Limpieza · sin evaluar", EstadoVisual.Neutro)
-            else ChipEstado("Limpieza ${n.promedioLimpieza.unDecimal()} · ${n.notaLimpieza.name}", n.notaLimpieza.estado())
+            val nota = n.notaCultos?.aNota()
+            when {
+                n.sinCultos || nota == null -> ChipEstado("Sin cultos en el mes", EstadoVisual.Neutro)
+                n.porDias -> {
+                    val pct = n.porcentajeAsistencia?.unDecimal() ?: "—"
+                    ChipEstado("Cultos ${n.diasAsistidos}/${n.diasConCulto} días · $pct % · ${nota.name}", nota.estado())
+                }
+                else -> ChipEstado("Cultos ${n.cultos} · ${nota.name}", nota.estado())
+            }
+            val limpieza = n.notaLimpieza?.aNota()
+            if (limpieza == null || n.promedioLimpieza == null) ChipEstado("Limpieza · sin evaluar", EstadoVisual.Neutro)
+            else ChipEstado("Limpieza ${n.promedioLimpieza.unDecimal()} · ${limpieza.name}", limpieza.estado())
+        }
+        if (n.provisional && n.porDias && !n.sinCultos) {
+            Text("Nota a la fecha: puede cambiar hasta que termine el mes", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
