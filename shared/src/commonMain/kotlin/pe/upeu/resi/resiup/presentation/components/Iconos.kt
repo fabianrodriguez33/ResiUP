@@ -50,6 +50,8 @@ object ResiIconos {
     val Telefono = trazo("telefono", "M8 3 H16 V21 H8 Z M11 18 H13")
     val FlechaDiagonal = trazo("flecha_diagonal", "M7 17 L17 7 M9 7 H17 V15")
     val Vacio = trazo("vacio", "M4 7 H20 V20 H4 Z M4 7 L7 3 H17 L20 7 M9 12 H15")
+    val Notas = trazo("notas", "M5 20 V12 M12 20 V5 M19 20 V9 M3 20 H21")
+    val Atras = trazo("atras", "M19 12 H5 M11 6 L5 12 L11 18")
 }
 
 @Composable

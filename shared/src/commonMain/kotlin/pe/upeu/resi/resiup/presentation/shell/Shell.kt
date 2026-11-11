@@ -53,6 +53,7 @@ import pe.upeu.resi.resiup.presentation.personal.SolicitudesPreceptorScreen
 import pe.upeu.resi.resiup.presentation.residente.AsistenciasScreen
 import pe.upeu.resi.resiup.presentation.residente.InicioResidenteScreen
 import pe.upeu.resi.resiup.presentation.residente.LimpiezaResidenteScreen
+import pe.upeu.resi.resiup.presentation.residente.NotasResidenteScreen
 import pe.upeu.resi.resiup.presentation.residente.PerfilResidenteScreen
 import pe.upeu.resi.resiup.presentation.residente.PermisosResidenteScreen
 import pe.upeu.resi.resiup.domain.model.Rol
@@ -68,6 +69,9 @@ fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
     val avisos: GestorAvisos = koinInject()
     val noLeidas by avisos.noLeidas.collectAsState()
     var verBandeja by rememberSaveable { mutableStateOf(false) }
+    // Pantalla secundaria abierta desde los accesos del inicio (por ahora, Notas del residente). La barra sigue visible.
+    var secundaria by rememberSaveable { mutableStateOf<String?>(null) }
+    val irA: (String) -> Unit = { destino -> if (destino == Destinos.Notas) secundaria = destino else { seleccionado = destino; secundaria = null } }
     if (sesion != null) LaunchedEffect(sesion.usuario) { avisos.vigilar() }
     val cola: pe.upeu.resi.resiup.data.repository.ColaPermisos = koinInject()
     if (sesion != null && rol == Rol.Residente) LaunchedEffect(sesion.usuario) { cola.vigilar() }
@@ -82,15 +86,17 @@ fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
                     Destinos.Perfil, Destinos.Mas -> PantallaCuenta(rol, null, onCerrarSesion)
                     else -> PantallaPendiente(actual.etiqueta, rol)
                 }
+            } else if (rol == Rol.Residente && secundaria == Destinos.Notas) {
+                NotasResidenteScreen(onVolver = { secundaria = null })
             } else {
-                ContenidoReal(rol, sesion, actual.id, { seleccionado = it }, onCerrarSesion)
+                ContenidoReal(rol, sesion, actual.id, irA, onCerrarSesion)
             }
         }
         if (sesion != null && !verBandeja) {
             CampanaAvisos(noLeidas, { verBandeja = true }, Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = Espacio.xs, end = Espacio.s))
         }
         BarraNavegacionResi(
-            items, seleccionado, { seleccionado = it; verBandeja = false },
+            items, seleccionado, { seleccionado = it; verBandeja = false; secundaria = null },
             Modifier.align(Alignment.BottomCenter).padding(WindowInsets.navigationBars.asPaddingValues()),
         )
     }
