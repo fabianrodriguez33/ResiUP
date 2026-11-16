@@ -15,6 +15,14 @@ val propiedadesLocales = Properties().apply {
 val apiUrlDebug = propiedadesLocales.getProperty("resi.apiUrl", "http://10.0.2.2:8080/") // 10.0.2.2 = PC anfitriona desde el emulador
 val apiUrlRelease = propiedadesLocales.getProperty("resi.apiUrlRelease", "https://CONFIGURAR-URL-DE-PRODUCCION/")
 
+// Firma de la versión de entrega. Los datos viven en keystore.properties (raíz del proyecto, no versionado):
+//   storeFile=../claves/resiup.jks   storePassword=...   keyAlias=resiup   keyPassword=...
+// Sin ese archivo la versión de entrega se compila igual, pero queda sin firmar.
+val firma = Properties().apply {
+    rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+val hayFirma = firma.getProperty("storeFile") != null
+
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_11
@@ -40,7 +48,17 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
+    }
+    signingConfigs {
+        if (hayFirma) {
+            create("release") {
+                storeFile = rootProject.file(firma.getProperty("storeFile"))
+                storePassword = firma.getProperty("storePassword")
+                keyAlias = firma.getProperty("keyAlias")
+                keyPassword = firma.getProperty("keyPassword")
+            }
+        }
     }
     packaging {
         resources {
@@ -53,7 +71,8 @@ android {
         }
         release {
             buildConfigField("String", "API_URL", "\"$apiUrlRelease\"")
-            isMinifyEnabled = false
+            if (hayFirma) signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
