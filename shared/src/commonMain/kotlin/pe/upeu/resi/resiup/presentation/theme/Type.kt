@@ -14,9 +14,9 @@ import resiup.shared.generated.resources.prompt_bold
 import resiup.shared.generated.resources.prompt_medium
 import resiup.shared.generated.resources.prompt_regular
 import resiup.shared.generated.resources.prompt_semibold
-import resiup.shared.generated.resources.roboto_variable
+import resiup.shared.generated.resources.montserrat_variable
 
-// Títulos: Prompt (geométrica redondeada, como la app UPeU). Texto: Roboto variable.
+// Títulos: Prompt (geométrica redondeada, como la app UPeU). Texto: Montserrat variable.
 @Composable
 private fun familiaTitulos(): FontFamily = FontFamily(
     FuenteRecurso(Res.font.prompt_regular, FontWeight.Normal),
@@ -28,7 +28,7 @@ private fun familiaTitulos(): FontFamily = FontFamily(
 @Composable
 private fun familiaTexto(): FontFamily = FontFamily(
     listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold).map { peso ->
-        FuenteRecurso(Res.font.roboto_variable, peso, variationSettings = FontVariation.Settings(FontVariation.weight(peso.weight)))
+        FuenteRecurso(Res.font.montserrat_variable, peso, variationSettings = FontVariation.Settings(FontVariation.weight(peso.weight)))
     },
 )
 
