@@ -80,8 +80,10 @@ fun CuadriculaModulos(modulos: List<ModuloUi>, modifier: Modifier = Modifier, co
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         modulos.chunked(columnas).forEach { fila ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                // Un acceso solo en su fila va centrado, como en los prototipos.
+                if (fila.size == 1 && columnas == 2) Spacer(Modifier.weight(0.5f))
                 fila.forEach { TileModulo(it, Modifier.weight(1f)) }
-                repeat(columnas - fila.size) { Spacer(Modifier.weight(1f)) }
+                if (fila.size == 1 && columnas == 2) Spacer(Modifier.weight(0.5f)) else repeat(columnas - fila.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }

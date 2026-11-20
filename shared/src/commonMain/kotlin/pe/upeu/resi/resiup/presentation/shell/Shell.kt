@@ -76,7 +76,7 @@ import pe.upeu.resi.resiup.presentation.theme.Espacio
 fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
     val items = remember(rol) { rol.destinos() }
     var seleccionado by rememberSaveable(rol) { mutableStateOf(items.first().id) }
-    val actual = items.first { it.id == seleccionado }
+    val actual = items.firstOrNull { it.id == seleccionado } ?: items.first() // las pantallas sin pestaña (reservas) usan solo [seleccionado]
     val avisos: GestorAvisos = koinInject()
     val noLeidas by avisos.noLeidas.collectAsState()
     var verBandeja by rememberSaveable { mutableStateOf(false) }
@@ -111,7 +111,7 @@ fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
             } else if (rol == Rol.Residente && secundaria == Destinos.Notas) {
                 NotasResidenteScreen(onVolver = { secundaria = null })
             } else {
-                ContenidoReal(rol, sesion, actual.id, irA, onCerrarSesion)
+                ContenidoReal(rol, sesion, seleccionado, irA, onCerrarSesion)
             }
         }
         }
