@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -76,12 +77,7 @@ fun CampoFechaHora(etiqueta: String, valor: Instant?, error: String?, onElegido:
     var paso by remember { mutableStateOf(0) }
     var fechaMillis by remember { mutableLongStateOf(0L) }
     androidx.compose.foundation.layout.Column(modifier) {
-        ResiBoton(
-            texto = "$etiqueta: ${valor?.formatoLima() ?: "elegir fecha y hora"}",
-            onClick = { paso = 1 },
-            modifier = Modifier.fillMaxWidth(),
-            variante = VarianteBoton.Secundario,
-        )
+        PildoraSelector(valor?.formatoLima() ?: etiqueta, { paso = 1 }, Modifier.fillMaxWidth())
         if (error != null) Text(error, Modifier.padding(start = Espacio.l, top = Espacio.xs), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
     }
     if (paso == 1) SelectorFecha({ fechaMillis = it; paso = 2 }, { paso = 0 })
@@ -93,17 +89,37 @@ fun CampoFechaHora(etiqueta: String, valor: Instant?, error: String?, onElegido:
 fun CampoHora(etiqueta: String, valor: Instant?, base: Instant?, error: String?, onElegido: (Instant) -> Unit, modifier: Modifier = Modifier) {
     var abierto by remember { mutableStateOf(false) }
     androidx.compose.foundation.layout.Column(modifier) {
-        ResiBoton(
-            texto = "$etiqueta: ${valor?.soloHoraLima() ?: "elegir hora"}",
-            onClick = { abierto = true },
-            modifier = Modifier.fillMaxWidth(),
-            variante = VarianteBoton.Secundario,
-            habilitado = base != null,
-        )
-        if (base == null) Text("Elige primero la fecha y hora de salida", Modifier.padding(start = Espacio.l, top = Espacio.xs), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        PildoraSelector(valor?.soloHoraLima() ?: etiqueta, { abierto = true }, Modifier.fillMaxWidth(), habilitado = base != null)
         if (error != null) Text(error, Modifier.padding(start = Espacio.l, top = Espacio.xs), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
     }
     if (abierto && base != null) SelectorHora({ h, m -> onElegido(base.conHoraLima(h, m)); abierto = false }, { abierto = false })
+}
+
+/** Cómo ve el residente su permiso: En revisión, En garita, Salida, Entrada... */
+fun pe.upeu.resi.resiup.domain.model.SolicitudPermiso.estadoParaResidente(): Pair<String, EstadoVisual> = when (estado) {
+    EstadoSolicitud.PendienteApoderado -> "Pendiente" to EstadoVisual.Advertencia
+    EstadoSolicitud.PendientePreceptor, EstadoSolicitud.Borrador -> "En revisión" to EstadoVisual.Advertencia
+    EstadoSolicitud.Aprobado -> when {
+        garitaEntrada != null -> "Entrada" to EstadoVisual.Exito
+        garitaSalida != null -> "Salida" to EstadoVisual.Info
+        else -> "En garita" to EstadoVisual.Neutro
+    }
+    EstadoSolicitud.Rechazado -> "Rechazado" to EstadoVisual.Error
+    EstadoSolicitud.Anulado -> "Anulado" to EstadoVisual.Error
+    EstadoSolicitud.Cancelado -> "Cancelado" to EstadoVisual.Neutro
+    EstadoSolicitud.Vencido -> "Vencido" to EstadoVisual.Neutro
+}
+
+/** Selector en forma de píldora (fecha, hora): azul suave; gris si todavía no se puede usar. */
+@Composable
+fun PildoraSelector(texto: String, onClick: () -> Unit, modifier: Modifier = Modifier, habilitado: Boolean = true) {
+    Box(
+        modifier.heightIn(min = 52.dp).background(if (habilitado) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(20.dp))
+            .clickable(enabled = habilitado, role = Role.Button, onClick = onClick).padding(horizontal = Espacio.m, vertical = Espacio.s),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(texto, style = MaterialTheme.typography.bodyMedium, color = if (habilitado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    }
 }
 
 fun EstadoSolicitud.aEstadoVisual(): EstadoVisual = when (this) {

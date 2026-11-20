@@ -160,13 +160,7 @@ fun TituloPantalla(titulo: String, modifier: Modifier = Modifier, subtitulo: Str
     val volver = LocalVolver.current
     // En el inicio deja libre el borde derecho (ahí flota la campana); en pantallas internas ese espacio es de la acción.
     Row(modifier.fillMaxWidth().padding(end = if (volver != null) 0.dp else 44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        if (volver != null) {
-            Box(
-                Modifier.size(44.dp).clip(androidx.compose.foundation.shape.CircleShape).border(2.dp, MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape)
-                    .clickable(onClickLabel = "Volver", role = androidx.compose.ui.semantics.Role.Button, onClick = volver),
-                contentAlignment = Alignment.Center,
-            ) { ResiIcono(ResiIconos.Atras, "Volver", tint = MaterialTheme.colorScheme.primary, tamano = 22.dp) }
-        }
+        if (volver != null) BotonAtras(volver)
         Column(Modifier.weight(1f)) {
             Text(titulo, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
             if (subtitulo != null) {

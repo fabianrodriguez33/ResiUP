@@ -113,6 +113,8 @@ data class SolicitudDto(
     val responsableNombre: String? = null,
     val responsableCelular: String? = null,
     val acompanante: String? = null,
+    val garitaSalida: String? = null,
+    val garitaEntrada: String? = null,
 )
 
 @Serializable

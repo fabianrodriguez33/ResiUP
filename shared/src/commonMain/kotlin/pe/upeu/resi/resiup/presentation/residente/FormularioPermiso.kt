@@ -2,6 +2,8 @@ package pe.upeu.resi.resiup.presentation.residente
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -121,7 +123,7 @@ abstract class PermisoFormViewModel(
                 .onSuccess { c -> alCrear(); _estado.update { it.copy(enviando = false, creada = c) } }
                 .onFailure { e ->
                     val err = e.aErrorApi()
-                    if (cola != null && (err == ErrorApi.SinConexion || err == ErrorApi.TiempoAgotado)) {
+                    if (cola != null && !pernocta && (err == ErrorApi.SinConexion || err == ErrorApi.TiempoAgotado)) {
                         // Sin red: el permiso queda pendiente y la app lo envía sola cuando vuelva la conexión.
                         cola.encolar(nueva)
                         _estado.update { it.copy(enviando = false, enCola = true) }
@@ -155,7 +157,7 @@ abstract class PermisoFormViewModel(
         } else if (s.salida != null && s.tipo == TipoPermiso.Largo && (s.retorno - s.salida).inWholeMinutes <= CORTO_MAX_MINUTOS) {
             put("retorno", "Una salida de hasta 2 horas es un permiso «Corto».")
         } else if (s.salida != null && s.tipo == TipoPermiso.Largo && !mismoDia(s.salida, s.retorno)) {
-            put("retorno", "Un permiso largo debe regresar el mismo día (hasta las 23:59). Si regresas otro día, tu padre o madre debe pedir «Pernoctar fuera».")
+            put("retorno", "Un permiso largo debe regresar el mismo día (hasta las 23:59). Si regresas otro día, elige «Pernoctar».")
         } else if (s.salida != null && s.tipo == TipoPermiso.Pernocte && mismoDia(s.salida, s.retorno)) {
             put("retorno", "Para pernoctar fuera el ingreso debe ser otro día.")
         }
@@ -164,13 +166,13 @@ abstract class PermisoFormViewModel(
     private fun mismoDia(a: Instant, b: Instant) = a.toLocalDateTime(ZonaResidencia).date == b.toLocalDateTime(ZonaResidencia).date
 }
 
-/** Formulario del residente: solo corto y largo (el pernoctar lo envía su padre/madre). */
+/** Formulario del residente: corto, largo y pernoctar fuera (este último siempre espera el visto bueno del padre/madre). */
 class SolicitudFormViewModel(
     repo: PermisoRepository,
     consultas: ConsultasResidenteRepository? = null,
     alCrear: () -> Unit = {},
     cola: pe.upeu.resi.resiup.data.repository.ColaPermisos? = null,
-) : PermisoFormViewModel(listOf(TipoPermiso.Corto, TipoPermiso.Largo), false, { repo.crear(it) }, alCrear, cola) {
+) : PermisoFormViewModel(listOf(TipoPermiso.Corto, TipoPermiso.Largo, TipoPermiso.Pernocte), false, { repo.crear(it) }, alCrear, cola) {
     private val _privilegio = MutableStateFlow<Boolean?>(null)
 
     /** Verdadero si el residente tiene el privilegio de enviar sus permisos sin pasar antes por su padre/madre (null = aún no se sabe). */
@@ -181,42 +183,30 @@ class SolicitudFormViewModel(
     }
 }
 
-/** Campos del formulario según el tipo de permiso; los comparten el residente y el padre/madre. */
+/** Campos del formulario según el tipo de permiso, como en el prototipo; los comparten el residente y el padre/madre. */
 @Composable
 fun CamposPermiso(s: SolicitudFormState, vm: PermisoFormViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         if (vm.tiposPermitidos.size > 1) {
-            Text("Tipo de permiso", style = MaterialTheme.typography.labelMedium)
-            Segmentos(vm.tiposPermitidos, s.tipo, { it.etiqueta }, vm::tipo)
-            Text(
-                when (s.tipo) {
-                    TipoPermiso.Corto -> "Corto: sales y vuelves el mismo día, hasta 2 horas."
-                    TipoPermiso.Largo -> "Largo: más de 2 horas."
-                    TipoPermiso.Pernocte -> "Pernoctar fuera: duerme en otra casa. Se indica quién lo recibe."
-                },
-                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Segmentos(vm.tiposPermitidos, s.tipo, { if (it == TipoPermiso.Pernocte) "Pernoctar" else it.etiqueta }, vm::tipo)
         }
         ResiCampoTexto(s.destino, vm::destino, "Lugar", error = s.errores["destino"], habilitado = !s.enviando)
+        ResiCampoTexto(s.motivo, vm::motivo, "Motivo", error = s.errores["motivo"], habilitado = !s.enviando)
         if (s.tipo == TipoPermiso.Pernocte) {
-            ResiCampoTexto(s.responsableNombre, vm::responsableNombre, "Responsable de la casa a donde va", error = s.errores["responsableNombre"], habilitado = !s.enviando)
+            ResiCampoTexto(s.responsableNombre, vm::responsableNombre, "Nombre del responsable de la casa a donde va:", error = s.errores["responsableNombre"], habilitado = !s.enviando)
             ResiCampoTexto(
-                s.responsableCelular, vm::responsableCelular, "Celular del responsable", error = s.errores["responsableCelular"],
+                s.responsableCelular, vm::responsableCelular, "Celular del responsable de la casa a donde va:", error = s.errores["responsableCelular"],
                 tipoTeclado = KeyboardType.Phone, habilitado = !s.enviando,
             )
+            ResiCampoTexto(s.acompanante, vm::acompanante, "Acompañado de:", habilitado = !s.enviando)
         }
-        ResiCampoTexto(s.motivo, vm::motivo, "Motivo", error = s.errores["motivo"], habilitado = !s.enviando)
-        CampoFechaHora(if (s.tipo == TipoPermiso.Corto) "Salida (fecha y hora)" else "Salida", s.salida, s.errores["salida"], vm::salida)
-        if (s.tipo == TipoPermiso.Corto) {
-            CampoHora("Hora de ingreso", s.retorno, s.salida, s.errores["retorno"], vm::retorno)
-        } else {
-            CampoFechaHora("Ingreso", s.retorno, s.errores["retorno"], vm::retorno)
-        }
-        if (s.tipo == TipoPermiso.Pernocte) {
-            ResiCampoTexto(s.acompanante, vm::acompanante, "Acompañado de", ayuda = "Si va solo, déjalo vacío: se registra «Nadie».", habilitado = !s.enviando)
-        }
-        if (s.tipo != TipoPermiso.Corto && s.retorno != null && s.salida != null) {
-            Text("Del ${s.salida.formatoLima()} al ${s.retorno.formatoLima()}", Modifier.padding(start = Espacio.xs), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s), verticalAlignment = Alignment.Top) {
+            CampoFechaHora("Fecha y hora de salida", s.salida, s.errores["salida"], vm::salida, Modifier.weight(1f))
+            if (s.tipo == TipoPermiso.Corto) {
+                CampoHora("Hora de ingreso", s.retorno, s.salida, s.errores["retorno"], vm::retorno, Modifier.weight(1f))
+            } else {
+                CampoFechaHora("Fecha y hora de ingreso", s.retorno, s.errores["retorno"], vm::retorno, Modifier.weight(1f))
+            }
         }
     }
 }

@@ -100,6 +100,9 @@ data class SolicitudPermiso(
     val responsableNombre: String? = null,
     val responsableCelular: String? = null,
     val acompanante: String? = null,
+    /** Marcas de garita con este permiso (null si aún no ocurrieron). */
+    val garitaSalida: Instant? = null,
+    val garitaEntrada: Instant? = null,
 )
 
 /** [residenteId] solo lo envía el padre/madre (a qué hijo corresponde); los datos de la casa, solo en pernoctar. */

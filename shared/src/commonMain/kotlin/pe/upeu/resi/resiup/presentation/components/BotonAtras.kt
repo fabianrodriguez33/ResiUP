@@ -1,5 +1,6 @@
 package pe.upeu.resi.resiup.presentation.components
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -16,9 +17,10 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun BotonAtras(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
-        modifier.size(48.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "Volver", onClick = onClick),
+        modifier.size(44.dp).clip(CircleShape).border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+            .clickable(role = Role.Button, onClickLabel = "Volver", onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        ResiIcono(ResiIconos.Atras, "Volver", tint = MaterialTheme.colorScheme.onSurface, tamano = 26.dp)
+        ResiIcono(ResiIconos.Atras, "Volver", tint = MaterialTheme.colorScheme.primary, tamano = 22.dp)
     }
 }

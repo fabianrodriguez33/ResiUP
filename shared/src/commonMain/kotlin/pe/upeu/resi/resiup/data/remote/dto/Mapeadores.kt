@@ -100,6 +100,7 @@ fun SolicitudDto.aDominio() = SolicitudPermiso(
     justificaciones = justificaciones.orEmpty().map { Justificacion(it.id, it.motivo, it.estado.aEstadoRevision(), it.comentario) },
     origen = if (origen == "APODERADO") OrigenSolicitud.Apoderado else OrigenSolicitud.Residente,
     responsableNombre = responsableNombre, responsableCelular = responsableCelular, acompanante = acompanante,
+    garitaSalida = garitaSalida?.instante(), garitaEntrada = garitaEntrada?.instante(),
 )
 
 fun HijoDto.aDominio() = Hijo(residenteId, codigo, nombreCompleto, habitacion, cama, puedeSolicitarSolo, pendientes)
