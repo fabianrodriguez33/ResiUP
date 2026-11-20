@@ -73,6 +73,8 @@ interface CultoRepository {
     suspend fun sesionesDeFecha(fecha: String): Result<List<SesionCulto>> = Result.failure(UnsupportedOperationException())
     suspend fun presentes(sesionId: Long): Result<List<AsistenciaPresente>> = Result.failure(UnsupportedOperationException())
     suspend fun reabrirSesion(sesionId: Long): Result<SesionCulto> = Result.failure(UnsupportedOperationException())
+    suspend fun registrarPorCodigo(sesionId: Long, codigo: String): Result<AsistenciaRegistrada> = Result.failure(UnsupportedOperationException())
+    suspend fun exportarPresentes(sesionId: Long): Result<String> = Result.failure(UnsupportedOperationException())
 }
 
 data class AsistenciaPresente(val codigo: String, val nombreCompleto: String, val despuesDelCorte: Boolean)

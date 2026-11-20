@@ -96,7 +96,7 @@ class ReservasViewModel(private val repo: ReservasRepository) : ViewModel() {
 }
 
 data class ReservaFormState(
-    val motivo: String = "", val curso: String = "", val turno: Boolean = true,
+    val motivo: String = "", val curso: String = "", val turno: Boolean? = null,
     val errores: Map<String, String> = emptyMap(), val enviando: Boolean = false, val error: ErrorApi? = null, val creada: Boolean = false,
 )
 
@@ -106,14 +106,15 @@ class ReservaFormViewModel(private val repo: ReservasRepository) : ViewModel() {
 
     fun motivo(v: String) = _estado.update { it.copy(motivo = v.take(300), errores = it.errores - "motivo", error = null) }
     fun curso(v: String) = _estado.update { it.copy(curso = v.take(100), error = null) }
-    fun turno(v: Boolean) = _estado.update { it.copy(turno = v, error = null) }
+    fun turno(v: Boolean) = _estado.update { it.copy(turno = v, errores = it.errores - "turno", error = null) }
 
     fun enviar(comida: ComidaOfertada, ofertaCena: List<ComidaOfertada>) {
         val s = _estado.value
         if (s.enviando) return
         if (s.motivo.isBlank()) { _estado.update { it.copy(errores = mapOf("motivo" to "Indica el motivo")) }; return }
         // Las dos cenas (táper y segundo turno) son opciones de la misma comida.
-        val tipo = if (comida.tipo.esCena) (if (s.turno) TipoReserva.CenaSegundoTurno else TipoReserva.CenaTaper) else comida.tipo
+        if (comida.tipo.esCena && s.turno == null) { _estado.update { it.copy(errores = mapOf("turno" to "Elige turno o táper")) }; return }
+        val tipo = if (comida.tipo.esCena) (if (s.turno == true) TipoReserva.CenaSegundoTurno else TipoReserva.CenaTaper) else comida.tipo
         val fecha = (ofertaCena.firstOrNull { it.tipo == tipo } ?: comida).fecha
         _estado.update { it.copy(enviando = true, error = null) }
         viewModelScope.launch {
@@ -202,7 +203,7 @@ private fun FormularioReserva(comida: ComidaOfertada, oferta: List<ComidaOfertad
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla("Reserva de $nombre", subtitulo = "Llene los datos")
-        if (comida.tipo.esCena) Segmentos(listOf(true, false), s.turno, { if (it) "Turno" else "Táper" }, vm::turno)
+        if (comida.tipo.esCena) pe.upeu.resi.resiup.presentation.components.CampoDesplegable("Turno o Táper", listOf(true, false), s.turno, { if (it) "Turno" else "Táper" }, vm::turno)
         ResiCampoTexto(s.motivo, vm::motivo, "Motivo", error = s.errores["motivo"], habilitado = !s.enviando)
         if (comida.tipo != TipoReserva.Desayuno) ResiCampoTexto(s.curso, vm::curso, "Curso", error = s.errores["curso"], habilitado = !s.enviando)
         s.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }

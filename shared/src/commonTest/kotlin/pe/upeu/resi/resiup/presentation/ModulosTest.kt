@@ -52,6 +52,8 @@ import pe.upeu.resi.resiup.domain.repository.ResidenteRepository
 import pe.upeu.resi.resiup.presentation.personal.AsistenciaCultoViewModel
 import pe.upeu.resi.resiup.presentation.personal.GaritaEscanerViewModel
 import pe.upeu.resi.resiup.presentation.personal.GaritaEstado
+import pe.upeu.resi.resiup.presentation.personal.CRITERIOS_EN_MENU
+import pe.upeu.resi.resiup.presentation.personal.CRITERIOS_POR_RESIDENTE
 import pe.upeu.resi.resiup.presentation.personal.LimpiezaPreceptorViewModel
 import pe.upeu.resi.resiup.presentation.residente.SolicitudFormViewModel
 import pe.upeu.resi.resiup.presentation.util.ListaViewModel
@@ -342,27 +344,42 @@ class ModulosTest {
     }
 
     @Test
-    fun `basura y olores son comunes y el resto personal, con topes y total por residente`() = runTest {
+    fun `cada criterio se registra por separado y al completar los seis se guarda la habitacion`() = runTest {
         val repo = LimpiezaFalsa()
         val vm = LimpiezaPreceptorViewModel(repo)
         vm.abrir(habitacion101)
-        repeat(9) { vm.ajustarComun(CriterioLimpieza.Basura, +1) }
-        vm.ajustarComun(CriterioLimpieza.Olores, +1)
+        // Sin nota el criterio no se puede registrar; el primer «+» pone 1 y el tope es el máximo del criterio.
+        vm.elegirCriterio(CriterioLimpieza.Cama)
+        assertTrue(!vm.estado.value.criterioCompleto)
+        repeat(9) { vm.ajustar(1, CriterioLimpieza.Cama, +1) }
+        vm.ajustar(2, CriterioLimpieza.Cama, -1)
+        assertEquals(3, vm.estado.value.personales.getValue(1L)[CriterioLimpieza.Cama], "tope de cama")
+        assertEquals(0, vm.estado.value.personales.getValue(2L)[CriterioLimpieza.Cama])
+        vm.registrarCriterio()
+        assertEquals(setOf(CriterioLimpieza.Cama), vm.estado.value.registrados)
+        assertNull(repo.enviada, "todavía faltan criterios")
+
+        vm.elegirCriterio(CriterioLimpieza.Ropero)
         repeat(9) { vm.ajustar(1, CriterioLimpieza.Ropero, +1) }
-        vm.ajustar(1, CriterioLimpieza.Piso, -1)
-        vm.ajustar(2, CriterioLimpieza.Cama, +1)
+        vm.ajustar(2, CriterioLimpieza.Ropero, +1)
+        vm.registrarCriterio()
+        vm.elegirCriterio(CriterioLimpieza.Escritorio)
+        vm.ajustar(1, CriterioLimpieza.Escritorio, +1); vm.ajustar(2, CriterioLimpieza.Escritorio, +1)
+        vm.registrarCriterio()
+        for (c in listOf(CriterioLimpieza.Basura, CriterioLimpieza.Olores, CriterioLimpieza.Piso)) {
+            vm.elegirCriterio(c)
+            vm.ajustarComun(c, +1)
+            vm.registrarCriterio()
+        }
 
-        assertEquals(3, vm.estado.value.basura, "tope de basura")
-        assertEquals(5 + 3 + 1, vm.estado.value.totalDe(1), "ropero 5 + comunes 3 y 1")
-        assertEquals(1 + 3 + 1, vm.estado.value.totalDe(2), "lo personal de uno no cambia al otro")
-
-        vm.guardar()
         val enviada = repo.enviada!!
         assertEquals(10, enviada.habitacionId)
-        assertEquals(3, enviada.basura)
+        assertEquals(1, enviada.basura)
         assertEquals(1, enviada.olores)
         assertEquals(setOf(1L, 2L), enviada.personas.map { it.residenteId }.toSet())
         assertEquals(5, enviada.personas.first { it.residenteId == 1L }.ropero)
+        assertEquals(3, enviada.personas.first { it.residenteId == 1L }.cama)
+        assertEquals(1, enviada.personas.first { it.residenteId == 2L }.piso, "el piso es de la habitación: todos reciben la misma nota")
         assertNull(vm.estado.value.habitacion, "tras guardar se vuelve a la lista")
         assertNotNull(vm.estado.value.mensaje)
     }
@@ -374,7 +391,11 @@ class ModulosTest {
         val parcial = habitacion101.copy(residentes = habitacion101.residentes.mapIndexed { i, r -> if (i == 0) r.copy(evaluado = true) else r }, evaluados = 1)
         vm.abrir(parcial)
         assertEquals(setOf(2L), vm.estado.value.personales.keys)
-        vm.guardar()
+        for (c in CRITERIOS_EN_MENU) {
+            vm.elegirCriterio(c)
+            if (c in CRITERIOS_POR_RESIDENTE) vm.ajustar(2, c, +1) else vm.ajustarComun(c, +1)
+            vm.registrarCriterio()
+        }
         assertEquals(listOf(2L), repo.enviada!!.personas.map { it.residenteId })
     }
 
@@ -383,11 +404,15 @@ class ModulosTest {
         val repo = LimpiezaFalsa(respuesta = fallo(ErrorApi.Conflicto("Basura y olores ya se registraron ese día con otros valores")))
         val vm = LimpiezaPreceptorViewModel(repo)
         vm.abrir(habitacion101)
-        vm.ajustar(1, CriterioLimpieza.Ropero, +1)
-        vm.guardar()
+        // Se completan los seis criterios: el servidor rechaza al guardar, se muestra el motivo y lo capturado queda en pantalla.
+        for (c in CRITERIOS_EN_MENU) {
+            vm.elegirCriterio(c)
+            if (c in CRITERIOS_POR_RESIDENTE) { vm.ajustar(1, c, +1); vm.ajustar(2, c, +1) } else vm.ajustarComun(c, +1)
+            vm.registrarCriterio()
+        }
         assertEquals(ErrorApi.Conflicto("Basura y olores ya se registraron ese día con otros valores"), vm.estado.value.error)
         assertNotNull(vm.estado.value.habitacion)
-        assertEquals(1, vm.estado.value.totalDe(1))
+        assertEquals(1, vm.estado.value.personales.getValue(1L)[CriterioLimpieza.Ropero])
     }
 
     // ------------------------------------------------------------ mapeadores y formato

@@ -109,7 +109,7 @@ fun InicioPreceptorScreen(nombre: String, onIr: (String) -> Unit, vm: InicioPrec
     LaunchedEffect(Unit) { vm.cargar() }
     ContenidoCarga(estado, vm::cargar) { ui ->
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
-            TarjetaHola(nombre, "Pastor", Acento.Turquesa, { onIr("mas") }, Modifier.padding(top = 40.dp))
+            TarjetaHola(nombre, "Pastor", Acento.Turquesa, { onIr("mas") }, Modifier.padding(top = 40.dp), foto = koinViewModel<pe.upeu.resi.resiup.presentation.residente.FotoPerfilViewModel>().foto.collectAsState().value)
             Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
                 TarjetaDato(ui.sesiones.sumOf { it.presentes }.toString(), "Cultos hoy", ResiIconos.Asistencias, Acento.Naranja, Modifier.weight(1f), detalle = "residentes presentes")
                 TarjetaDato(ui.aprobados.toString(), "Permisos", ResiIconos.Permisos, Acento.Verde, Modifier.weight(1f), detalle = "aprobados")
@@ -133,24 +133,70 @@ fun InicioPreceptorScreen(nombre: String, onIr: (String) -> Unit, vm: InicioPrec
 @Composable
 fun AsistenciaCultoScreen(onCultos: () -> Unit = {}, vm: AsistenciaCultoViewModel = koinViewModel()) {
     val e by vm.estado.collectAsState()
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        val sesion = e.sesion
+    var manual by remember { mutableStateOf(false) }
+    val sesion = e.sesion
+    Column(Modifier.fillMaxSize().padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla("Registrar asistencia", subtitulo = sesion?.let { "Culto ${it.tipo.etiqueta}" } ?: "Culto")
-        when {
-            e.cargandoSesion -> Text("Cargando…", style = MaterialTheme.typography.bodyMedium)
-            sesion == null -> {
-                e.errorSesion?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
-                Text("No hay un culto abierto. Crea uno desde «Cultos» para registrar asistencia.", style = MaterialTheme.typography.bodyLarge)
-                ResiBoton("Ir a Cultos", onCultos, Modifier.fillMaxWidth())
-            }
-            else -> {
-                ZonaEscaneo(activo = !e.procesando, onCodigo = vm::codigoLeido)
-                e.errorSesion?.let { BannerMensaje(it.aMensaje(), EstadoVisual.Error) }
-                e.registros.forEach { r ->
-                    BannerMensaje(if (r.exito) "${r.texto} registrado exitosamente" else "${r.texto}${r.detalle?.let { d -> " — $d" } ?: ""}", if (r.exito) EstadoVisual.Exito else EstadoVisual.Error)
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+            when {
+                e.cargandoSesion -> Text("Cargando…", style = MaterialTheme.typography.bodyMedium)
+                sesion == null -> {
+                    e.errorSesion?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
+                    Text("No hay un culto abierto. Crea uno desde «Cultos» para registrar asistencia.", style = MaterialTheme.typography.bodyLarge)
+                    ResiBoton("Ir a Cultos", onCultos, Modifier.fillMaxWidth())
+                }
+                else -> {
+                    Box(Modifier.fillMaxWidth().height(340.dp).clip(RoundedCornerShape(24.dp)).background(androidx.compose.ui.graphics.Color.Black), contentAlignment = Alignment.Center) {
+                        EscanerCamara(activo = !e.procesando, onCodigo = vm::codigoLeido)
+                        MarcoDeEscaneo()
+                    }
+                    Text("ó", Modifier.fillMaxWidth(), style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    ResiTarjeta {
+                        Column(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.primaryContainer).clickable(role = Role.Button) { manual = true }.padding(vertical = Espacio.l),
+                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Espacio.s),
+                        ) {
+                            pe.upeu.resi.resiup.presentation.components.ResiIcono(ResiIconos.Teclado, null, tint = MaterialTheme.colorScheme.primary, tamano = 40.dp)
+                            Text("Código manual", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    e.errorSesion?.let { BannerMensaje(it.aMensaje(), EstadoVisual.Error) }
                 }
             }
         }
+        // Aviso al pie, como en el prototipo: «Nombre Apellido registrado exitosamente».
+        e.registros.firstOrNull()?.let { r ->
+            BannerMensaje(if (r.exito) "${r.texto} registrado exitosamente" else "${r.texto}${r.detalle?.let { d -> " — $d" } ?: ""}", if (r.exito) EstadoVisual.Exito else EstadoVisual.Error)
+        }
+    }
+    if (manual) {
+        var codigo by remember { mutableStateOf("") }
+        androidx.compose.ui.window.Dialog(onDismissRequest = { manual = false }) {
+            ResiTarjeta {
+                Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                    Text("Código manual", style = MaterialTheme.typography.titleMedium)
+                    ResiCampoTexto(codigo, { codigo = it.filter { c -> c.isDigit() }.take(9) }, "Código universitario (9 dígitos)", tipoTeclado = androidx.compose.ui.text.input.KeyboardType.Number)
+                    ResiBoton("Registrar", { vm.codigoManual(codigo); manual = false }, Modifier.fillMaxWidth(), habilitado = codigo.length == 9)
+                }
+            }
+        }
+    }
+}
+
+/** Marco de lectura del prototipo: cuatro esquinas blancas y una línea azul al centro. */
+@Composable
+private fun MarcoDeEscaneo() {
+    androidx.compose.foundation.Canvas(Modifier.fillMaxSize().padding(40.dp)) {
+        val largo = size.width * 0.22f
+        val trazo = 6.dp.toPx()
+        val c = androidx.compose.ui.graphics.Color.White
+        fun linea(x1: Float, y1: Float, x2: Float, y2: Float) = drawLine(c, androidx.compose.ui.geometry.Offset(x1, y1), androidx.compose.ui.geometry.Offset(x2, y2), trazo, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        val w = size.width; val h = size.height
+        linea(0f, 0f, largo, 0f); linea(0f, 0f, 0f, largo)
+        linea(w, 0f, w - largo, 0f); linea(w, 0f, w, largo)
+        linea(0f, h, largo, h); linea(0f, h, 0f, h - largo)
+        linea(w, h, w - largo, h); linea(w, h, w, h - largo)
+        drawLine(androidx.compose.ui.graphics.Color(0xFF3B82F6), androidx.compose.ui.geometry.Offset(0f, h / 2), androidx.compose.ui.geometry.Offset(w, h / 2), trazo)
     }
 }
 
@@ -310,117 +356,6 @@ private fun ResumenDelResidente(estado: Carga<ResumenResidente>) {
             }
         }
     }
-}
-
-// ================================================================= preceptor: limpieza
-
-@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
-@Composable
-fun LimpiezaPreceptorScreen(vm: LimpiezaPreceptorViewModel = koinViewModel()) {
-    val s by vm.estado.collectAsState()
-    val hab = s.habitacion
-    BackHandler(enabled = hab != null) { vm.cerrar() }
-    val alInicio = pe.upeu.resi.resiup.presentation.components.LocalVolver.current
-    androidx.compose.runtime.CompositionLocalProvider(pe.upeu.resi.resiup.presentation.components.LocalVolver provides (if (hab != null) ({ vm.cerrar() }) else alInicio)) {
-    Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla(
-            if (hab == null) "Evaluación ${hoyLima().toString().fechaLegible().substringBeforeLast(' ')}" else "Habitación ${hab.numero}", Modifier.padding(top = Espacio.l),
-            subtitulo = if (hab == null) "Elige la habitación" else "Elija el criterio",
-        )
-        s.mensaje?.let { BannerMensaje(it, EstadoVisual.Exito) }
-        val finDeSemana = hoyLima().dayOfWeek.let { it == kotlinx.datetime.DayOfWeek.SATURDAY || it == kotlinx.datetime.DayOfWeek.SUNDAY }
-        if (hab == null && finDeSemana) {
-            pe.upeu.resi.resiup.presentation.components.EstadoVacio("Hoy no se evalúa", "La limpieza se revisa de lunes a viernes. Vuelve el lunes para evaluar las habitaciones.")
-        } else if (hab == null) {
-            ContenidoCarga(s.habitaciones, vm::cargar) { lista ->
-                if (lista.isEmpty()) {
-                    pe.upeu.resi.resiup.presentation.components.EstadoVacio("Sin habitaciones ocupadas", "Asigna residentes a las habitaciones desde administración para poder evaluarlas.")
-                } else {
-                    val pisos = lista.map { it.numero.take(1) }.distinct().sorted()
-                    var piso by remember(pisos) { mutableStateOf(pisos.first()) }
-                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                        Segmentos(pisos, piso, { "Piso $it" }, { piso = it })
-                        lista.filter { it.numero.take(1) == piso }.chunked(2).forEach { fila ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
-                                fila.forEach { h ->
-                                    ResiTarjeta(Modifier.weight(1f), onClick = { vm.abrir(h) }) {
-                                        ElementoLista(
-                                            h.numero, subtitulo = if (h.completa) "Evaluado" else "Falta evaluación", icono = ResiIconos.Limpieza,
-                                            acento = if (h.completa) Acento.Verde else Acento.Ambar,
-                                        )
-                                    }
-                                }
-                                if (fila.size == 1) androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            FormularioHabitacion(s, hab, vm)
-        }
-    }
-    }
-}
-
-@Composable
-private fun FormularioHabitacion(s: LimpiezaFormState, hab: HabitacionLimpieza, vm: LimpiezaPreceptorViewModel) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        ResiTarjeta {
-            Text("Común a toda la habitación", style = MaterialTheme.typography.titleMedium)
-            CRITERIOS_DE_HABITACION.forEach { c -> Contador(c.etiqueta, c.maximo, s.comun(c)) { vm.ajustarComun(c, it) } }
-        }
-        hab.residentes.forEach { r ->
-            ResiTarjeta {
-                val etiquetaCama = r.cama?.let { "Cama ${hab.numero}-$it · " }.orEmpty()
-                ElementoLista(
-                    r.nombreCompleto, subtitulo = etiquetaCama + r.codigo,
-                    final = { if (r.evaluado) ChipEstado("Ya evaluado", EstadoVisual.Exito) else ChipEstado("${s.totalDe(r.residenteId)}/20", EstadoVisual.Info) },
-                )
-                val puntajes = s.personales[r.residenteId]
-                if (puntajes != null) {
-                    CRITERIOS_PERSONALES.forEach { c -> Contador(c.etiqueta, c.maximo, puntajes.getValue(c)) { vm.ajustar(r.residenteId, c, it) } }
-                }
-            }
-        }
-        s.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else if (it is ErrorApi.Validacion) it.porCampo.values.firstOrNull() ?: it.aMensaje() else it.aMensaje(), EstadoVisual.Error) }
-        if (s.personales.isEmpty()) {
-            BannerMensaje("Todos los residentes de esta habitación ya fueron evaluados hoy.", EstadoVisual.Info)
-        } else {
-            ResiBoton("Guardar evaluación", vm::guardar, Modifier.fillMaxWidth(), cargando = s.enviando)
-        }
-        ResiBoton("Volver a las habitaciones", vm::cerrar, Modifier.fillMaxWidth(), variante = VarianteBoton.Terciario)
-    }
-}
-
-/** Fila de puntaje con − / + : etiqueta y máximo a la izquierda, valor al centro. */
-@Composable
-private fun Contador(etiqueta: String, maximo: Int, valor: Int, onCambio: (Int) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(top = Espacio.xs), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
-        Column(Modifier.weight(1f)) {
-            Text(etiqueta, style = MaterialTheme.typography.bodyLarge)
-            Text("máx. $maximo", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        BotonPaso("−", "Restar a $etiqueta", valor > 0) { onCambio(-1) }
-        Text(
-            valor.toString(), Modifier.widthIn(min = 24.dp).semantics { contentDescription = "$etiqueta: $valor de $maximo" },
-            style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
-        BotonPaso("+", "Sumar a $etiqueta", valor < maximo) { onCambio(1) }
-    }
-}
-
-/** Botón cuadrado compacto (44 dp) para sumar o restar un punto. */
-@Composable
-private fun BotonPaso(texto: String, descripcion: String, habilitado: Boolean, onClick: () -> Unit) {
-    val forma = RoundedCornerShape(12.dp)
-    val color = if (habilitado) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-    Box(
-        Modifier.size(44.dp).clip(forma).border(1.dp, MaterialTheme.colorScheme.outlineVariant, forma)
-            .clickable(enabled = habilitado, role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = descripcion },
-        contentAlignment = Alignment.Center,
-    ) { Text(texto, style = MaterialTheme.typography.titleMedium, color = color) }
 }
 
 // ================================================================= garita

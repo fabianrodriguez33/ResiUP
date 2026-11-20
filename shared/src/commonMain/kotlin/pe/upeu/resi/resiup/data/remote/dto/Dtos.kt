@@ -208,3 +208,9 @@ data class FotoRequestDto(val evidenciaId: Long)
 
 @Serializable
 data class DecisionRequestDto(val aprobar: Boolean, val comentario: String? = null)
+
+@Serializable
+data class CodigoRequestDto(val codigo: String)
+
+@Serializable
+data class FotoRefDto(val fotoEvidenciaId: Long? = null)

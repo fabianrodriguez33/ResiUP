@@ -128,6 +128,10 @@ fun PerfilCuentaScreen(rol: Rol, onCerrarSesion: () -> Unit, vm: PerfilCuentaVie
     var verificando by remember { mutableStateOf(false) }
     var verDias by remember { mutableStateOf(false) }
     var cambiandoClave by remember { mutableStateOf(false) }
+    val fotoVm = koinViewModel<pe.upeu.resi.resiup.presentation.residente.FotoPerfilViewModel>()
+    val foto by fotoVm.foto.collectAsState()
+    val fotoEstado by fotoVm.estado.collectAsState()
+    val elegirFoto = pe.upeu.resi.resiup.presentation.components.rememberSelectorImagen(fotoVm::elegida)
     LaunchedEffect(Unit) { vm.cargar() }
     BackHandler(enabled = verDias || form != null) { if (verDias) verDias = false else vm.cancelar() }
 
@@ -141,7 +145,9 @@ fun PerfilCuentaScreen(rol: Rol, onCerrarSesion: () -> Unit, vm: PerfilCuentaVie
             if (f == null) {
                 TituloPantalla("Mi Perfil", subtitulo = "Tus datos personales")
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
-                    AvatarInicial(p.nombreCompleto, Acento.Turquesa, tamano = 112.dp)
+                    AvatarInicial(p.nombreCompleto, Acento.Turquesa, tamano = 112.dp, foto = foto)
+                    ResiBoton(if (fotoEstado.subiendo) "Subiendo…" else "Cambiar foto", elegirFoto, variante = VarianteBoton.Terciario, habilitado = !fotoEstado.subiendo)
+                    fotoEstado.error?.let { BannerMensaje(it.textoVisible(), EstadoVisual.Error) }
                     Text(p.nombreCompleto, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
                 Text("Información personal", style = MaterialTheme.typography.titleMedium)
@@ -161,11 +167,6 @@ fun PerfilCuentaScreen(rol: Rol, onCerrarSesion: () -> Unit, vm: PerfilCuentaVie
                     "Tu nombre y tu usuario los gestiona la administración de la residencia.",
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                if (rol == Rol.Preceptor || rol == Rol.Administrador) {
-                    ResiTarjeta(onClick = { verDias = true }) {
-                        ElementoLista("Días sin culto", subtitulo = "Feriados y días sin cultos: no cortan la racha", icono = ResiIconos.Calendario, acento = Acento.Turquesa)
-                    }
-                }
                 ResiBoton("Cerrar sesión", { confirmar = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
             } else {
                 TituloPantalla("Cambiar datos", subtitulo = p.nombreCompleto)

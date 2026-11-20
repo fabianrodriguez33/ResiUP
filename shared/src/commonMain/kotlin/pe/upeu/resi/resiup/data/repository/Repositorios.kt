@@ -51,7 +51,7 @@ class ResidenteRepositoryImpl(private val api: ResidenteApi, private val sesione
         }
         return r
     }
-    override suspend fun fotoPerfil() = ejecutarLlamada { api.perfil().fotoEvidenciaId }
+    override suspend fun fotoPerfil() = ejecutarLlamada { api.fotoPerfil() }
     override suspend fun cambiarFoto(evidenciaId: Long) = ejecutarLlamada { api.cambiarFoto(evidenciaId) }
     override suspend fun ranking() = ejecutarLlamada {
         val r = api.ranking()
@@ -110,6 +110,8 @@ class CultoRepositoryImpl(private val api: CultoApi) : CultoRepository {
         api.presentes(sesionId).map { pe.upeu.resi.resiup.domain.repository.AsistenciaPresente(it.codigo, it.nombreCompleto, it.despuesDelCorte) }
     }
     override suspend fun reabrirSesion(sesionId: Long) = ejecutarLlamada { api.reabrir(sesionId).aDominio() }
+    override suspend fun registrarPorCodigo(sesionId: Long, codigo: String) = ejecutarLlamada { api.registrarCodigo(sesionId, codigo).aRegistrada() }
+    override suspend fun exportarPresentes(sesionId: Long) = ejecutarLlamada { api.exportar(sesionId) }
 }
 
 class LimpiezaRepositoryImpl(private val api: LimpiezaApi) : LimpiezaRepository {

@@ -7,6 +7,8 @@ import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.put
 import pe.upeu.resi.resiup.data.remote.dto.FotoRequestDto
+import pe.upeu.resi.resiup.data.remote.dto.FotoRefDto
+import pe.upeu.resi.resiup.data.remote.dto.CodigoRequestDto
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import pe.upeu.resi.resiup.data.remote.dto.AbrirSesionRequestDto
@@ -39,6 +41,8 @@ private const val BASE = "api/v1/"
 
 class ResidenteApi(private val client: HttpClient) {
     suspend fun perfil(): ResidenteDto = client.get("${BASE}residentes/yo").body()
+    /** Foto de perfil de cualquier rol (el residente y el personal comparten /perfil). */
+    suspend fun fotoPerfil(): Long? = client.get("${BASE}perfil").body<FotoRefDto>().fotoEvidenciaId
     suspend fun qr(): QrDto = client.get("${BASE}residentes/yo/qr").body()
     /** Foto de perfil: primero se sube la imagen como evidencia y aquí se elige. */
     suspend fun cambiarFoto(evidenciaId: Long) { client.put("${BASE}perfil/foto") { setBody(FotoRequestDto(evidenciaId)) } }
@@ -100,6 +104,9 @@ class CultoApi(private val client: HttpClient) {
     suspend fun porFecha(fecha: String): List<SesionCultoDto> = client.get("${BASE}cultos/sesiones") { parameter("fecha", fecha) }.body()
     suspend fun presentes(sesionId: Long): List<AsistenciaDto> = client.get("${BASE}cultos/sesiones/$sesionId/presentes").body()
     suspend fun reabrir(sesionId: Long): SesionCultoDto = client.post("${BASE}cultos/sesiones/$sesionId/reabrir").body()
+    suspend fun registrarCodigo(sesionId: Long, codigo: String): AsistenciaDto =
+        client.post("${BASE}cultos/sesiones/$sesionId/asistencias") { setBody(CodigoRequestDto(codigo)) }.body()
+    suspend fun exportar(sesionId: Long): String = client.get("${BASE}cultos/sesiones/$sesionId/exportar").body()
 }
 
 class LimpiezaApi(private val client: HttpClient) {
