@@ -7,6 +7,7 @@ import pe.upeu.resi.resiup.presentation.components.ModuloUi
 import pe.upeu.resi.resiup.presentation.components.EncabezadoSeccion
 import pe.upeu.resi.resiup.presentation.components.CuadriculaModulos
 import pe.upeu.resi.resiup.presentation.components.AvatarInicial
+import pe.upeu.resi.resiup.presentation.components.TarjetaHola
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -107,13 +108,7 @@ fun InicioPreceptorScreen(nombre: String, onIr: (String) -> Unit, vm: InicioPrec
     val estado by vm.estado.collectAsState()
     ContenidoCarga(estado, vm::cargar) { ui ->
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                AvatarInicial(nombre, Acento.Azul)
-                Column(Modifier.weight(1f)) {
-                    Text("Hola, ${nombre.substringBefore(' ')}", style = MaterialTheme.typography.headlineMedium)
-                    Text("Panel del pastor", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
+            TarjetaHola(nombre, "Pastor", Acento.Azul, { onIr("mas") }, Modifier.padding(top = 40.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
                 TarjetaDato(ui.aprobados.toString(), "Permisos aprobados", ResiIconos.Permisos, Acento.Azul, Modifier.weight(1f))
                 TarjetaDato(ui.enEspera.toString(), "Esperan a los padres", ResiIconos.Solicitudes, Acento.Ambar, Modifier.weight(1f))
@@ -122,16 +117,16 @@ fun InicioPreceptorScreen(nombre: String, onIr: (String) -> Unit, vm: InicioPrec
             EncabezadoSeccion("Accesos")
             CuadriculaModulos(
                 listOf(
-                    ModuloUi("Asistencia a cultos", ResiIconos.Escanear, Acento.Verde, { onIr("escanear") }),
                     ModuloUi("Permisos", ResiIconos.Solicitudes, Acento.Azul, { onIr("solicitudes") }, insignia = ui.enEspera.takeIf { it > 0 }?.toString()),
+                    ModuloUi("Cultos", ResiIconos.Asistencias, Acento.Verde, { onIr("escanear") }),
                     ModuloUi("Limpieza", ResiIconos.Limpieza, Acento.Naranja, { onIr("limpieza") }),
                     ModuloUi("Días sin culto", ResiIconos.Calendario, Acento.Turquesa, { onIr("mas") }),
-                    ModuloUi("Mi cuenta", ResiIconos.Perfil, Acento.Rosa, { onIr("mas") }),
-                ),
+                ) + // «Registrar» solo existe mientras haya un culto abierto; al cerrarlo desaparece del inicio.
+                    if (ui.sesiones.any { !it.cerrada }) listOf(ModuloUi("Registrar", ResiIconos.Escanear, Acento.Violeta, { onIr("escanear") })) else emptyList(),
             )
             EncabezadoSeccion("Cultos de hoy")
             ResiTarjeta(onClick = { onIr("escanear") }) {
-                if (ui.sesiones.isEmpty()) Text("Aún no se abrió ningún culto. Abre uno desde «Asistencia a cultos».", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (ui.sesiones.isEmpty()) Text("Aún no se abrió ningún culto. Abre uno desde «Cultos».", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 ui.sesiones.forEach { s ->
                     ElementoLista("Culto ${s.tipo.etiqueta.lowercase()}", subtitulo = "${s.presentes} presentes · corte ${s.corte.soloHoraLima()}", icono = ResiIconos.Asistencias, acento = Acento.Verde,
                         final = { ChipEstado(if (s.cerrada) "Cerrado" else "Abierto", if (s.cerrada) EstadoVisual.Neutro else EstadoVisual.Exito) })

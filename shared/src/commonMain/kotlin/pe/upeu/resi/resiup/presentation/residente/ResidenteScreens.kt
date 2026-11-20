@@ -4,6 +4,7 @@ import pe.upeu.resi.resiup.presentation.theme.Acento
 import pe.upeu.resi.resiup.presentation.perfil.VerificarCorreoDialogo
 import pe.upeu.resi.resiup.presentation.components.ResiIcono
 import pe.upeu.resi.resiup.presentation.components.TarjetaHero
+import pe.upeu.resi.resiup.presentation.components.TarjetaHola
 import pe.upeu.resi.resiup.presentation.components.TarjetaDato
 import pe.upeu.resi.resiup.presentation.components.ModuloUi
 import pe.upeu.resi.resiup.presentation.components.EncabezadoSeccion
@@ -89,17 +90,11 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
         val ui = datos ?: return@ContenidoConsulta IndicadorCarga()
         val e = ui.estadisticas
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
-            Row(Modifier.padding(end = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                AvatarInicial(ui.perfil.nombreCompleto, Acento.Rosa)
-                Column(Modifier.weight(1f)) {
-                    Text("Hola, ${ui.perfil.nombreCompleto.substringBefore(' ')}", style = MaterialTheme.typography.headlineMedium)
-                    Text(
-                        ui.perfil.habitacion?.let { listOfNotNull("Habitación ${it.numero}", it.etiquetaCama).joinToString(" · ") } ?: "Sin habitación asignada",
-                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            TarjetaHero("Mi código QR", "Para culto y garita", "Mostrar", { verQr = true }, ResiIconos.Qr)
+            TarjetaHola(
+                ui.perfil.nombreCompleto,
+                ui.perfil.habitacion?.let { listOfNotNull("Habitación ${it.numero}", it.etiquetaCama).joinToString(" · ") } ?: "Sin habitación asignada",
+                Acento.Rosa, { onIr(Destinos.Perfil) }, Modifier.padding(top = 40.dp), onQr = { verQr = true },
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
                 TarjetaDato(e.racha.toString(), "Racha de cultos", ResiIconos.Racha, Acento.Naranja, Modifier.weight(1f), detalle = if (e.racha == 1) "día seguido" else "días seguidos")
                 val delServidor = (notas as? Carga.Exito)?.datos?.actual?.takeIf { it.porDias && it.diasAsistidos != null && it.diasConCulto != null }
@@ -113,8 +108,6 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
                     ModuloUi("Notas", ResiIconos.Notas, Acento.Violeta, { onIr(Destinos.Notas) }),
                     ModuloUi("Asistencias", ResiIconos.Calendario, Acento.Verde, { onIr(Destinos.Asistencias) }),
                     ModuloUi("Limpieza", ResiIconos.Limpieza, Acento.Naranja, { onIr(Destinos.Limpieza) }),
-                    ModuloUi("Mi perfil", ResiIconos.Perfil, Acento.Rosa, { onIr(Destinos.Perfil) }),
-                    ModuloUi("Salidas y retornos", ResiIconos.Salir, Acento.Turquesa, { onIr(Destinos.Permisos) }),
                 ),
             )
             EncabezadoSeccion("Lo último")

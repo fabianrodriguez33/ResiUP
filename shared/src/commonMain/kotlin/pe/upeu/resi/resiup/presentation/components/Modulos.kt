@@ -131,6 +131,31 @@ fun TarjetaHero(titulo: String, subtitulo: String, textoBoton: String, onClick: 
     }
 }
 
+/** Tarjeta de bienvenida del inicio: al tocarla se abren los datos personales; [onQr] muestra el código QR (solo residentes). */
+@Composable
+fun TarjetaHola(nombre: String, subtitulo: String, acento: Acento, onPerfil: () -> Unit, modifier: Modifier = Modifier, onQr: (() -> Unit)? = null) {
+    val c = ResiTheme.colores
+    Row(
+        modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(c.marca)
+            .clickable(onClickLabel = "Ver mis datos", role = Role.Button, onClick = onPerfil).padding(Espacio.m),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Espacio.m),
+    ) {
+        AvatarInicial(nombre, acento, tamano = 56.dp)
+        Column(Modifier.weight(1f)) {
+            Text("Hola, ${nombre.substringBefore(' ')}", style = MaterialTheme.typography.headlineMedium, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(subtitulo, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        if (onQr != null) {
+            Box(
+                Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.18f))
+                    .clickable(onClickLabel = "Mostrar mi código QR", role = Role.Button, onClick = onQr),
+                contentAlignment = Alignment.Center,
+            ) { ResiIcono(ResiIconos.Qr, null, tint = Color.White, tamano = 30.dp) }
+        }
+    }
+}
+
 /** Círculo con la inicial del nombre. */
 @Composable
 fun AvatarInicial(nombre: String, acento: Acento, modifier: Modifier = Modifier, tamano: androidx.compose.ui.unit.Dp = 48.dp) {

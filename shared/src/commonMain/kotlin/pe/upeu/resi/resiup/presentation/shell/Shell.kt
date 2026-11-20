@@ -14,6 +14,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.ContentScale
+import org.jetbrains.compose.resources.painterResource
+import pe.upeu.resi.resiup.presentation.theme.ResiTheme
+import resiup.shared.generated.resources.Res
+import resiup.shared.generated.resources.residencia_fondo
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.backhandler.BackHandler
+import pe.upeu.resi.resiup.presentation.components.LocalVolver
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +71,7 @@ import pe.upeu.resi.resiup.domain.model.Sesion
 import pe.upeu.resi.resiup.presentation.navigation.destinos
 import pe.upeu.resi.resiup.presentation.theme.Espacio
 
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
     val items = remember(rol) { rol.destinos() }
@@ -71,13 +82,24 @@ fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
     var verBandeja by rememberSaveable { mutableStateOf(false) }
     // Pantalla secundaria abierta desde los accesos del inicio (por ahora, Notas del residente). La barra sigue visible.
     var secundaria by rememberSaveable { mutableStateOf<String?>(null) }
+    // Residente y pastor navegan desde los accesos del inicio (sin barra inferior): cada pantalla se abre con flecha de regreso.
+    val sinBarra = rol == Rol.Residente || rol == Rol.Preceptor
     val irA: (String) -> Unit = { destino -> if (destino == Destinos.Notas) secundaria = destino else { seleccionado = destino; secundaria = null } }
+    val inicio = items.first().id
+    val volver: (() -> Unit)? = if (sinBarra && (seleccionado != inicio || secundaria != null)) ({ seleccionado = inicio; secundaria = null }) else null
+    BackHandler(enabled = volver != null) { volver?.invoke() }
     if (sesion != null) LaunchedEffect(sesion.usuario) { avisos.vigilar() }
     val cola: pe.upeu.resi.resiup.data.repository.ColaPermisos = koinInject()
     if (sesion != null && rol == Rol.Residente) LaunchedEffect(sesion.usuario) { cola.vigilar() }
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Column(Modifier.fillMaxSize().safeDrawingPadding().padding(bottom = 84.dp)) {
+        // Ilustración de la residencia, muy tenue, al pie de todas las pantallas.
+        Image(
+            painterResource(Res.drawable.residencia_fondo), null,
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().alpha(if (ResiTheme.oscuro) 0.10f else 0.22f), contentScale = ContentScale.FillWidth,
+        )
+        CompositionLocalProvider(LocalVolver provides volver) {
+        Column(Modifier.fillMaxSize().safeDrawingPadding().padding(bottom = if (sinBarra) 0.dp else 84.dp)) {
             if (sesion != null && verBandeja) {
                 BandejaScreen(onVolver = { verBandeja = false })
             } else if (sesion == null) {
@@ -92,10 +114,11 @@ fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
                 ContenidoReal(rol, sesion, actual.id, irA, onCerrarSesion)
             }
         }
+        }
         if (sesion != null && !verBandeja) {
             CampanaAvisos(noLeidas, { verBandeja = true }, Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = Espacio.xs, end = Espacio.s))
         }
-        BarraNavegacionResi(
+        if (!sinBarra) BarraNavegacionResi(
             items, seleccionado, { seleccionado = it; verBandeja = false; secundaria = null },
             Modifier.align(Alignment.BottomCenter).padding(WindowInsets.navigationBars.asPaddingValues()),
         )

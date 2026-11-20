@@ -1,6 +1,8 @@
 package pe.upeu.resi.resiup.presentation.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -150,13 +152,26 @@ fun ChipEstado(texto: String, estado: EstadoVisual, modifier: Modifier = Modifie
     }
 }
 
+/** Acción de «volver» de la pantalla secundaria abierta desde el inicio; null cuando la pantalla es la principal. */
+val LocalVolver = androidx.compose.runtime.compositionLocalOf<(() -> Unit)?> { null }
+
 @Composable
 fun TituloPantalla(titulo: String, modifier: Modifier = Modifier, subtitulo: String? = null) {
+    val volver = LocalVolver.current
     // Deja libre el borde derecho: ahí flota la campana de notificaciones.
-    Column(modifier.fillMaxWidth().padding(end = 44.dp)) {
-        Text(titulo, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
-        if (subtitulo != null) {
-            Text(subtitulo, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Row(modifier.fillMaxWidth().padding(end = 44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+        if (volver != null) {
+            Box(
+                Modifier.size(44.dp).clip(androidx.compose.foundation.shape.CircleShape).border(2.dp, MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape)
+                    .clickable(onClickLabel = "Volver", role = androidx.compose.ui.semantics.Role.Button, onClick = volver),
+                contentAlignment = Alignment.Center,
+            ) { ResiIcono(ResiIconos.Atras, "Volver", tint = MaterialTheme.colorScheme.primary, tamano = 22.dp) }
+        }
+        Column {
+            Text(titulo, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
+            if (subtitulo != null) {
+                Text(subtitulo, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }

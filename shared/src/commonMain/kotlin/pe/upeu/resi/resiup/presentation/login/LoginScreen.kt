@@ -35,7 +35,10 @@ import androidx.compose.ui.unit.dp
 import pe.upeu.resi.resiup.presentation.components.BannerMensaje
 import pe.upeu.resi.resiup.presentation.components.ChipEstado
 import pe.upeu.resi.resiup.presentation.components.EstadoVisual
-import pe.upeu.resi.resiup.presentation.components.IsotipoResi
+import androidx.compose.ui.layout.ContentScale
+import org.jetbrains.compose.resources.painterResource
+import resiup.shared.generated.resources.Res
+import resiup.shared.generated.resources.residencia_azul
 import pe.upeu.resi.resiup.presentation.components.ResiBoton
 import pe.upeu.resi.resiup.presentation.components.ResiCampoTexto
 import pe.upeu.resi.resiup.presentation.components.VarianteBoton
@@ -63,19 +66,16 @@ fun LoginScreen(
     val colores = ResiTheme.colores
 
     Column(Modifier.fillMaxSize().background(colores.marca)) {
-        Column(
-            Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = Espacio.xl, vertical = Espacio.xl).alpha(entrada.value),
-            verticalArrangement = Arrangement.spacedBy(Espacio.s),
-        ) {
-            Image(IsotipoResi, null, Modifier.size(56.dp))
-            Spacer(Modifier.height(Espacio.l))
-            Text("Hola,", style = MaterialTheme.typography.displaySmall, color = colores.sobreMarca.copy(alpha = 0.85f))
-            Text("bienvenido a ResiUP", style = MaterialTheme.typography.displaySmall, color = colores.sobreMarca)
-            Text(
-                "Residencia Universitaria Fernando Stahl",
-                style = MaterialTheme.typography.bodyMedium,
-                color = colores.sobreMarca.copy(alpha = 0.75f),
-            )
+        Column(Modifier.fillMaxWidth().statusBarsPadding().alpha(entrada.value), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+            Image(painterResource(Res.drawable.residencia_azul), null, Modifier.fillMaxWidth(), contentScale = ContentScale.FillWidth)
+            Column(Modifier.padding(horizontal = Espacio.xl).padding(bottom = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+                Text("Bienvenido a ResiUP", style = MaterialTheme.typography.displaySmall, color = colores.sobreMarca)
+                Text(
+                    "Residencia Universitaria Fernando Stahl",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colores.sobreMarca.copy(alpha = 0.75f),
+                )
+            }
         }
         Surface(Modifier.weight(1f).fillMaxWidth(), shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp), color = MaterialTheme.colorScheme.background) {
             Column(
