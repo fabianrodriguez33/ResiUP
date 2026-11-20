@@ -5,6 +5,7 @@ import pe.upeu.resi.resiup.presentation.util.hoyLima
 import pe.upeu.resi.resiup.presentation.util.calcularEstadisticas
 import pe.upeu.resi.resiup.presentation.util.EstadisticasCultos
 import androidx.lifecycle.ViewModel
+import org.jetbrains.compose.resources.decodeToImageBitmap
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -234,3 +235,40 @@ class RankingViewModel(private val repo: ResidenteRepository) : ViewModel() {
 
     fun cargar() { viewModelScope.launch { _estado.value = repo.ranking().aCarga() } }
 }
+
+/** Foto de perfil del residente: se baja al abrir y se cambia eligiendo una imagen de la galería. */
+class FotoPerfilViewModel(
+    private val residente: ResidenteRepository,
+    private val tramites: pe.upeu.resi.resiup.domain.repository.TramitesRepository,
+) : ViewModel() {
+    private val _foto = MutableStateFlow<androidx.compose.ui.graphics.ImageBitmap?>(null)
+    val foto: StateFlow<androidx.compose.ui.graphics.ImageBitmap?> = _foto.asStateFlow()
+    private val _estado = MutableStateFlow(FotoEstado())
+    val estado: StateFlow<FotoEstado> = _estado.asStateFlow()
+
+    init { cargar() }
+
+    fun cargar() {
+        viewModelScope.launch {
+            val id = residente.fotoPerfil().getOrNull() ?: return@launch
+            tramites.descargarEvidencia(id).getOrNull()?.let { bytes -> _foto.value = runCatching { bytes.decodeToImageBitmap() }.getOrNull() }
+        }
+    }
+
+    fun elegida(imagen: pe.upeu.resi.resiup.domain.model.ImagenElegida?) {
+        if (imagen == null || _estado.value.subiendo) return
+        _estado.value = FotoEstado(subiendo = true)
+        viewModelScope.launch {
+            tramites.subirEvidencia(imagen).fold(
+                { id ->
+                    residente.cambiarFoto(id)
+                        .onSuccess { _foto.value = runCatching { imagen.bytes.decodeToImageBitmap() }.getOrNull(); _estado.value = FotoEstado() }
+                        .onFailure { _estado.value = FotoEstado(error = it.aErrorApi()) }
+                },
+                { _estado.value = FotoEstado(error = it.aErrorApi()) },
+            )
+        }
+    }
+}
+
+data class FotoEstado(val subiendo: Boolean = false, val error: ErrorApi? = null)

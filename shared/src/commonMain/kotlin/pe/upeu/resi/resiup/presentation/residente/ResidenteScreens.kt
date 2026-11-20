@@ -105,6 +105,7 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
                 ui.perfil.nombreCompleto,
                 ui.perfil.habitacion?.let { listOfNotNull("Habitación ${it.numero}", it.etiquetaCama).joinToString(" · ") } ?: "Sin habitación asignada",
                 Acento.Rosa, { onIr(Destinos.Perfil) }, Modifier.padding(top = 40.dp), onQr = { verQr = true },
+                foto = koinViewModel<FotoPerfilViewModel>().foto.collectAsState().value,
             )
             val ranking = koinViewModel<RankingViewModel>().estado.collectAsState().value
             val r = (ranking as? Carga.Exito)?.datos
@@ -130,10 +131,13 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
 @Composable
 fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: PerfilViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
+    val fotoVm = koinViewModel<FotoPerfilViewModel>()
+    val foto by fotoVm.foto.collectAsState()
+    val fotoEstado by fotoVm.estado.collectAsState()
+    val elegirFoto = pe.upeu.resi.resiup.presentation.components.rememberSelectorImagen(fotoVm::elegida)
     var confirmar by remember { mutableStateOf(false) }
     var cambiandoClave by remember { mutableStateOf(false) }
     var editando by remember { mutableStateOf(false) }
-    var verQr by remember { mutableStateOf(false) }
     var verificando by remember { mutableStateOf(false) }
     BackHandler(enabled = editando) { editando = false }
     ContenidoConsulta(estado, vm::reintentar) { datos ->
@@ -142,41 +146,35 @@ fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: Perfi
             EditarPerfilScreen(perfil, onTerminar = { editando = false })
             return@ContenidoConsulta
         }
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
-            Row(Modifier.padding(end = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                AvatarInicial(perfil.nombreCompleto, Acento.Rosa, tamano = 60.dp)
-                Column(Modifier.weight(1f)) {
-                    Text(perfil.nombreCompleto, style = MaterialTheme.typography.headlineMedium)
-                    Text("Código ${perfil.codigo}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    ChipEstado(Rol.Residente.etiqueta, EstadoVisual.Info, Modifier.padding(top = Espacio.xs))
-                }
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+            TituloPantalla("Mi Perfil", subtitulo = "Tus datos personales")
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                AvatarInicial(perfil.nombreCompleto, Acento.Rosa, tamano = 112.dp, foto = foto)
+                ResiBoton(if (fotoEstado.subiendo) "Subiendo…" else "Cambiar foto", elegirFoto, variante = VarianteBoton.Terciario, habilitado = !fotoEstado.subiendo)
+                fotoEstado.error?.let { BannerMensaje(it.aMensaje(), EstadoVisual.Error) }
+                Text(perfil.nombreCompleto, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             }
-            ResiBoton("Mostrar mi código QR", { verQr = true }, Modifier.fillMaxWidth())
-            ResiTarjeta {
-                DatoPerfil("DNI", perfil.dni, ResiIconos.Perfil, Acento.Azul)
-                DatoPerfil("Fecha de nacimiento", perfil.fechaNacimiento?.fechaLegible(), ResiIconos.Calendario, Acento.Rosa)
-                DatoPerfil("Carrera", perfil.carrera, ResiIconos.Perfil, Acento.Violeta)
-                DatoPerfil("Ciclo", perfil.ciclo?.let { "${it}.º ciclo" }, ResiIconos.Calendario, Acento.Turquesa)
-                DatoPerfil(
-                    "Correo electrónico", perfil.email, ResiIconos.Correo, Acento.Azul,
-                    final = if (perfil.email.isNullOrBlank()) null else { { ChipEstado(if (perfil.emailVerificado) "Verificado" else "Sin verificar", if (perfil.emailVerificado) EstadoVisual.Exito else EstadoVisual.Advertencia) } },
-                )
-                DatoPerfil("Teléfono", perfil.telefono, ResiIconos.Telefono, Acento.Verde)
-                DatoPerfil("Habitación", perfil.habitacion?.let { listOfNotNull(it.numero, it.etiquetaCama).joinToString(" · ") }, ResiIconos.Inicio, Acento.Naranja)
-            }
+            EncabezadoSeccion("Información personal")
+            DatoPerfil("Nombre de usuario", sesion?.usuario, ResiIconos.Perfil, Acento.Azul)
+            DatoPerfil("Código universitario", perfil.codigo, ResiIconos.Notas, Acento.Violeta)
+            DatoPerfil(
+                "Email", perfil.email, ResiIconos.Correo, Acento.Azul,
+                final = if (perfil.email.isNullOrBlank()) null else { { ChipEstado(if (perfil.emailVerificado) "Verificado" else "Sin verificar", if (perfil.emailVerificado) EstadoVisual.Exito else EstadoVisual.Advertencia) } },
+            )
+            DatoPerfil("Celular", perfil.telefono, ResiIconos.Telefono, Acento.Verde)
+            DatoPerfil("Carrera", perfil.carrera, ResiIconos.Perfil, Acento.Violeta)
+            DatoPerfil("Ciclo", perfil.ciclo?.toString(), ResiIconos.Calendario, Acento.Turquesa)
             if (!perfil.email.isNullOrBlank() && !perfil.emailVerificado) {
                 ResiBoton("Verificar mi correo", { verificando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
             }
-            ResiBoton("Editar perfil", { editando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
+            ResiBoton("Editar correo y celular", { editando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
             ResiBoton("Cambiar contraseña", { cambiandoClave = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
             Text(
-                "El nombre, el DNI y el código universitario los gestiona la administración de la residencia.",
+                "Tu nombre, usuario, código, carrera y ciclo los gestiona la administración de la residencia.",
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            sesion?.let { Text("Sesión: ${it.usuario}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             ResiBoton("Cerrar sesión", { confirmar = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
         }
-        if (verQr) QrFlotante({ verQr = false })
         if (verificando && perfil.email != null) {
             VerificarCorreoDialogo(perfil.email, { verificando = false }, { verificando = false; vm.reintentar() })
         }

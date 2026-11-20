@@ -149,7 +149,7 @@ fun TarjetaHero(titulo: String, subtitulo: String, textoBoton: String, onClick: 
 
 /** Tarjeta de bienvenida del inicio: al tocarla se abren los datos personales; [onQr] muestra el código QR (solo residentes). */
 @Composable
-fun TarjetaHola(nombre: String, subtitulo: String, acento: Acento, onPerfil: () -> Unit, modifier: Modifier = Modifier, onQr: (() -> Unit)? = null) {
+fun TarjetaHola(nombre: String, subtitulo: String, acento: Acento, onPerfil: () -> Unit, modifier: Modifier = Modifier, onQr: (() -> Unit)? = null, foto: androidx.compose.ui.graphics.ImageBitmap? = null) {
     val c = ResiTheme.colores
     Row(
         modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(c.marca)
@@ -157,7 +157,7 @@ fun TarjetaHola(nombre: String, subtitulo: String, acento: Acento, onPerfil: () 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Espacio.m),
     ) {
-        AvatarInicial(nombre, acento, tamano = 56.dp)
+        AvatarInicial(nombre, acento, tamano = 56.dp, foto = foto)
         Column(Modifier.weight(1f)) {
             Text("Hola, ${nombre.substringBefore(' ')}", style = MaterialTheme.typography.headlineMedium, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(subtitulo, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -174,9 +174,13 @@ fun TarjetaHola(nombre: String, subtitulo: String, acento: Acento, onPerfil: () 
 
 /** Círculo con la inicial del nombre. */
 @Composable
-fun AvatarInicial(nombre: String, acento: Acento, modifier: Modifier = Modifier, tamano: androidx.compose.ui.unit.Dp = 48.dp) {
-    Box(modifier.size(tamano).background(acento.color(), CircleShape).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
-        Text(nombre.trim().firstOrNull()?.uppercase() ?: "?", style = MaterialTheme.typography.titleLarge, color = Color.White)
+fun AvatarInicial(nombre: String, acento: Acento, modifier: Modifier = Modifier, tamano: androidx.compose.ui.unit.Dp = 48.dp, foto: androidx.compose.ui.graphics.ImageBitmap? = null) {
+    Box(modifier.size(tamano).clip(CircleShape).background(acento.color(), CircleShape).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
+        if (foto != null) {
+            androidx.compose.foundation.Image(foto, null, Modifier.size(tamano), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+        } else {
+            Text(nombre.trim().firstOrNull()?.uppercase() ?: "?", style = MaterialTheme.typography.titleLarge, color = Color.White)
+        }
     }
 }
 

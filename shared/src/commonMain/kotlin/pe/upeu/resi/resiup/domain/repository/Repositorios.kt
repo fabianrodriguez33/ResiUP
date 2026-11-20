@@ -27,6 +27,9 @@ interface ResidenteRepository {
     suspend fun perfil(): Result<Perfil>
     suspend fun qr(): Result<QrPersonal>
     suspend fun ranking(): Result<pe.upeu.resi.resiup.domain.model.Ranking> = Result.failure(UnsupportedOperationException())
+    /** Id de la evidencia que es su foto de perfil (null si no tiene). */
+    suspend fun fotoPerfil(): Result<Long?> = Result.failure(UnsupportedOperationException())
+    suspend fun cambiarFoto(evidenciaId: Long): Result<Unit> = Result.failure(UnsupportedOperationException())
     suspend fun asistencias(pagina: Int): Result<Pagina<AsistenciaCulto>>
     suspend fun limpieza(pagina: Int): Result<Pagina<EvaluacionLimpieza>>
     suspend fun resumenLimpieza(): Result<ResumenLimpieza>

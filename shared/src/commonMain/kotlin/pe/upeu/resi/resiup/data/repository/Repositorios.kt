@@ -51,6 +51,8 @@ class ResidenteRepositoryImpl(private val api: ResidenteApi, private val sesione
         }
         return r
     }
+    override suspend fun fotoPerfil() = ejecutarLlamada { api.perfil().fotoEvidenciaId }
+    override suspend fun cambiarFoto(evidenciaId: Long) = ejecutarLlamada { api.cambiarFoto(evidenciaId) }
     override suspend fun ranking() = ejecutarLlamada {
         val r = api.ranking()
         fun p(d: pe.upeu.resi.resiup.data.remote.dto.PuestoDto) = pe.upeu.resi.resiup.domain.model.Puesto(d.posicion, d.total, d.valor)

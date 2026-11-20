@@ -18,6 +18,7 @@ data class HabitacionResumenDto(val id: Long, val numero: String, val cama: Stri
 
 @Serializable
 data class ResidenteDto(
+    val fotoEvidenciaId: Long? = null,
     val id: Long,
     val codigo: String,
     val nombreCompleto: String,
@@ -199,3 +200,7 @@ data class PuestoDto(val posicion: Int? = null, val total: Int = 0, val valor: D
 
 @Serializable
 data class RankingDto(val cultos: PuestoDto = PuestoDto(), val limpieza: PuestoDto = PuestoDto())
+
+
+@Serializable
+data class FotoRequestDto(val evidenciaId: Long)

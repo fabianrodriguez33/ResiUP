@@ -86,9 +86,9 @@ class PermisosFamiliaTest {
     private val hijo2 = Hijo(2, "A002", "Beto Pérez", "103", "B", true, 0)
 
     @Test
-    fun `el residente solo elige corto o largo y el pernoctar queda para su padre`() = runTest {
+    fun `el residente elige corto largo o pernoctar y el padre tambien`() = runTest {
         val vm = SolicitudFormViewModel(PermisoFalso())
-        assertEquals(listOf(TipoPermiso.Corto, TipoPermiso.Largo), vm.tiposPermitidos)
+        assertEquals(listOf(TipoPermiso.Corto, TipoPermiso.Largo, TipoPermiso.Pernocte), vm.tiposPermitidos)
         assertEquals(listOf(TipoPermiso.Corto, TipoPermiso.Largo, TipoPermiso.Pernocte), FamiliaNuevoViewModel(FamiliaFalsa(listOf(hijo1))).tiposPermitidos)
     }
 

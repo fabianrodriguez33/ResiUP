@@ -5,6 +5,8 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
+import io.ktor.client.request.put
+import pe.upeu.resi.resiup.data.remote.dto.FotoRequestDto
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import pe.upeu.resi.resiup.data.remote.dto.AbrirSesionRequestDto
@@ -37,6 +39,8 @@ private const val BASE = "api/v1/"
 class ResidenteApi(private val client: HttpClient) {
     suspend fun perfil(): ResidenteDto = client.get("${BASE}residentes/yo").body()
     suspend fun qr(): QrDto = client.get("${BASE}residentes/yo/qr").body()
+    /** Foto de perfil: primero se sube la imagen como evidencia y aquí se elige. */
+    suspend fun cambiarFoto(evidenciaId: Long) { client.put("${BASE}perfil/foto") { setBody(FotoRequestDto(evidenciaId)) } }
     suspend fun ranking(): RankingDto = client.get("${BASE}residentes/yo/ranking").body()
     suspend fun actualizarPerfil(r: PerfilRequestDto): ResidenteDto = client.patch("${BASE}residentes/yo") { setBody(r) }.body()
     suspend fun asistencias(pagina: Int, tamanio: Int): PaginaDto<AsistenciaDto> =
