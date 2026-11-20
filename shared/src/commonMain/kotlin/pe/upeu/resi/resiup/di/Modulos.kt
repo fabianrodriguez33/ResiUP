@@ -59,6 +59,9 @@ import pe.upeu.resi.resiup.presentation.personal.SolicitudRevisionViewModel
 import pe.upeu.resi.resiup.presentation.personal.PermisosAprobadosViewModel
 import pe.upeu.resi.resiup.presentation.personal.PermisosEnEsperaViewModel
 import pe.upeu.resi.resiup.presentation.personal.PermisosTodosViewModel
+import pe.upeu.resi.resiup.presentation.personal.PermisosEnRevisionViewModel
+import pe.upeu.resi.resiup.presentation.personal.CultosViewModel
+import pe.upeu.resi.resiup.presentation.personal.ReservasPastorViewModel
 import pe.upeu.resi.resiup.presentation.residente.EditarPerfilViewModel
 import pe.upeu.resi.resiup.presentation.residente.AsistenciasViewModel
 import pe.upeu.resi.resiup.presentation.residente.InicioResidenteViewModel
@@ -169,6 +172,9 @@ val presentacionModule = module {
     viewModelOf(::PermisosAprobadosViewModel)
     viewModelOf(::PermisosEnEsperaViewModel)
     viewModelOf(::PermisosTodosViewModel)
+    viewModelOf(::PermisosEnRevisionViewModel)
+    viewModelOf(::CultosViewModel)
+    viewModelOf(::ReservasPastorViewModel)
     viewModelOf(::EditarPerfilViewModel)
     // Cuenta de cualquier rol
     viewModelOf(::PerfilCuentaViewModel)

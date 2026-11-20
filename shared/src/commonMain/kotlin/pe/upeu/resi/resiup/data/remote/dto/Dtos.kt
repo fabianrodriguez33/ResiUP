@@ -147,7 +147,7 @@ data class JustificacionRequestDto(val motivo: String, val evidenciaId: Long? = 
 data class EnlaceDto(val token: String, val ruta: String, val expiraEn: String, val apoderado: String = "")
 
 @Serializable
-data class SesionCultoDto(val id: Long, val fecha: String, val tipo: String, val corte: String, val estado: String, val presentes: Long = 0)
+data class SesionCultoDto(val id: Long, val fecha: String, val tipo: String, val corte: String, val estado: String, val presentes: Long = 0, val inicio: String? = null)
 
 @Serializable
 data class AbrirSesionRequestDto(val tipo: String)
@@ -204,3 +204,7 @@ data class RankingDto(val cultos: PuestoDto = PuestoDto(), val limpieza: PuestoD
 
 @Serializable
 data class FotoRequestDto(val evidenciaId: Long)
+
+
+@Serializable
+data class DecisionRequestDto(val aprobar: Boolean, val comentario: String? = null)

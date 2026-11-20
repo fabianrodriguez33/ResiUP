@@ -10,6 +10,7 @@ object Destinos {
     const val Asistencias = "asistencias"
     const val Limpieza = "limpieza"
     const val Reservas = "reservas"
+    const val Cultos = "cultos"
     const val Perfil = "perfil"
     const val Escanear = "escanear"
     const val Solicitudes = "solicitudes"

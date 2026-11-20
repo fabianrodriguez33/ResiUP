@@ -109,7 +109,7 @@ fun ResumenResidenteDto.aDominio() = ResumenResidente(dias, cultosRealizados, as
 
 fun EnlaceDto.aDominio() = EnlaceApoderado(token, ruta, expiraEn.instante(), apoderado)
 
-fun SesionCultoDto.aDominio() = SesionCulto(id, fecha, tipo.aTipoCulto(), estado == "CERRADA", presentes, corte.instante())
+fun SesionCultoDto.aDominio() = SesionCulto(id, fecha, tipo.aTipoCulto(), estado == "CERRADA", presentes, corte.instante(), inicio?.instante())
 
 private fun String.aResultado(): ResultadoGarita = when (this) {
     "AUTORIZADO_SALIDA" -> ResultadoGarita.AutorizadoSalida

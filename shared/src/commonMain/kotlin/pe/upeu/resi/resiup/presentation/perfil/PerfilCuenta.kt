@@ -93,20 +93,20 @@ class PerfilCuentaViewModel(private val repo: PerfilCuentaRepository) : ViewMode
     fun cancelar() { _form.value = null }
 
     fun email(v: String) = _form.update { it?.copy(email = v.take(150), errores = it.errores - "email", error = null) }
-    fun telefono(v: String) = _form.update { it?.copy(telefono = v.filter { c -> c.isDigit() || c == '+' || c == ' ' }.take(20), errores = it.errores - "telefono", error = null) }
+    fun telefono(v: String) = _form.update { it?.copy(telefono = v.filter { c -> c.isDigit() }.take(9), errores = it.errores - "telefono", error = null) }
     fun fechaNacimiento(v: String) = _form.update { it?.copy(fechaNacimiento = v, errores = it.errores - "fechaNacimiento", error = null) }
 
     fun guardar() {
         val f = _form.value ?: return
         if (f.guardando) return
-        val errores = validarContacto(f.email, f.telefono, f.fechaNacimiento, hoyLima())
+        val errores = validarContacto(f.email, f.telefono, "", hoyLima())
         if (errores.isNotEmpty()) {
             _form.value = f.copy(errores = errores)
             return
         }
         _form.value = f.copy(guardando = true, error = null, errores = emptyMap())
         viewModelScope.launch {
-            repo.actualizar(ContactoEditable(f.email, f.telefono, f.fechaNacimiento.takeIf { it.isNotBlank() }))
+            repo.actualizar(ContactoEditable(f.email, f.telefono, null))
                 .onSuccess { _perfil.value = Carga.Exito(it); _form.value = null }
                 .onFailure { e ->
                     val err = e.aErrorApi()
@@ -139,30 +139,26 @@ fun PerfilCuentaScreen(rol: Rol, onCerrarSesion: () -> Unit, vm: PerfilCuentaVie
         val f = form
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
             if (f == null) {
-                Row(Modifier.padding(end = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                    AvatarInicial(p.nombreCompleto, Acento.Azul, tamano = 60.dp)
-                    Column(Modifier.weight(1f)) {
-                        Text(p.nombreCompleto, style = MaterialTheme.typography.headlineMedium)
-                        Text("Usuario ${p.usuario}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        ChipEstado(rol.etiqueta, EstadoVisual.Info, Modifier.padding(top = Espacio.xs))
-                    }
+                TituloPantalla("Mi Perfil", subtitulo = "Tus datos personales")
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                    AvatarInicial(p.nombreCompleto, Acento.Turquesa, tamano = 112.dp)
+                    Text(p.nombreCompleto, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
-                ResiTarjeta {
-                    DatoPerfil("DNI", p.dni, ResiIconos.Perfil, Acento.Azul)
-                    DatoPerfil("Fecha de nacimiento", p.fechaNacimiento?.fechaLegible(), ResiIconos.Calendario, Acento.Rosa)
-                    DatoPerfil(
-                        "Correo electrónico", p.email, ResiIconos.Correo, Acento.Violeta,
-                        final = if (p.email.isNullOrBlank()) null else { { ChipEstado(if (p.emailVerificado) "Verificado" else "Sin verificar", if (p.emailVerificado) EstadoVisual.Exito else EstadoVisual.Advertencia) } },
-                    )
-                    DatoPerfil("Teléfono", p.telefono, ResiIconos.Telefono, Acento.Verde)
-                }
+                Text("Información personal", style = MaterialTheme.typography.titleMedium)
+                DatoPerfil("Nombre de usuario", p.usuario, ResiIconos.Perfil, Acento.Azul)
+                DatoPerfil(
+                    "Email", p.email, ResiIconos.Correo, Acento.Azul,
+                    final = if (p.email.isNullOrBlank()) null else { { ChipEstado(if (p.emailVerificado) "Verificado" else "Sin verificar", if (p.emailVerificado) EstadoVisual.Exito else EstadoVisual.Advertencia) } },
+                )
+                DatoPerfil("Celular", p.telefono, ResiIconos.Telefono, Acento.Verde)
+                DatoPerfil("Cargo", if (rol == Rol.Preceptor) "Pastor" else rol.etiqueta, ResiIconos.Notas, Acento.Violeta)
                 if (!p.email.isNullOrBlank() && !p.emailVerificado) {
                     ResiBoton("Verificar mi correo", { verificando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
                 }
-                ResiBoton("Editar mis datos", { vm.editar(p) }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
+                ResiBoton("Cambiar datos", { vm.editar(p) }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
                 ResiBoton("Cambiar contraseña", { cambiandoClave = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
                 Text(
-                    "Tu nombre y tu DNI los gestiona la administración de la residencia.",
+                    "Tu nombre y tu usuario los gestiona la administración de la residencia.",
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (rol == Rol.Preceptor || rol == Rol.Administrador) {
@@ -172,10 +168,9 @@ fun PerfilCuentaScreen(rol: Rol, onCerrarSesion: () -> Unit, vm: PerfilCuentaVie
                 }
                 ResiBoton("Cerrar sesión", { confirmar = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
             } else {
-                TituloPantalla("Editar mis datos", subtitulo = p.nombreCompleto)
+                TituloPantalla("Cambiar datos", subtitulo = p.nombreCompleto)
                 ResiCampoTexto(f.email, vm::email, "Correo electrónico", error = f.errores["email"], ayuda = "Si lo cambias, tendrás que verificarlo otra vez", tipoTeclado = KeyboardType.Email, habilitado = !f.guardando)
-                ResiCampoTexto(f.telefono, vm::telefono, "Teléfono", error = f.errores["telefono"], tipoTeclado = KeyboardType.Phone, habilitado = !f.guardando)
-                CampoFecha("Fecha de nacimiento", f.fechaNacimiento, vm::fechaNacimiento, error = f.errores["fechaNacimiento"], habilitado = !f.guardando, anios = 1940..hoyLima().year)
+                ResiCampoTexto(f.telefono, vm::telefono, "Celular", error = f.errores["telefono"], tipoTeclado = KeyboardType.Phone, habilitado = !f.guardando)
                 f.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else if (it == ErrorApi.SinConexion || it == ErrorApi.TiempoAgotado) "Necesitas conexión para guardar los cambios." else it.textoVisible(), EstadoVisual.Error) }
                 ResiBoton("Guardar cambios", vm::guardar, Modifier.fillMaxWidth(), cargando = f.guardando)
                 ResiBoton("Cancelar", vm::cancelar, Modifier.fillMaxWidth(), variante = VarianteBoton.Terciario, habilitado = !f.guardando)

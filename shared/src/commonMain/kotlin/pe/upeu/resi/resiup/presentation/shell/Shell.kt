@@ -138,7 +138,9 @@ private fun ContenidoReal(rol: Rol, sesion: Sesion, destino: String, irA: (Strin
         }
         Rol.Preceptor -> when (destino) {
             Destinos.Inicio -> InicioPreceptorScreen(sesion.nombreCompleto, irA)
-            Destinos.Escanear -> AsistenciaCultoScreen()
+            Destinos.Escanear -> AsistenciaCultoScreen(onCultos = { irA(Destinos.Cultos) })
+            Destinos.Cultos -> pe.upeu.resi.resiup.presentation.personal.CultosPastorScreen()
+            Destinos.Reservas -> pe.upeu.resi.resiup.presentation.personal.ReservasPastorScreen()
             Destinos.Solicitudes -> SolicitudesPreceptorScreen()
             Destinos.Limpieza -> LimpiezaPreceptorScreen()
             else -> PerfilCuentaScreen(rol, onCerrarSesion)

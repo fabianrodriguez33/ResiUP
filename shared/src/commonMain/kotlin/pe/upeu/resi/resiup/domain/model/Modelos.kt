@@ -132,7 +132,7 @@ data class EnlaceApoderado(val token: String, val ruta: String, val expiraEn: In
 // ---- Preceptor ----
 data class ResidenteResumen(val id: Long, val codigo: String, val nombreCompleto: String, val habitacion: String?, val activo: Boolean)
 
-data class SesionCulto(val id: Long, val fecha: String, val tipo: TipoCulto, val cerrada: Boolean, val presentes: Long, val corte: Instant)
+data class SesionCulto(val id: Long, val fecha: String, val tipo: TipoCulto, val cerrada: Boolean, val presentes: Long, val corte: Instant, val inicio: Instant? = null)
 
 data class AsistenciaRegistrada(val codigo: String, val nombreCompleto: String, val despuesDelCorte: Boolean)
 

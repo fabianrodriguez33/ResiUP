@@ -81,6 +81,7 @@ class PermisoRepositoryImpl(private val api: PermisoApi) : PermisoRepository {
     override suspend fun enlaceApoderado(id: Long) = ejecutarLlamada { api.enlaceApoderado(id).aDominio() }
     override suspend fun resumenDelResidente(id: Long) = ejecutarLlamada { api.resumen(id).aDominio() }
     override suspend fun anular(id: Long, motivo: String) = ejecutarLlamada { api.anular(id, motivo.trim()).aDominio() }
+    override suspend fun decidir(id: Long, aprobar: Boolean, comentario: String?) = ejecutarLlamada { api.decidir(id, aprobar, comentario?.trim()?.ifBlank { null }).aDominio() }
 }
 
 private fun NuevaSolicitud.aDto() = SolicitudRequestDto(
@@ -104,6 +105,11 @@ class CultoRepositoryImpl(private val api: CultoApi) : CultoRepository {
     override suspend fun sesionesDeHoy() = ejecutarLlamada { api.hoy().map { it.aDominio() } }
     override suspend fun registrarAsistencia(sesionId: Long, qr: String) = ejecutarLlamada { api.registrar(sesionId, qr).aRegistrada() }
     override suspend fun cerrarSesion(sesionId: Long) = ejecutarLlamada { api.cerrar(sesionId).aDominio() }
+    override suspend fun sesionesDeFecha(fecha: String) = ejecutarLlamada { api.porFecha(fecha).map { it.aDominio() } }
+    override suspend fun presentes(sesionId: Long) = ejecutarLlamada {
+        api.presentes(sesionId).map { pe.upeu.resi.resiup.domain.repository.AsistenciaPresente(it.codigo, it.nombreCompleto, it.despuesDelCorte) }
+    }
+    override suspend fun reabrirSesion(sesionId: Long) = ejecutarLlamada { api.reabrir(sesionId).aDominio() }
 }
 
 class LimpiezaRepositoryImpl(private val api: LimpiezaApi) : LimpiezaRepository {

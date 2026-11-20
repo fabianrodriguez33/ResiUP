@@ -45,6 +45,8 @@ class PermisosAprobadosViewModel(repo: PermisoRepository) : ListaViewModel<Solic
 
 class PermisosEnEsperaViewModel(repo: PermisoRepository) : ListaViewModel<SolicitudPermiso>({ repo.listar(EstadoSolicitud.PendienteApoderado, it) })
 
+class PermisosEnRevisionViewModel(repo: PermisoRepository) : ListaViewModel<SolicitudPermiso>({ repo.listar(EstadoSolicitud.PendientePreceptor, it) })
+
 class PermisosTodosViewModel(repo: PermisoRepository) : ListaViewModel<SolicitudPermiso>({ repo.listar(null, it) })
 
 class HistorialGaritaViewModel(repo: GaritaRepository) : ListaViewModel<MovimientoRegistrado>({ repo.historial(it) })
@@ -60,11 +62,12 @@ class InicioPreceptorViewModel(private val permisos: PermisoRepository, private 
     init { cargar() }
 
     fun cargar() {
-        _estado.value = Carga.Cargando
+        // Al volver al inicio se actualiza sin borrar lo que ya se ve (el culto abierto cambia el acceso «Registrar»).
+        if (_estado.value !is Carga.Exito) _estado.value = Carga.Cargando
         viewModelScope.launch {
             coroutineScope {
                 val a = async { permisos.listar(EstadoSolicitud.Aprobado, 0) }
-                val b = async { permisos.listar(EstadoSolicitud.PendienteApoderado, 0) }
+                val b = async { permisos.listar(EstadoSolicitud.PendientePreceptor, 0) }
                 val c = async { cultos.sesionesDeHoy() }
                 val ra = a.await()
                 _estado.value = ra.fold(
@@ -111,6 +114,17 @@ class SolicitudRevisionViewModel(private val id: Long, private val repo: Permiso
         viewModelScope.launch {
             repo.anular(id, motivo)
                 .onSuccess { _accion.value = RevisionAccion(mensaje = "Permiso anulado"); cargar() }
+                .onFailure { _accion.value = RevisionAccion(error = it.aErrorApi()) }
+        }
+    }
+
+    /** Aprueba o rechaza un permiso en revisión; rechazar exige el motivo. */
+    fun decidir(aprobar: Boolean, comentario: String?) {
+        if (_accion.value.trabajando) return
+        _accion.value = RevisionAccion(trabajando = true)
+        viewModelScope.launch {
+            repo.decidir(id, aprobar, comentario)
+                .onSuccess { _accion.value = RevisionAccion(mensaje = if (aprobar) "Permiso aprobado" else "Permiso rechazado"); cargar() }
                 .onFailure { _accion.value = RevisionAccion(error = it.aErrorApi()) }
         }
     }

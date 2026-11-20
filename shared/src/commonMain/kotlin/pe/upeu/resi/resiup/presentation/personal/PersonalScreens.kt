@@ -106,32 +106,24 @@ private fun ZonaEscaneo(activo: Boolean, onCodigo: (String) -> Unit) {
 @Composable
 fun InicioPreceptorScreen(nombre: String, onIr: (String) -> Unit, vm: InicioPreceptorViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
+    LaunchedEffect(Unit) { vm.cargar() }
     ContenidoCarga(estado, vm::cargar) { ui ->
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
-            TarjetaHola(nombre, "Pastor", Acento.Azul, { onIr("mas") }, Modifier.padding(top = 40.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
-                TarjetaDato(ui.aprobados.toString(), "Permisos aprobados", ResiIconos.Permisos, Acento.Azul, Modifier.weight(1f))
-                TarjetaDato(ui.enEspera.toString(), "Esperan a los padres", ResiIconos.Solicitudes, Acento.Ambar, Modifier.weight(1f))
-                TarjetaDato(ui.sesiones.size.toString(), "Cultos hoy", ResiIconos.Asistencias, Acento.Verde, Modifier.weight(1f), detalle = "${ui.sesiones.sumOf { it.presentes }} presentes")
+            TarjetaHola(nombre, "Pastor", Acento.Turquesa, { onIr("mas") }, Modifier.padding(top = 40.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                TarjetaDato(ui.sesiones.sumOf { it.presentes }.toString(), "Cultos hoy", ResiIconos.Asistencias, Acento.Naranja, Modifier.weight(1f), detalle = "residentes presentes")
+                TarjetaDato(ui.aprobados.toString(), "Permisos", ResiIconos.Permisos, Acento.Verde, Modifier.weight(1f), detalle = "aprobados")
             }
             EncabezadoSeccion("Accesos")
             CuadriculaModulos(
                 listOf(
-                    ModuloUi("Permisos", ResiIconos.Solicitudes, Acento.Azul, { onIr("solicitudes") }, insignia = ui.enEspera.takeIf { it > 0 }?.toString()),
-                    ModuloUi("Cultos", ResiIconos.Asistencias, Acento.Verde, { onIr("escanear") }),
-                    ModuloUi("Limpieza", ResiIconos.Limpieza, Acento.Naranja, { onIr("limpieza") }),
-                    ModuloUi("Días sin culto", ResiIconos.Calendario, Acento.Turquesa, { onIr("mas") }),
+                    ModuloUi("Permisos", ResiIconos.Permisos, Acento.Azul, { onIr("solicitudes") }, insignia = ui.enEspera.takeIf { it > 0 }?.toString()),
+                    ModuloUi("Cultos", ResiIconos.Sol, Acento.Azul, { onIr("cultos") }),
+                    ModuloUi("Reservas", ResiIconos.Cena, Acento.Azul, { onIr("reservas") }),
+                    ModuloUi("Limpieza", ResiIconos.Limpieza, Acento.Azul, { onIr("limpieza") }),
                 ) + // «Registrar» solo existe mientras haya un culto abierto; al cerrarlo desaparece del inicio.
-                    if (ui.sesiones.any { !it.cerrada }) listOf(ModuloUi("Registrar", ResiIconos.Escanear, Acento.Violeta, { onIr("escanear") })) else emptyList(),
+                    if (ui.sesiones.any { !it.cerrada }) listOf(ModuloUi("Registrar", ResiIconos.Escanear, Acento.Azul, { onIr("escanear") })) else emptyList(),
             )
-            EncabezadoSeccion("Cultos de hoy")
-            ResiTarjeta(onClick = { onIr("escanear") }) {
-                if (ui.sesiones.isEmpty()) Text("Aún no se abrió ningún culto. Abre uno desde «Cultos».", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                ui.sesiones.forEach { s ->
-                    ElementoLista("Culto ${s.tipo.etiqueta.lowercase()}", subtitulo = "${s.presentes} presentes · corte ${s.corte.soloHoraLima()}", icono = ResiIconos.Asistencias, acento = Acento.Verde,
-                        final = { ChipEstado(if (s.cerrada) "Cerrado" else "Abierto", if (s.cerrada) EstadoVisual.Neutro else EstadoVisual.Exito) })
-                }
-            }
         }
     }
 }
@@ -139,29 +131,24 @@ fun InicioPreceptorScreen(nombre: String, onIr: (String) -> Unit, vm: InicioPrec
 // ================================================================= preceptor: asistencia
 
 @Composable
-fun AsistenciaCultoScreen(vm: AsistenciaCultoViewModel = koinViewModel()) {
+fun AsistenciaCultoScreen(onCultos: () -> Unit = {}, vm: AsistenciaCultoViewModel = koinViewModel()) {
     val e by vm.estado.collectAsState()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla("Asistencia a cultos", subtitulo = "Lunes a viernes")
         val sesion = e.sesion
+        TituloPantalla("Registrar asistencia", subtitulo = sesion?.let { "Culto ${it.tipo.etiqueta}" } ?: "Culto")
         when {
             e.cargandoSesion -> Text("Cargando…", style = MaterialTheme.typography.bodyMedium)
             sesion == null -> {
                 e.errorSesion?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
-                Text("Elige el culto que vas a registrar:", style = MaterialTheme.typography.bodyLarge)
-                TipoCulto.entries.forEach { t -> ResiBoton("Abrir culto ${t.etiqueta.lowercase()}", { vm.abrir(t) }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario) }
+                Text("No hay un culto abierto. Crea uno desde «Cultos» para registrar asistencia.", style = MaterialTheme.typography.bodyLarge)
+                ResiBoton("Ir a Cultos", onCultos, Modifier.fillMaxWidth())
             }
             else -> {
-                Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                    TarjetaEstadistica("Culto", sesion.tipo.etiqueta, Modifier.weight(1f), "corte ${sesion.corte.soloHoraLima()}")
-                    TarjetaEstadistica("Presentes", e.presentes.toString(), Modifier.weight(1f))
-                }
                 ZonaEscaneo(activo = !e.procesando, onCodigo = vm::codigoLeido)
                 e.errorSesion?.let { BannerMensaje(it.aMensaje(), EstadoVisual.Error) }
                 e.registros.forEach { r ->
-                    BannerMensaje("${r.texto}${r.detalle?.let { " — $it" } ?: ""}", if (r.exito) EstadoVisual.Exito else EstadoVisual.Error)
+                    BannerMensaje(if (r.exito) "${r.texto} registrado exitosamente" else "${r.texto}${r.detalle?.let { d -> " — $d" } ?: ""}", if (r.exito) EstadoVisual.Exito else EstadoVisual.Error)
                 }
-                ResiBoton("Cerrar culto", vm::cerrarSesion, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
             }
         }
     }
@@ -175,7 +162,7 @@ private sealed interface RutaSolicitudes {
     data object Tramites : RutaSolicitudes
 }
 
-private enum class FiltroPermisos(val etiqueta: String) { Aprobados("Aprobados"), EnEspera("En espera"), Todos("Todos") }
+private enum class FiltroPermisos(val etiqueta: String) { Aprobados("Aprobados"), EnRevision("En revisión"), Todos("Todos") }
 
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
@@ -207,13 +194,13 @@ private fun ListaPermisosPastor(onAbrir: (Long) -> Unit, onTramites: () -> Unit)
     LaunchedEffect(Unit) { tramites.cargar() }
     var filtro by remember { mutableStateOf(FiltroPermisos.Aprobados) }
     val aprobados = koinViewModel<PermisosAprobadosViewModel>()
-    val enEspera = koinViewModel<PermisosEnEsperaViewModel>()
+    val enEspera = koinViewModel<PermisosEnRevisionViewModel>()
     val todos = koinViewModel<PermisosTodosViewModel>()
     LaunchedEffect(Unit) { aprobados.refrescar(); enEspera.refrescar(); todos.refrescar() }
-    val vm = when (filtro) { FiltroPermisos.Aprobados -> aprobados; FiltroPermisos.EnEspera -> enEspera; FiltroPermisos.Todos -> todos }
+    val vm = when (filtro) { FiltroPermisos.Aprobados -> aprobados; FiltroPermisos.EnRevision -> enEspera; FiltroPermisos.Todos -> todos }
     val estado by vm.estado.collectAsState()
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla("Permisos", Modifier.padding(top = Espacio.l), subtitulo = "Lista de permisos generados")
+        TituloPantalla("Permisos", Modifier.padding(top = Espacio.l), subtitulo = "Lista de permisos de los residentes")
         ResiTarjeta(onClick = onTramites) {
             ElementoLista(
                 "Por revisar", subtitulo = "Ampliaciones, justificaciones, faltas y residentes inhabilitados", icono = ResiIconos.Solicitudes, acento = Acento.Naranja,
@@ -224,8 +211,11 @@ private fun ListaPermisosPastor(onAbrir: (Long) -> Unit, onTramites: () -> Unit)
         ListaPaginada(estado, vm::refrescar, vm::cargarMas, "Sin permisos", "No hay permisos en esta lista.") { s ->
             ResiTarjeta(onClick = { onAbrir(s.id) }) {
                 ElementoLista(
-                    s.residenteNombre, subtitulo = "${s.tipo.etiqueta} · ${s.destino}\n${s.salida.formatoLima()}", icono = ResiIconos.Permisos, acento = s.tipo.acento(),
-                    final = { ChipEstado(s.estado.etiqueta, s.estado.aEstadoVisual()) },
+                    s.residenteNombre, subtitulo = "${if (s.tipo == TipoPermiso.Pernocte) "Pernoctar" else s.tipo.etiqueta} - ${s.salida.formatoLima()}", icono = ResiIconos.Permisos, acento = Acento.Azul,
+                    final = {
+                        val etiqueta = when (s.estado) { EstadoSolicitud.PendientePreceptor -> "En revisión"; EstadoSolicitud.PendienteApoderado -> "Pendiente"; else -> s.estado.etiqueta }
+                        ChipEstado(etiqueta, s.estado.aEstadoVisual())
+                    },
                 )
             }
         }
@@ -238,6 +228,7 @@ private fun DetallePermisoPastor(id: Long, onVolver: () -> Unit) {
     val estado by vm.estado.collectAsState()
     val accion by vm.accion.collectAsState()
     var anulando by remember { mutableStateOf(false) }
+    var rechazando by remember { mutableStateOf(false) }
     LaunchedEffect(id) { vm.recargar() }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         ResiBoton("Volver", onVolver, variante = VarianteBoton.Terciario)
@@ -260,6 +251,11 @@ private fun DetallePermisoPastor(id: Long, onVolver: () -> Unit) {
                             }
                         }
                     }
+                    EstadoSolicitud.PendientePreceptor -> {
+                        BannerMensaje("Revisa el permiso: al aprobarlo, garita lo verá como autorizado en el horario indicado.", EstadoVisual.Info)
+                        ResiBoton("Aprobar", { vm.decidir(true, null) }, Modifier.fillMaxWidth(), cargando = accion.trabajando)
+                        ResiBoton("Rechazar", { rechazando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo, habilitado = !accion.trabajando)
+                    }
                     EstadoSolicitud.Aprobado -> {
                         BannerMensaje("Aprobado: garita lo verá como autorizado en el horario indicado.", EstadoVisual.Exito)
                         ResiBoton("Anular permiso", { anulando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo, cargando = accion.trabajando)
@@ -273,6 +269,12 @@ private fun DetallePermisoPastor(id: Long, onVolver: () -> Unit) {
                 accion.mensaje?.let { BannerMensaje(it, EstadoVisual.Exito) }
             }
         }
+    }
+    if (rechazando) {
+        pe.upeu.resi.resiup.presentation.components.DialogoMotivo(
+            titulo = "Rechazar permiso", mensaje = "El residente verá el motivo.", etiqueta = "Motivo del rechazo", textoConfirmar = "Rechazar",
+            onConfirmar = { rechazando = false; vm.decidir(false, it) }, onCancelar = { rechazando = false }, destructivo = true,
+        )
     }
     if (anulando) {
         pe.upeu.resi.resiup.presentation.components.DialogoMotivo(
@@ -318,10 +320,12 @@ fun LimpiezaPreceptorScreen(vm: LimpiezaPreceptorViewModel = koinViewModel()) {
     val s by vm.estado.collectAsState()
     val hab = s.habitacion
     BackHandler(enabled = hab != null) { vm.cerrar() }
+    val alInicio = pe.upeu.resi.resiup.presentation.components.LocalVolver.current
+    androidx.compose.runtime.CompositionLocalProvider(pe.upeu.resi.resiup.presentation.components.LocalVolver provides (if (hab != null) ({ vm.cerrar() }) else alInicio)) {
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla(
-            if (hab == null) "Evaluación de limpieza" else "Habitación ${hab.numero}", Modifier.padding(top = Espacio.l),
-            subtitulo = if (hab == null) "Hoy, ${hoyLima().toString().fechaLegible()} · elige una habitación" else "Hoy, ${hoyLima().toString().fechaLegible()}",
+            if (hab == null) "Evaluación ${hoyLima().toString().fechaLegible().substringBeforeLast(' ')}" else "Habitación ${hab.numero}", Modifier.padding(top = Espacio.l),
+            subtitulo = if (hab == null) "Elige la habitación" else "Elija el criterio",
         )
         s.mensaje?.let { BannerMensaje(it, EstadoVisual.Exito) }
         val finDeSemana = hoyLima().dayOfWeek.let { it == kotlinx.datetime.DayOfWeek.SATURDAY || it == kotlinx.datetime.DayOfWeek.SUNDAY }
@@ -332,21 +336,21 @@ fun LimpiezaPreceptorScreen(vm: LimpiezaPreceptorViewModel = koinViewModel()) {
                 if (lista.isEmpty()) {
                     pe.upeu.resi.resiup.presentation.components.EstadoVacio("Sin habitaciones ocupadas", "Asigna residentes a las habitaciones desde administración para poder evaluarlas.")
                 } else {
-                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
-                        lista.groupBy { it.numero.take(1) }.forEach { (piso, habitaciones) ->
-                            Text(if (piso.first().isDigit()) "Piso $piso" else "Otras", Modifier.padding(top = Espacio.s).semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-                            habitaciones.forEach { h ->
-                                ResiTarjeta(onClick = { vm.abrir(h) }) {
-                                    ElementoLista(
-                                        "Habitación ${h.numero}",
-                                        subtitulo = h.residentes.joinToString(", ") { it.nombreCompleto.substringBefore(' ') },
-                                        icono = ResiIconos.Limpieza,
-                                        final = {
-                                            if (h.completa) ChipEstado("Evaluada", EstadoVisual.Exito)
-                                            else ChipEstado("${h.evaluados}/${h.residentes.size}", if (h.evaluados > 0) EstadoVisual.Advertencia else EstadoVisual.Neutro)
-                                        },
-                                    )
+                    val pisos = lista.map { it.numero.take(1) }.distinct().sorted()
+                    var piso by remember(pisos) { mutableStateOf(pisos.first()) }
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                        Segmentos(pisos, piso, { "Piso $it" }, { piso = it })
+                        lista.filter { it.numero.take(1) == piso }.chunked(2).forEach { fila ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                                fila.forEach { h ->
+                                    ResiTarjeta(Modifier.weight(1f), onClick = { vm.abrir(h) }) {
+                                        ElementoLista(
+                                            h.numero, subtitulo = if (h.completa) "Evaluado" else "Falta evaluación", icono = ResiIconos.Limpieza,
+                                            acento = if (h.completa) Acento.Verde else Acento.Ambar,
+                                        )
+                                    }
                                 }
+                                if (fila.size == 1) androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
                             }
                         }
                     }
@@ -355,6 +359,7 @@ fun LimpiezaPreceptorScreen(vm: LimpiezaPreceptorViewModel = koinViewModel()) {
         } else {
             FormularioHabitacion(s, hab, vm)
         }
+    }
     }
 }
 

@@ -54,6 +54,8 @@ object ResiIconos {
     val Almuerzo = trazo("almuerzo", "M8 3 V10 M5 3 V8 A3 3 0 0 0 11 8 V3 M8 10 V21 M17 3 C14 5 14 11 17 13 V21 M17 3 V13")
     val Cena = trazo("cena", "M3 18 H21 M5 18 A7 7 0 0 1 19 18 M12 8 V6 M10 6 H14")
     val Desayuno = trazo("desayuno", "M4 10 H17 V16 A4 4 0 0 1 13 20 H8 A4 4 0 0 1 4 16 Z M17 12 H19 A2 2 0 0 1 19 16 H17 M8 3 C7 5 9 6 8 8 M12 3 C11 5 13 6 12 8")
+    val Sol = trazo("sol", "M12 8 A4 4 0 1 0 12 16 A4 4 0 1 0 12 8 M12 2 V4 M12 20 V22 M2 12 H4 M20 12 H22 M5 5 L6.5 6.5 M17.5 17.5 L19 19 M5 19 L6.5 17.5 M17.5 6.5 L19 5")
+    val Luna = trazo("luna", "M20 14 A8 8 0 1 1 10 4 A6 6 0 0 0 20 14 Z")
     val Cama = trazo("cama", "M3 18 V7 M3 14 H21 V18 M21 14 V11 A2 2 0 0 0 19 9 H10 V14 M6.5 12 H6.51")
     val Ropero = trazo("ropero", "M5 3 H19 V21 H5 Z M12 3 V21 M9.5 12 H9.51 M14.5 12 H14.51")
     val Escritorio = trazo("escritorio", "M3 9 H21 M5 9 V20 M19 9 V20 M5 13 H11 M8 16 H8.01")

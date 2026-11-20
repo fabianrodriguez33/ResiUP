@@ -50,6 +50,9 @@ interface PermisoRepository {
 
     /** Solo el pastor: anula un permiso aprobado que el residente todavía no usó. */
     suspend fun anular(id: Long, motivo: String): Result<SolicitudPermiso>
+
+    /** Solo el pastor: aprueba o rechaza un permiso en revisión; rechazar exige el motivo. */
+    suspend fun decidir(id: Long, aprobar: Boolean, comentario: String?): Result<SolicitudPermiso> = Result.failure(UnsupportedOperationException())
 }
 
 /** Perfil de padres de familia: sus hijos y los permisos de ellos. */
@@ -67,7 +70,12 @@ interface CultoRepository {
     suspend fun sesionesDeHoy(): Result<List<SesionCulto>>
     suspend fun registrarAsistencia(sesionId: Long, qr: String): Result<AsistenciaRegistrada>
     suspend fun cerrarSesion(sesionId: Long): Result<SesionCulto>
+    suspend fun sesionesDeFecha(fecha: String): Result<List<SesionCulto>> = Result.failure(UnsupportedOperationException())
+    suspend fun presentes(sesionId: Long): Result<List<AsistenciaPresente>> = Result.failure(UnsupportedOperationException())
+    suspend fun reabrirSesion(sesionId: Long): Result<SesionCulto> = Result.failure(UnsupportedOperationException())
 }
+
+data class AsistenciaPresente(val codigo: String, val nombreCompleto: String, val despuesDelCorte: Boolean)
 
 interface LimpiezaRepository {
     suspend fun habitaciones(fecha: String): Result<List<HabitacionLimpieza>>

@@ -29,12 +29,24 @@ data class OfertaDto(val comidas: List<OfertaItemDto> = emptyList())
 @Serializable
 data class ReservaRequestDto(val tipo: String, val fecha: String, val motivo: String, val curso: String? = null)
 
+@Serializable
+data class ReservaPastorDto(
+    val id: Long, val residenteNombre: String = "", val codigo: String = "", val tipo: String, val fecha: String,
+    val motivo: String = "", val curso: String? = null, val estado: String, val comentarioDecision: String? = null,
+)
+
+@Serializable
+data class DecisionReservaDto(val aprobar: Boolean, val comentario: String? = null)
+
 private const val BASE = "api/v1/reservas"
 
 class ReservasApi(private val client: HttpClient) {
     suspend fun oferta(): OfertaDto = client.get("$BASE/oferta").body()
     suspend fun reservar(r: ReservaRequestDto): ReservaDto = client.post(BASE) { setBody(r) }.body()
     suspend fun cancelar(id: Long): ReservaDto = client.post("$BASE/$id/cancelar").body()
+    suspend fun delDia(fecha: String, tipo: String?): List<ReservaPastorDto> =
+        client.get("$BASE/del-dia") { parameter("fecha", fecha); if (tipo != null) parameter("tipo", tipo) }.body()
+    suspend fun decidir(id: Long, aprobar: Boolean, comentario: String?): ReservaDto = client.post("$BASE/$id/decision") { setBody(DecisionReservaDto(aprobar, comentario)) }.body()
     suspend fun mias(pagina: Int): PaginaDto<ReservaDto> = client.get("$BASE/mias") { parameter("pagina", pagina); parameter("tamanio", 20) }.body()
 }
 

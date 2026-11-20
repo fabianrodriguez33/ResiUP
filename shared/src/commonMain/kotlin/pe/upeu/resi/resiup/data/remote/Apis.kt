@@ -10,6 +10,7 @@ import pe.upeu.resi.resiup.data.remote.dto.FotoRequestDto
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import pe.upeu.resi.resiup.data.remote.dto.AbrirSesionRequestDto
+import pe.upeu.resi.resiup.data.remote.dto.DecisionRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.AnulacionRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.AsistenciaDto
 import pe.upeu.resi.resiup.data.remote.dto.PerfilRequestDto
@@ -70,6 +71,8 @@ class PermisoApi(private val client: HttpClient) {
         }.body()
     suspend fun enlaceApoderado(id: Long): EnlaceDto = client.post("${BASE}permisos/solicitudes/$id/enlace-apoderado").body()
     suspend fun resumen(id: Long): ResumenResidenteDto = client.get("${BASE}permisos/solicitudes/$id/resumen-residente").body()
+    suspend fun decidir(id: Long, aprobar: Boolean, comentario: String?): SolicitudDto =
+        client.post("${BASE}permisos/solicitudes/$id/decision") { setBody(DecisionRequestDto(aprobar, comentario)) }.body()
     suspend fun anular(id: Long, motivo: String): SolicitudDto =
         client.post("${BASE}permisos/solicitudes/$id/anular") { setBody(AnulacionRequestDto(motivo)) }.body()
 }
@@ -94,6 +97,9 @@ class CultoApi(private val client: HttpClient) {
     suspend fun registrar(sesionId: Long, qr: String): AsistenciaDto =
         client.post("${BASE}cultos/sesiones/$sesionId/asistencias") { setBody(QrRequestDto(qr)) }.body()
     suspend fun cerrar(sesionId: Long): SesionCultoDto = client.post("${BASE}cultos/sesiones/$sesionId/cerrar").body()
+    suspend fun porFecha(fecha: String): List<SesionCultoDto> = client.get("${BASE}cultos/sesiones") { parameter("fecha", fecha) }.body()
+    suspend fun presentes(sesionId: Long): List<AsistenciaDto> = client.get("${BASE}cultos/sesiones/$sesionId/presentes").body()
+    suspend fun reabrir(sesionId: Long): SesionCultoDto = client.post("${BASE}cultos/sesiones/$sesionId/reabrir").body()
 }
 
 class LimpiezaApi(private val client: HttpClient) {
