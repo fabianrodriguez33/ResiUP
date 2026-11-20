@@ -160,9 +160,13 @@ class EstadisticasPerfilTest {
     fun `el contacto valida correo telefono y fecha de nacimiento`() {
         val hoy = LocalDate(2026, 11, 1)
         assertEquals(emptyMap(), validarContacto("", "", "", hoy), "todo es opcional")
-        assertEquals(emptyMap(), validarContacto(" ana@upeu.edu.pe ", "968 110 422", "2004-05-17", hoy))
+        assertEquals(emptyMap(), validarContacto(" ana@upeu.edu.pe ", "968110422", "2004-05-17", hoy))
         assertEquals(setOf("email"), validarContacto("ana@upeu", "", "", hoy).keys)
         assertEquals(setOf("telefono"), validarContacto("", "12345", "", hoy).keys)
+        assertEquals(setOf("telefono"), validarContacto("", "96811042", "", hoy).keys, "8 dígitos")
+        assertEquals(setOf("telefono"), validarContacto("", "9681104221", "", hoy).keys, "10 dígitos")
+        assertEquals(setOf("telefono"), validarContacto("", "968 110 422", "", hoy).keys, "solo dígitos")
+        assertEquals(setOf("email"), validarContacto("sin-arroba", "", "", hoy).keys)
         assertEquals(setOf("fechaNacimiento"), validarContacto("", "", "2026-11-01", hoy).keys, "hoy no es nacimiento")
         assertEquals(setOf("fechaNacimiento"), validarContacto("", "", "2031-01-01", hoy).keys)
         assertEquals(setOf("fechaNacimiento"), validarContacto("", "", "1850-01-01", hoy).keys)
@@ -194,10 +198,10 @@ class EstadisticasPerfilTest {
         val repo = ResidenteFalso(Result.success(perfil.copy(ciclo = 7)))
         val vm = EditarPerfilViewModel(repo, sincFalso())
         vm.iniciar(perfil)
-        vm.email("  julio@upeu.edu.pe "); vm.telefono("968 110 422")
+        vm.email("  julio@upeu.edu.pe "); vm.telefono("968110422")
         vm.guardar()
         // El residente solo cambia correo y celular: carrera, ciclo y nacimiento no se envían.
-        assertEquals(PerfilEditable("  julio@upeu.edu.pe ", "968 110 422", null, "", null), repo.recibido)
+        assertEquals(PerfilEditable("  julio@upeu.edu.pe ", "968110422", null, "", null), repo.recibido)
         assertTrue(vm.estado.value.guardado)
     }
 

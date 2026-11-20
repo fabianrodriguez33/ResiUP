@@ -93,6 +93,19 @@ class PermisosFamiliaTest {
     }
 
     @Test
+    fun `el ingreso no se acepta antes de la salida`() = runTest {
+        val vm = SolicitudFormViewModel(PermisoFalso())
+        val salida = ahora().plus(3.hours)
+        vm.salida(salida)
+        vm.retorno(salida.minus(1.hours))
+        assertNull(vm.estado.value.retorno)
+        assertEquals("El ingreso debe ser después de la salida", vm.estado.value.errores["retorno"])
+        vm.retorno(salida.plus(1.hours))
+        assertEquals(salida.plus(1.hours), vm.estado.value.retorno)
+        assertNull(vm.estado.value.errores["retorno"])
+    }
+
+    @Test
     fun `un permiso corto no pasa de dos horas y se sugiere el largo`() = runTest {
         val repo = PermisoFalso()
         val vm = SolicitudFormViewModel(repo)

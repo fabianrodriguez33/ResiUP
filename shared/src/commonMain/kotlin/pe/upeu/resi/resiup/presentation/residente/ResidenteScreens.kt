@@ -117,9 +117,10 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
             CuadriculaModulos(
                 listOf(
                     ModuloUi("Permisos", ResiIconos.Permisos, Acento.Azul, { onIr(Destinos.Permisos) }),
-                    ModuloUi("Notas", ResiIconos.Notas, Acento.Violeta, { onIr(Destinos.Notas) }),
+                    ModuloUi("Reservas", ResiIconos.Cena, Acento.Azul, { onIr(Destinos.Reservas) }),
                     ModuloUi("Asistencias", ResiIconos.Calendario, Acento.Verde, { onIr(Destinos.Asistencias) }),
                     ModuloUi("Limpieza", ResiIconos.Limpieza, Acento.Naranja, { onIr(Destinos.Limpieza) }),
+                    ModuloUi("Notas", ResiIconos.Notas, Acento.Violeta, { onIr(Destinos.Notas) }),
                 ),
             )
         }
@@ -167,7 +168,7 @@ fun PerfilResidenteScreen(sesion: Sesion?, onCerrarSesion: () -> Unit, vm: Perfi
             if (!perfil.email.isNullOrBlank() && !perfil.emailVerificado) {
                 ResiBoton("Verificar mi correo", { verificando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
             }
-            ResiBoton("Editar correo y celular", { editando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
+            ResiBoton("Cambiar datos", { editando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
             ResiBoton("Cambiar contraseña", { cambiandoClave = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
             Text(
                 "Tu nombre, usuario, código, carrera y ciclo los gestiona la administración de la residencia.",
@@ -234,7 +235,7 @@ fun AsistenciasScreen(vm: AsistenciasViewModel = koinViewModel()) {
     }
 }
 
-/** Un culto del día: asistió, llegó tras el corte o no tiene registro. */
+/** Un culto del día: asistió, llegó con tardanza o no tiene registro. */
 @Composable
 private fun CultoDelDia(tipo: TipoCulto, dia: LocalDate, a: AsistenciaCulto?) {
     val fecha = dia.toString().fechaLegible()
@@ -247,7 +248,7 @@ private fun CultoDelDia(tipo: TipoCulto, dia: LocalDate, a: AsistenciaCulto?) {
             final = {
                 when {
                     a == null -> ChipEstado("Sin registro", EstadoVisual.Neutro)
-                    a.despuesDelCorte -> ChipEstado("Tras el corte", EstadoVisual.Advertencia)
+                    a.despuesDelCorte -> ChipEstado("Tardanza", EstadoVisual.Advertencia)
                     else -> ChipEstado("Asistió", EstadoVisual.Exito)
                 }
             },
@@ -286,7 +287,7 @@ fun LimpiezaResidenteScreen(vm: LimpiezaResidenteViewModel = koinViewModel()) {
             }
             if (calendario) {
                 Dialog(onDismissRequest = { calendario = false }) {
-                    CalendarioAsistencias(emptyList(), hoy, onElegir = { dia = it; calendario = false })
+                    CalendarioAsistencias(emptyList(), hoy, onElegir = { dia = it; calendario = false }, conMarcas = false)
                 }
             }
         }

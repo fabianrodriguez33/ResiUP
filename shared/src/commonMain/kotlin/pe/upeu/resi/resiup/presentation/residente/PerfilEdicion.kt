@@ -76,7 +76,7 @@ class EditarPerfilViewModel(private val repo: ResidenteRepository, private val s
     fun reiniciar() { _estado.value = EditarPerfilState() }
 
     fun email(v: String) = _estado.update { it.copy(email = v.take(150), errores = it.errores - "email", error = null) }
-    fun telefono(v: String) = _estado.update { it.copy(telefono = v.filter { c -> c.isDigit() || c == '+' || c == ' ' }.take(20), errores = it.errores - "telefono", error = null) }
+    fun telefono(v: String) = _estado.update { it.copy(telefono = v.filter { c -> c.isDigit() }.take(9), errores = it.errores - "telefono", error = null) }
     fun fechaNacimiento(v: String) = _estado.update { it.copy(fechaNacimiento = v, errores = it.errores - "fechaNacimiento", error = null) }
     fun carrera(v: String) = _estado.update { it.copy(carrera = v.take(100), errores = it.errores - "carrera", error = null) }
     fun ciclo(v: String) = _estado.update { it.copy(ciclo = v.filter { c -> c.isDigit() }.take(2), errores = it.errores - "ciclo", error = null) }
@@ -114,7 +114,7 @@ fun EditarPerfilScreen(perfil: Perfil, onTerminar: () -> Unit, vm: EditarPerfilV
     LaunchedEffect(perfil.id) { vm.reiniciar(); vm.iniciar(perfil) }
     LaunchedEffect(s.guardado) { if (s.guardado) onTerminar() }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla("Editar contacto", subtitulo = perfil.nombreCompleto)
+        TituloPantalla("Cambiar datos", subtitulo = perfil.nombreCompleto)
         Text("Aquí cambias tu correo y tu celular. Tu foto se cambia desde tu perfil; lo demás lo gestiona la administración.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         ResiCampoTexto(s.email, vm::email, "Correo electrónico", error = s.errores["email"], ayuda = "Si lo cambias, tendrás que verificarlo otra vez", tipoTeclado = KeyboardType.Email, habilitado = !s.guardando)
         ResiCampoTexto(s.telefono, vm::telefono, "Celular", error = s.errores["telefono"], tipoTeclado = KeyboardType.Phone, habilitado = !s.guardando)

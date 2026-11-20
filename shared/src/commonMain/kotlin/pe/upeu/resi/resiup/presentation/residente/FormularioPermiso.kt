@@ -92,10 +92,15 @@ abstract class PermisoFormViewModel(
             val h = it.retorno.toLocalDateTime(ZonaResidencia)
             v.conHoraLima(h.hour, h.minute)
         } else it.retorno
-        it.copy(salida = v, retorno = retorno, errores = it.errores - "salida" - "retorno", error = null)
+        // Si la salida nueva deja al ingreso anterior antes de ella, se vuelve a pedir el ingreso.
+        if (retorno != null && retorno <= v) it.copy(salida = v, retorno = null, errores = it.errores - "salida" + ("retorno" to "Vuelve a elegir el ingreso: debe ser después de la salida"), error = null)
+        else it.copy(salida = v, retorno = retorno, errores = it.errores - "salida" - "retorno", error = null)
     }
 
-    fun retorno(v: Instant) = _estado.update { it.copy(retorno = v, errores = it.errores - "retorno", error = null) }
+    fun retorno(v: Instant) = _estado.update {
+        if (it.salida != null && v <= it.salida) it.copy(errores = it.errores + ("retorno" to "El ingreso debe ser después de la salida"), error = null)
+        else it.copy(retorno = v, errores = it.errores - "retorno", error = null)
+    }
 
     /** Valida lo básico en el cliente; las reglas reales (superposición, tipos) las aplica el servidor. */
     fun enviar() {

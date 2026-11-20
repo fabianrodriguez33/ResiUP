@@ -39,7 +39,7 @@ import pe.upeu.resi.resiup.presentation.theme.ResiEstilos
 import pe.upeu.resi.resiup.presentation.theme.ResiTheme
 
 /** Un acceso de la cuadrícula de inicio: ícono sobre fondo de color y una etiqueta corta debajo. */
-data class ModuloUi(val titulo: String, val icono: ImageVector, val acento: Acento, val onClick: () -> Unit, val insignia: String? = null)
+data class ModuloUi(val titulo: String, val icono: ImageVector, val acento: Acento, val onClick: () -> Unit, val insignia: String? = null, val deshabilitado: Boolean = false)
 
 @Composable
 fun TileModulo(modulo: ModuloUi, modifier: Modifier = Modifier) {
@@ -49,15 +49,15 @@ fun TileModulo(modulo: ModuloUi, modifier: Modifier = Modifier) {
         modifier
             .sombraSuave(forma)
             .clip(forma)
-            .background(MaterialTheme.colorScheme.surface)
-            .clickable(role = Role.Button, onClick = modulo.onClick)
+            .background(if (modulo.deshabilitado) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface)
+            .clickable(enabled = !modulo.deshabilitado, role = Role.Button, onClick = modulo.onClick)
             .semantics { contentDescription = descripcion }
             .padding(horizontal = Espacio.m, vertical = Espacio.l),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Espacio.m),
     ) {
-        Box(Modifier.size(64.dp).background(modulo.acento.suave(), RoundedCornerShape(20.dp)), contentAlignment = Alignment.Center) {
-            ResiIcono(modulo.icono, null, tint = modulo.acento.color(), tamano = 32.dp)
+        Box(Modifier.size(64.dp).background(if (modulo.deshabilitado) MaterialTheme.colorScheme.outlineVariant else modulo.acento.suave(), RoundedCornerShape(20.dp)), contentAlignment = Alignment.Center) {
+            ResiIcono(modulo.icono, null, tint = if (modulo.deshabilitado) MaterialTheme.colorScheme.onSurfaceVariant else modulo.acento.color(), tamano = 32.dp)
             if (modulo.insignia != null) {
                 Box(
                     Modifier.align(Alignment.TopEnd).padding(2.dp).heightIn(min = 20.dp).background(MaterialTheme.colorScheme.error, CircleShape).padding(horizontal = 6.dp),
@@ -68,7 +68,7 @@ fun TileModulo(modulo: ModuloUi, modifier: Modifier = Modifier) {
             }
         }
         Text(
-            modulo.titulo, Modifier.clearAndSetSemantics { }, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary,
+            modulo.titulo, Modifier.clearAndSetSemantics { }, style = MaterialTheme.typography.titleMedium, color = if (modulo.deshabilitado) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis,
         )
     }

@@ -68,6 +68,8 @@ import pe.upeu.resi.resiup.presentation.residente.MisSolicitudesViewModel
 import pe.upeu.resi.resiup.presentation.residente.MovimientosViewModel
 import pe.upeu.resi.resiup.presentation.residente.PerfilViewModel
 import pe.upeu.resi.resiup.presentation.residente.RankingViewModel
+import pe.upeu.resi.resiup.presentation.residente.ReservasViewModel
+import pe.upeu.resi.resiup.presentation.residente.ReservaFormViewModel
 import pe.upeu.resi.resiup.presentation.residente.FotoPerfilViewModel
 import pe.upeu.resi.resiup.presentation.residente.SolicitudDetalleViewModel
 import pe.upeu.resi.resiup.presentation.residente.SolicitudFormViewModel
@@ -93,6 +95,8 @@ fun datosModule(config: ConfigEntorno) = module {
     single { AuthApi(get()) }
     single { ResidenteApi(get()) }
     single { PermisoApi(get()) }
+    single { pe.upeu.resi.resiup.data.remote.ReservasApi(get()) }
+    single { pe.upeu.resi.resiup.presentation.residente.ReservasRepository(get()) }
     single { CultoApi(get()) }
     single { LimpiezaApi(get()) }
     single { FamiliaApi(get()) }
@@ -144,6 +148,8 @@ val presentacionModule = module {
     // Residente
     viewModelOf(::InicioResidenteViewModel)
     viewModelOf(::RankingViewModel)
+    viewModelOf(::ReservasViewModel)
+    viewModelOf(::ReservaFormViewModel)
     viewModelOf(::FotoPerfilViewModel)
     viewModelOf(::NotasResidenteViewModel)
     viewModelOf(::PerfilViewModel)

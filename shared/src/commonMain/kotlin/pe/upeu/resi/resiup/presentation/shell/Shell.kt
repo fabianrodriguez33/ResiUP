@@ -133,6 +133,7 @@ private fun ContenidoReal(rol: Rol, sesion: Sesion, destino: String, irA: (Strin
             Destinos.Permisos -> PermisosResidenteScreen()
             Destinos.Asistencias -> AsistenciasScreen()
             Destinos.Limpieza -> LimpiezaResidenteScreen()
+            Destinos.Reservas -> pe.upeu.resi.resiup.presentation.residente.ReservasResidenteScreen()
             else -> PerfilResidenteScreen(sesion, onCerrarSesion)
         }
         Rol.Preceptor -> when (destino) {

@@ -298,7 +298,7 @@ private fun ResumenDelResidente(estado: Carga<ResumenResidente>) {
             is Carga.Exito -> {
                 val r = estado.datos
                 Text(
-                    "Cultos: asistió a ${r.asistencias} de ${r.cultosRealizados}" + if (r.despuesDelCorte > 0) " (${r.despuesDelCorte} después del corte)" else "",
+                    "Cultos: asistió a ${r.asistencias} de ${r.cultosRealizados}" + if (r.despuesDelCorte > 0) " (${r.despuesDelCorte} con tardanza)" else "",
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Text(
