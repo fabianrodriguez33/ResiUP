@@ -191,3 +191,9 @@ data class MovimientoDto(
     val minutosTarde: Int? = null,
     val anulado: Boolean = false,
 )
+
+@Serializable
+data class PuestoDto(val posicion: Int? = null, val total: Int = 0, val valor: Double? = null)
+
+@Serializable
+data class RankingDto(val cultos: PuestoDto = PuestoDto(), val limpieza: PuestoDto = PuestoDto())

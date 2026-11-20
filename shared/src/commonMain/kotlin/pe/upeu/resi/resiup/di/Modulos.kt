@@ -67,6 +67,7 @@ import pe.upeu.resi.resiup.presentation.residente.LimpiezaResidenteViewModel
 import pe.upeu.resi.resiup.presentation.residente.MisSolicitudesViewModel
 import pe.upeu.resi.resiup.presentation.residente.MovimientosViewModel
 import pe.upeu.resi.resiup.presentation.residente.PerfilViewModel
+import pe.upeu.resi.resiup.presentation.residente.RankingViewModel
 import pe.upeu.resi.resiup.presentation.residente.SolicitudDetalleViewModel
 import pe.upeu.resi.resiup.presentation.residente.SolicitudFormViewModel
 import pe.upeu.resi.resiup.data.remote.ConfigEntorno
@@ -141,6 +142,7 @@ val presentacionModule = module {
     viewModelOf(::LoginViewModel)
     // Residente
     viewModelOf(::InicioResidenteViewModel)
+    viewModelOf(::RankingViewModel)
     viewModelOf(::NotasResidenteViewModel)
     viewModelOf(::PerfilViewModel)
     viewModelOf(::AsistenciasViewModel)

@@ -24,6 +24,7 @@ import pe.upeu.resi.resiup.data.remote.dto.MovimientoRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.PaginaDto
 import pe.upeu.resi.resiup.data.remote.dto.QrDto
 import pe.upeu.resi.resiup.data.remote.dto.QrRequestDto
+import pe.upeu.resi.resiup.data.remote.dto.RankingDto
 import pe.upeu.resi.resiup.data.remote.dto.ResidenteDto
 import pe.upeu.resi.resiup.data.remote.dto.ResumenLimpiezaDto
 import pe.upeu.resi.resiup.data.remote.dto.SesionCultoDto
@@ -36,6 +37,7 @@ private const val BASE = "api/v1/"
 class ResidenteApi(private val client: HttpClient) {
     suspend fun perfil(): ResidenteDto = client.get("${BASE}residentes/yo").body()
     suspend fun qr(): QrDto = client.get("${BASE}residentes/yo/qr").body()
+    suspend fun ranking(): RankingDto = client.get("${BASE}residentes/yo/ranking").body()
     suspend fun actualizarPerfil(r: PerfilRequestDto): ResidenteDto = client.patch("${BASE}residentes/yo") { setBody(r) }.body()
     suspend fun asistencias(pagina: Int, tamanio: Int): PaginaDto<AsistenciaDto> =
         client.get("${BASE}residentes/yo/asistencias") { parameter("pagina", pagina); parameter("tamanio", tamanio) }.body()

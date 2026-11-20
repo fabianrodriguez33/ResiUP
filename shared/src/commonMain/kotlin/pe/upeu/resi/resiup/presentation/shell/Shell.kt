@@ -115,7 +115,7 @@ fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
             }
         }
         }
-        if (sesion != null && !verBandeja) {
+        if (sesion != null && !verBandeja && volver == null) {
             CampanaAvisos(noLeidas, { verBandeja = true }, Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = Espacio.xs, end = Espacio.s))
         }
         if (!sinBarra) BarraNavegacionResi(

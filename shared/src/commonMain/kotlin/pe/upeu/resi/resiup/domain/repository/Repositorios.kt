@@ -26,6 +26,7 @@ import pe.upeu.resi.resiup.domain.model.VerificacionGarita
 interface ResidenteRepository {
     suspend fun perfil(): Result<Perfil>
     suspend fun qr(): Result<QrPersonal>
+    suspend fun ranking(): Result<pe.upeu.resi.resiup.domain.model.Ranking> = Result.failure(UnsupportedOperationException())
     suspend fun asistencias(pagina: Int): Result<Pagina<AsistenciaCulto>>
     suspend fun limpieza(pagina: Int): Result<Pagina<EvaluacionLimpieza>>
     suspend fun resumenLimpieza(): Result<ResumenLimpieza>

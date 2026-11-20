@@ -52,28 +52,24 @@ fun TileModulo(modulo: ModuloUi, modifier: Modifier = Modifier) {
             .background(MaterialTheme.colorScheme.surface)
             .clickable(role = Role.Button, onClick = modulo.onClick)
             .semantics { contentDescription = descripcion }
-            .padding(Espacio.l),
-        verticalArrangement = Arrangement.spacedBy(Espacio.l),
+            .padding(horizontal = Espacio.m, vertical = Espacio.l),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Espacio.m),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-            Box(Modifier.size(56.dp).sombraSuave(RoundedCornerShape(20.dp), modulo.acento.color()).background(modulo.acento.suave(), RoundedCornerShape(20.dp)), contentAlignment = Alignment.Center) {
-                ResiIcono(modulo.icono, null, tint = modulo.acento.color(), tamano = 28.dp)
-                if (modulo.insignia != null) {
-                    Box(
-                        Modifier.align(Alignment.TopEnd).padding(2.dp).heightIn(min = 20.dp).background(MaterialTheme.colorScheme.error, CircleShape).padding(horizontal = 6.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(modulo.insignia, Modifier.clearAndSetSemantics { }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onError, fontWeight = FontWeight.Bold)
-                    }
+        Box(Modifier.size(64.dp).background(modulo.acento.suave(), RoundedCornerShape(20.dp)), contentAlignment = Alignment.Center) {
+            ResiIcono(modulo.icono, null, tint = modulo.acento.color(), tamano = 32.dp)
+            if (modulo.insignia != null) {
+                Box(
+                    Modifier.align(Alignment.TopEnd).padding(2.dp).heightIn(min = 20.dp).background(MaterialTheme.colorScheme.error, CircleShape).padding(horizontal = 6.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(modulo.insignia, Modifier.clearAndSetSemantics { }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onError, fontWeight = FontWeight.Bold)
                 }
-            }
-            Box(Modifier.size(32.dp).background(MaterialTheme.colorScheme.background, CircleShape), contentAlignment = Alignment.Center) {
-                ResiIcono(ResiIconos.FlechaDiagonal, null, tint = modulo.acento.color(), tamano = 16.dp)
             }
         }
         Text(
-            modulo.titulo, Modifier.clearAndSetSemantics { }, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 2, overflow = TextOverflow.Ellipsis, minLines = 2,
+            modulo.titulo, Modifier.clearAndSetSemantics { }, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -105,6 +101,26 @@ fun TarjetaDato(valor: String, etiqueta: String, icono: ImageVector, acento: Ace
         Text(valor, style = ResiEstilos.Numero, color = acento.color())
         Text(etiqueta, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, maxLines = 2)
         if (detalle != null) Text(detalle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+    }
+}
+
+/** Tarjeta de ranking del inicio: puesto grande ("1°") y "de N residentes"; sin datos muestra un guion. */
+@Composable
+fun TarjetaRanking(titulo: String, posicion: Int?, total: Int, icono: ImageVector, acento: Acento, modifier: Modifier = Modifier) {
+    val descripcion = if (posicion == null) "$titulo: sin datos todavía" else "$titulo: puesto $posicion de $total residentes"
+    Column(
+        modifier.clip(RoundedCornerShape(28.dp)).background(acento.suave()).semantics(mergeDescendants = true) { contentDescription = descripcion }.padding(Espacio.m),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Espacio.xs),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Espacio.xs), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(24.dp).background(acento.color(), CircleShape), contentAlignment = Alignment.Center) {
+                ResiIcono(icono, null, tint = Color.White, tamano = 14.dp)
+            }
+            Text(titulo, style = MaterialTheme.typography.labelMedium, color = acento.color(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Text(if (posicion == null) "—" else "$posicion°", style = ResiEstilos.NumeroGrande, color = acento.color())
+        Text(if (posicion == null) "sin datos aún" else "de $total residentes", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 

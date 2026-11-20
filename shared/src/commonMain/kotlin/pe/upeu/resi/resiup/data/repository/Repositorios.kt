@@ -51,6 +51,11 @@ class ResidenteRepositoryImpl(private val api: ResidenteApi, private val sesione
         }
         return r
     }
+    override suspend fun ranking() = ejecutarLlamada {
+        val r = api.ranking()
+        fun p(d: pe.upeu.resi.resiup.data.remote.dto.PuestoDto) = pe.upeu.resi.resiup.domain.model.Puesto(d.posicion, d.total, d.valor)
+        pe.upeu.resi.resiup.domain.model.Ranking(p(r.cultos), p(r.limpieza))
+    }
     override suspend fun asistencias(pagina: Int) = ejecutarLlamada { api.asistencias(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
     override suspend fun limpieza(pagina: Int) = ejecutarLlamada { api.limpieza(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
     override suspend fun resumenLimpieza() = ejecutarLlamada { api.resumenLimpieza().aDominio() }

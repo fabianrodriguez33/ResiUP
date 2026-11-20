@@ -156,10 +156,10 @@ fun ChipEstado(texto: String, estado: EstadoVisual, modifier: Modifier = Modifie
 val LocalVolver = androidx.compose.runtime.compositionLocalOf<(() -> Unit)?> { null }
 
 @Composable
-fun TituloPantalla(titulo: String, modifier: Modifier = Modifier, subtitulo: String? = null) {
+fun TituloPantalla(titulo: String, modifier: Modifier = Modifier, subtitulo: String? = null, accion: (@Composable () -> Unit)? = null) {
     val volver = LocalVolver.current
-    // Deja libre el borde derecho: ahí flota la campana de notificaciones.
-    Row(modifier.fillMaxWidth().padding(end = 44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+    // En el inicio deja libre el borde derecho (ahí flota la campana); en pantallas internas ese espacio es de la acción.
+    Row(modifier.fillMaxWidth().padding(end = if (volver != null) 0.dp else 44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
         if (volver != null) {
             Box(
                 Modifier.size(44.dp).clip(androidx.compose.foundation.shape.CircleShape).border(2.dp, MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape)
@@ -167,12 +167,13 @@ fun TituloPantalla(titulo: String, modifier: Modifier = Modifier, subtitulo: Str
                 contentAlignment = Alignment.Center,
             ) { ResiIcono(ResiIconos.Atras, "Volver", tint = MaterialTheme.colorScheme.primary, tamano = 22.dp) }
         }
-        Column {
+        Column(Modifier.weight(1f)) {
             Text(titulo, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
             if (subtitulo != null) {
                 Text(subtitulo, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+        accion?.invoke()
     }
 }
 

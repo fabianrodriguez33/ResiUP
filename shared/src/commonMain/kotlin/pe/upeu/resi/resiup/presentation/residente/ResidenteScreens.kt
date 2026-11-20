@@ -5,6 +5,7 @@ import pe.upeu.resi.resiup.presentation.perfil.VerificarCorreoDialogo
 import pe.upeu.resi.resiup.presentation.components.ResiIcono
 import pe.upeu.resi.resiup.presentation.components.TarjetaHero
 import pe.upeu.resi.resiup.presentation.components.TarjetaHola
+import pe.upeu.resi.resiup.presentation.components.TarjetaRanking
 import pe.upeu.resi.resiup.presentation.components.TarjetaDato
 import pe.upeu.resi.resiup.presentation.components.ModuloUi
 import pe.upeu.resi.resiup.presentation.components.EncabezadoSeccion
@@ -49,6 +50,7 @@ import pe.upeu.resi.resiup.presentation.components.BannerMensaje
 import pe.upeu.resi.resiup.presentation.components.CalendarioAsistencias
 import pe.upeu.resi.resiup.presentation.components.ChipEstado
 import pe.upeu.resi.resiup.presentation.util.hoyLima
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import pe.upeu.resi.resiup.presentation.components.DialogoConfirmacion
@@ -80,6 +82,15 @@ import pe.upeu.resi.resiup.domain.model.ResumenNotas
 import pe.upeu.resi.resiup.presentation.util.ContenidoCarga
 import pe.upeu.resi.resiup.presentation.util.NOMBRES_MES
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.layout.size
+import pe.upeu.resi.resiup.domain.model.CriterioLimpieza
+import androidx.compose.ui.text.style.TextAlign
+import kotlinx.datetime.LocalDate
+import pe.upeu.resi.resiup.domain.model.TipoCulto
+import pe.upeu.resi.resiup.presentation.components.FranjaSemana
+import pe.upeu.resi.resiup.presentation.components.IconoAccion
+import pe.upeu.resi.resiup.presentation.util.soloHoraLima
 
 @Composable
 fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel = koinViewModel()) {
@@ -95,11 +106,11 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
                 ui.perfil.habitacion?.let { listOfNotNull("Habitación ${it.numero}", it.etiquetaCama).joinToString(" · ") } ?: "Sin habitación asignada",
                 Acento.Rosa, { onIr(Destinos.Perfil) }, Modifier.padding(top = 40.dp), onQr = { verQr = true },
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
-                TarjetaDato(e.racha.toString(), "Racha de cultos", ResiIconos.Racha, Acento.Naranja, Modifier.weight(1f), detalle = if (e.racha == 1) "día seguido" else "días seguidos")
-                val delServidor = (notas as? Carga.Exito)?.datos?.actual?.takeIf { it.porDias && it.diasAsistidos != null && it.diasConCulto != null }
-                TarjetaDato(delServidor?.let { "${it.diasAsistidos}/${it.diasConCulto}" } ?: "—", "Este mes", ResiIconos.Asistencias, Acento.Verde, Modifier.weight(1f), detalle = "días con culto")
-                TarjetaDato(ui.limpieza?.promedio?.let { it.unDecimal() } ?: "—", "Limpieza", ResiIconos.Limpieza, Acento.Violeta, Modifier.weight(1f), detalle = "promedio sobre 20")
+            val ranking = koinViewModel<RankingViewModel>().estado.collectAsState().value
+            val r = (ranking as? Carga.Exito)?.datos
+            Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                TarjetaRanking("Ranking en Cultos", r?.cultos?.posicion, r?.cultos?.total ?: 0, ResiIconos.Asistencias, Acento.Naranja, Modifier.weight(1f))
+                TarjetaRanking("Ranking en Limpieza", r?.limpieza?.posicion, r?.limpieza?.total ?: 0, ResiIconos.Limpieza, Acento.Verde, Modifier.weight(1f))
             }
             EncabezadoSeccion("Accesos")
             CuadriculaModulos(
@@ -110,26 +121,6 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
                     ModuloUi("Limpieza", ResiIconos.Limpieza, Acento.Naranja, { onIr(Destinos.Limpieza) }),
                 ),
             )
-            EncabezadoSeccion("Lo último")
-            ResiTarjeta(onClick = { onIr(Destinos.Permisos) }) {
-                val p = ui.permisoReciente
-                if (p == null) {
-                    ElementoLista("Permisos", subtitulo = "Aún no has solicitado permisos", icono = ResiIconos.Permisos, acento = Acento.Azul)
-                } else {
-                    ElementoLista(
-                        p.destino, subtitulo = "${p.tipo.etiqueta} · ${p.salida.formatoLima()}", icono = ResiIconos.Permisos, acento = Acento.Azul,
-                        final = { ChipEstado(p.estado.etiqueta, p.estado.aEstadoVisual()) },
-                    )
-                }
-            }
-            ResiTarjeta(onClick = { onIr(Destinos.Asistencias) }) {
-                val a = ui.ultimaAsistencia
-                ElementoLista(
-                    if (a == null) "Cultos" else "Culto ${a.tipo.etiqueta.lowercase()}",
-                    subtitulo = a?.fecha?.fechaLegible() ?: "Sin registros todavía", icono = ResiIconos.Asistencias, acento = Acento.Verde,
-                    final = { if (a != null) ChipEstado(if (a.despuesDelCorte) "Tarde" else "Puntual", if (a.despuesDelCorte) EstadoVisual.Advertencia else EstadoVisual.Exito) },
-                )
-            }
         }
         if (verQr) QrFlotante({ verQr = false })
     }
@@ -218,59 +209,117 @@ internal fun DatoPerfil(
 @Composable
 fun AsistenciasScreen(vm: AsistenciasViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
-    Column(Modifier.fillMaxSize()) {
-        TituloPantalla("Asistencias", Modifier.padding(horizontal = Espacio.l, vertical = Espacio.l), subtitulo = "Cultos de lunes a viernes")
+    val hoy = remember { hoyLima() }
+    var dia by remember { mutableStateOf(hoy) }
+    var calendario by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+        TituloPantalla(
+            "Asistencias", Modifier.padding(top = Espacio.l), subtitulo = "Cultos de lunes a viernes",
+            accion = { IconoAccion(ResiIconos.Calendario, "Abrir calendario", { calendario = true }) },
+        )
+        FranjaSemana(dia, { dia = it })
+        Text("Historial del ${dia.toString().fechaLegible()}", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         ContenidoConsulta(estado, vm::reintentar, Modifier.weight(1f)) { lista ->
-            LazyColumn(Modifier.fillMaxSize().padding(horizontal = Espacio.l), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                item { CalendarioAsistencias(lista, hoyLima()) }
-                if (lista.isEmpty()) {
-                    item { Text("Cuando el preceptor registre tu asistencia a un culto aparecerá en el calendario.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                } else {
-                    item { Text("Historial reciente", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground) }
-                    items(lista) { a -> ResiTarjeta { AsistenciaItem(a) } }
+            if (dia > hoy || dia.dayOfWeek.ordinal >= 5) {
+                Text("No hay cultos registrados", Modifier.fillMaxWidth().padding(top = Espacio.l), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+            } else {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                    TipoCulto.entries.forEach { tipo -> CultoDelDia(tipo, dia, lista.firstOrNull { it.fecha == dia.toString() && it.tipo == tipo }) }
+                }
+            }
+            if (calendario) {
+                Dialog(onDismissRequest = { calendario = false }) {
+                    CalendarioAsistencias(lista, hoy, onElegir = { dia = it; calendario = false })
                 }
             }
         }
     }
 }
 
+/** Un culto del día: asistió, llegó tras el corte o no tiene registro. */
 @Composable
-private fun AsistenciaItem(a: AsistenciaCulto) {
-    ElementoLista(
-        "Culto ${a.tipo.etiqueta.lowercase()}", subtitulo = "${a.fecha.fechaLegible()} · registrado ${a.registradoEn.formatoLima()}", icono = ResiIconos.Asistencias, acento = Acento.Verde,
-        final = { if (a.despuesDelCorte) ChipEstado("Después del corte", EstadoVisual.Advertencia) else ChipEstado("Registrada", EstadoVisual.Exito) },
-    )
+private fun CultoDelDia(tipo: TipoCulto, dia: LocalDate, a: AsistenciaCulto?) {
+    val fecha = dia.toString().fechaLegible()
+    ResiTarjeta {
+        ElementoLista(
+            "Culto ${tipo.etiqueta.lowercase()}",
+            subtitulo = if (a != null) "$fecha - ${a.registradoEn.soloHoraLima()}" else "$fecha - Sin registro",
+            icono = if (a != null) ResiIconos.Asistencias else ResiIconos.Historial,
+            acento = if (a != null) Acento.Verde else null,
+            final = {
+                when {
+                    a == null -> ChipEstado("Sin registro", EstadoVisual.Neutro)
+                    a.despuesDelCorte -> ChipEstado("Tras el corte", EstadoVisual.Advertencia)
+                    else -> ChipEstado("Asistió", EstadoVisual.Exito)
+                }
+            },
+        )
+    }
 }
 
 @Composable
 fun LimpiezaResidenteScreen(vm: LimpiezaResidenteViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
-    ContenidoConsulta(estado, vm::reintentar) { ui ->
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
-            TituloPantalla("Limpieza", subtitulo = "Evaluación individual sobre 20 puntos")
-            if (ui.evaluaciones.isEmpty()) {
-                ResiTarjeta { Text("Todavía no tienes evaluaciones. Aparecerán aquí cuando el preceptor las registre.", style = MaterialTheme.typography.bodyLarge) }
+    val hoy = remember { hoyLima() }
+    var dia by remember { mutableStateOf(hoy) }
+    var calendario by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+        TituloPantalla(
+            "Limpieza", Modifier.padding(top = Espacio.l), subtitulo = "Evaluación individual sobre 20 puntos",
+            accion = { IconoAccion(ResiIconos.Calendario, "Abrir calendario", { calendario = true }) },
+        )
+        FranjaSemana(dia, { dia = it })
+        Text("Evaluaciones del ${dia.toString().fechaLegible()}", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        ContenidoConsulta(estado, vm::reintentar, Modifier.weight(1f)) { ui ->
+            val evaluacion = ui.evaluaciones.firstOrNull { it.fecha == dia.toString() }
+            if (evaluacion == null) {
+                Text("Todavía no tienes evaluaciones", Modifier.fillMaxWidth().padding(top = Espacio.l), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
             } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                    TarjetaEstadistica("Promedio", ui.resumen.promedio?.unDecimal() ?: "—", Modifier.weight(1f), "de 20")
-                    TarjetaEstadistica("Evaluaciones", ui.resumen.evaluaciones.toString(), Modifier.weight(1f), ui.resumen.ultimaFecha?.let { "última ${it.fechaLegible()}" })
-                }
-                if (ui.evaluaciones.size >= 2) {
-                    ResiTarjeta {
-                        Text("Evolución", style = MaterialTheme.typography.titleMedium)
-                        BarrasEvolucion(ui.evaluaciones.take(10).reversed().map { it.total }, maximo = ui.evaluaciones.first().maximo)
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                    CriterioLimpieza.entries.chunked(2).forEach { fila ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                            fila.forEach { c -> PuntajeCriterio(c, evaluacion.puntajes[c], Modifier.weight(1f)) }
+                            if (fila.size == 1) Spacer(Modifier.weight(1f))
+                        }
                     }
+                    Text("Total: ${evaluacion.total}/${evaluacion.maximo}", Modifier.padding(top = Espacio.s), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    evaluacion.observacion?.let { Text("“$it”", style = MaterialTheme.typography.bodyMedium) }
                 }
-                ui.evaluaciones.forEach { e ->
-                    ResiTarjeta {
-                        ElementoLista("${e.total}/${e.maximo}", subtitulo = e.fecha.fechaLegible(), icono = ResiIconos.Limpieza)
-                        Text(
-                            e.puntajes.entries.joinToString(" · ") { "${it.key.etiqueta} ${it.value}/${it.key.maximo}" },
-                            Modifier.padding(top = Espacio.s), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        e.observacion?.let { Text("“$it”", Modifier.padding(top = Espacio.xs), style = MaterialTheme.typography.bodyMedium) }
-                    }
+            }
+            if (calendario) {
+                Dialog(onDismissRequest = { calendario = false }) {
+                    CalendarioAsistencias(emptyList(), hoy, onElegir = { dia = it; calendario = false })
                 }
+            }
+        }
+    }
+}
+
+/** Un criterio con su nota: verde si es la máxima, rojo si es menor. */
+@Composable
+private fun PuntajeCriterio(c: CriterioLimpieza, puntaje: Int?, modifier: Modifier = Modifier) {
+    val (nombre, icono) = when (c) {
+        CriterioLimpieza.Cama -> "Cama" to ResiIconos.Cama
+        CriterioLimpieza.Ropero -> "Ropero" to ResiIconos.Ropero
+        CriterioLimpieza.Escritorio -> "Escritorio" to ResiIconos.Escritorio
+        CriterioLimpieza.Basura -> "Basura" to ResiIconos.Basura
+        CriterioLimpieza.Olores -> "Olores" to ResiIconos.Olores
+        CriterioLimpieza.Piso -> "Piso" to ResiIconos.Piso
+    }
+    val colores = pe.upeu.resi.resiup.presentation.theme.ResiTheme.colores
+    val bueno = puntaje != null && puntaje >= c.maximo
+    ResiTarjeta(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+            Box(Modifier.size(36.dp).background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+                ResiIcono(icono, null, tint = MaterialTheme.colorScheme.primary, tamano = 22.dp)
+            }
+            Text(nombre, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, maxLines = 1)
+            Box(
+                Modifier.background(if (bueno) colores.exitoContenedor else MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 4.dp)
+                    .semantics { contentDescription = "$nombre: ${puntaje ?: "sin nota"} de ${c.maximo}" },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(puntaje?.toString() ?: "-", style = MaterialTheme.typography.titleMedium, color = if (bueno) colores.exito else MaterialTheme.colorScheme.onErrorContainer)
             }
         }
     }

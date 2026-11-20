@@ -224,3 +224,13 @@ class SolicitudDetalleViewModel(private val id: Long, private val repo: PermisoR
         }
     }
 }
+
+/** Posición en cultos y limpieza del ciclo (solo con conexión: se calcula en el servidor). */
+class RankingViewModel(private val repo: ResidenteRepository) : ViewModel() {
+    private val _estado = MutableStateFlow<Carga<pe.upeu.resi.resiup.domain.model.Ranking>>(Carga.Cargando)
+    val estado: StateFlow<Carga<pe.upeu.resi.resiup.domain.model.Ranking>> = _estado.asStateFlow()
+
+    init { cargar() }
+
+    fun cargar() { viewModelScope.launch { _estado.value = repo.ranking().aCarga() } }
+}

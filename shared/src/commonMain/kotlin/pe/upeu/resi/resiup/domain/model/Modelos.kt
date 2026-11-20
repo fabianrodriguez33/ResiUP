@@ -178,3 +178,8 @@ data class MovimientoRegistrado(
     val minutosTarde: Int?,
     val anulado: Boolean,
 )
+
+/** Posición del residente en el ciclo; [posicion] y [valor] vienen vacíos si todavía no tiene datos. */
+data class Puesto(val posicion: Int?, val total: Int, val valor: Double?)
+
+data class Ranking(val cultos: Puesto, val limpieza: Puesto)

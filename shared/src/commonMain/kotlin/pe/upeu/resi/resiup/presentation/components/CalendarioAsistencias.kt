@@ -52,7 +52,7 @@ private val NOMBRES_DIA = listOf("lunes", "martes", "miércoles", "jueves", "vie
  * («✓» asistió, «!» después del corte, «–» sin registro) y tiene descripción para lectores de pantalla.
  */
 @Composable
-fun CalendarioAsistencias(asistencias: List<AsistenciaCulto>, hoy: LocalDate, modifier: Modifier = Modifier) {
+fun CalendarioAsistencias(asistencias: List<AsistenciaCulto>, hoy: LocalDate, modifier: Modifier = Modifier, onElegir: ((LocalDate) -> Unit)? = null) {
     var anio by remember { mutableStateOf(hoy.year) }
     var mes by remember { mutableStateOf(hoy.month.ordinal + 1) }
     var seleccion by remember { mutableStateOf<LocalDate?>(null) }
@@ -78,7 +78,7 @@ fun CalendarioAsistencias(asistencias: List<AsistenciaCulto>, hoy: LocalDate, mo
         semanas.forEach { semana ->
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 semana.forEach { dia ->
-                    CeldaDia(dia, dia.fecha == seleccion, Modifier.weight(1f)) { seleccion = if (dia.fecha == seleccion) null else dia.fecha }
+                    CeldaDia(dia, dia.fecha == seleccion, Modifier.weight(1f)) { if (onElegir != null) onElegir(dia.fecha) else seleccion = if (dia.fecha == seleccion) null else dia.fecha }
                 }
             }
         }

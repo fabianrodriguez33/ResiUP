@@ -51,6 +51,12 @@ object ResiIconos {
     val FlechaDiagonal = trazo("flecha_diagonal", "M7 17 L17 7 M9 7 H17 V15")
     val Vacio = trazo("vacio", "M4 7 H20 V20 H4 Z M4 7 L7 3 H17 L20 7 M9 12 H15")
     val Notas = trazo("notas", "M5 20 V12 M12 20 V5 M19 20 V9 M3 20 H21")
+    val Cama = trazo("cama", "M3 18 V7 M3 14 H21 V18 M21 14 V11 A2 2 0 0 0 19 9 H10 V14 M6.5 12 H6.51")
+    val Ropero = trazo("ropero", "M5 3 H19 V21 H5 Z M12 3 V21 M9.5 12 H9.51 M14.5 12 H14.51")
+    val Escritorio = trazo("escritorio", "M3 9 H21 M5 9 V20 M19 9 V20 M5 13 H11 M8 16 H8.01")
+    val Basura = trazo("basura", "M5 7 H19 M9 7 V4 H15 V7 M7 7 L8 20 H16 L17 7 M10 11 V16 M14 11 V16")
+    val Olores = trazo("olores", "M8 4 C6 7 10 9 8 12 C6 15 10 17 8 20 M15 4 C13 7 17 9 15 12 C13 15 17 17 15 20")
+    val Piso = trazo("piso", "M3 18 H21 M3 14 L8 10 H21 L16 14 Z M8 10 L3 14")
     val Atras = trazo("atras", "M19 12 H5 M11 6 L5 12 L11 18")
 }
 
