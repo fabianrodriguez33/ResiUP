@@ -9,7 +9,7 @@ Plataformas:
 
 ## Requisitos
 
-- **JDK 21** (o 17 o superior). Gradle 9.5.1 lo descarga el wrapper; el proyecto compila a bytecode Java 11.
+- **JDK 17 o superior** (probado con JDK 21). Gradle 9.5.1 lo descarga el wrapper; el proyecto compila a bytecode Java 11.
 - **Android SDK** con los niveles del proyecto (compileSdk 37, minSdk 24). Instalarlo desde Android Studio, o definir la ruta en `local.properties` con `sdk.dir=...` o con la variable `ANDROID_HOME`.
 - **API ResiAPI** corriendo en local (ver su README), o una URL de API accesible desde el teléfono o el emulador.
 - Para iOS (no verificado): macOS con Xcode. Ver la nota de plataformas arriba.
