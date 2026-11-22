@@ -36,7 +36,7 @@ import pe.upeu.resi.resiup.domain.repository.ResidenteRepository
 
 const val TAMANIO_PAGINA = 20
 
-class ResidenteRepositoryImpl(private val api: ResidenteApi, private val sesiones: SesionStore) : ResidenteRepository {
+class ResidenteRepositoryImpl(private val api: ResidenteApi, private val sesiones: SesionStore, private val locales: pe.upeu.resi.resiup.data.local.DatosLocales? = null) : ResidenteRepository {
     override suspend fun perfil() = ejecutarLlamada { api.perfil().aPerfil() }
     /**
      * Con conexión se pide al servidor (y se renueva la copia cifrada). Sin red se muestra la última copia: el servidor
@@ -57,8 +57,8 @@ class ResidenteRepositoryImpl(private val api: ResidenteApi, private val sesione
         fun p(d: pe.upeu.resi.resiup.data.remote.dto.PuestoDto) = pe.upeu.resi.resiup.domain.model.Puesto(d.posicion, d.total, d.valor)
         return pe.upeu.resi.resiup.domain.model.Ranking(p(r.cultos), p(r.limpieza))
     }
-    override suspend fun ranking() = ejecutarLlamada { aRanking(api.ranking()) }
-    override suspend fun rankingDe(desde: String, hasta: String) = ejecutarLlamada { aRanking(api.rankingDe(desde, hasta)) }
+    override suspend fun ranking() = conRespaldoLocal(locales, "ranking", pe.upeu.resi.resiup.data.remote.dto.RankingDto.serializer()) { api.ranking() }.map { aRanking(it) }
+    override suspend fun rankingDe(desde: String, hasta: String) = conRespaldoLocal(locales, "ranking:$desde:$hasta", pe.upeu.resi.resiup.data.remote.dto.RankingDto.serializer()) { api.rankingDe(desde, hasta) }.map { aRanking(it) }
     override suspend fun asistencias(pagina: Int) = ejecutarLlamada { api.asistencias(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
     override suspend fun diasConCulto(desde: String, hasta: String) = ejecutarLlamada { api.diasConCulto(desde, hasta) }
     override suspend fun limpieza(pagina: Int) = ejecutarLlamada { api.limpieza(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }

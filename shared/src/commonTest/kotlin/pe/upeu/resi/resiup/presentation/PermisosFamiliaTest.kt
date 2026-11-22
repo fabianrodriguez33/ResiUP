@@ -128,7 +128,7 @@ class PermisosFamiliaTest {
         val repo = PermisoFalso()
         val vm = SolicitudFormViewModel(repo)
         vm.tipo(TipoPermiso.Largo); vm.destino("Alameda"); vm.motivo("Grupo pequeño")
-        val salida = ahora() + 1.hours
+        val salida = ahora().plus(1.days).conHoraLima(9, 0) // fija: la prueba no depende de la hora del día
         vm.salida(salida); vm.retorno(salida + 150.minutes)
         vm.enviar()
         assertEquals(TipoPermiso.Largo, repo.recibida?.tipo)

@@ -120,6 +120,10 @@ class DatosLocales(db: ResiDb) {
         lista.forEach { q.guardarDiaSinCulto(it.fecha, it.motivo) }
     }
 
+    /** Copia local de una consulta en línea (se guarda como texto JSON y se borra junto con los demás datos al cambiar de usuario). */
+    fun leerCopia(clave: String): String? = q.leerMeta("copia:$clave").executeAsOneOrNull()
+    fun guardarCopia(clave: String, json: String) = q.guardarMeta("copia:$clave", json)
+
     fun marcarSincronizado(ahoraMillis: Long) = q.guardarMeta(SINCRONIZADO_EN, ahoraMillis.toString())
 
     // ---------------------------------------------------------------- propietario y limpieza

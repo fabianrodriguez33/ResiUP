@@ -102,7 +102,7 @@ fun datosModule(config: ConfigEntorno) = module {
     single<pe.upeu.resi.resiup.domain.repository.AccionesPastorRepository> { pe.upeu.resi.resiup.data.repository.AccionesPastorRepositoryImpl(get()) }
     single { PermisoApi(get()) }
     single { pe.upeu.resi.resiup.data.remote.ReservasApi(get()) }
-    single<pe.upeu.resi.resiup.domain.repository.ReservasRepository> { pe.upeu.resi.resiup.data.repository.ReservasRepositoryImpl(get()) }
+    single<pe.upeu.resi.resiup.domain.repository.ReservasRepository> { pe.upeu.resi.resiup.data.repository.ReservasRepositoryImpl(get(), get()) }
     single { CultoApi(get()) }
     single { LimpiezaApi(get()) }
     single { FamiliaApi(get()) }
@@ -112,7 +112,7 @@ fun datosModule(config: ConfigEntorno) = module {
     single { pe.upeu.resi.resiup.data.remote.NotificacionesApi(get()) }
     single { pe.upeu.resi.resiup.data.remote.TramitesApi(get()) }
     single { pe.upeu.resi.resiup.data.remote.NotasApi(get()) }
-    single<ResidenteRepository> { ResidenteRepositoryImpl(get(), get()) }
+    single<ResidenteRepository> { ResidenteRepositoryImpl(get(), get(), get()) }
     single<PermisoRepository> { PermisoRepositoryImpl(get()) }
     single<CultoRepository> { CultoRepositoryImpl(get()) }
     single<LimpiezaRepository> { LimpiezaRepositoryImpl(get()) }
