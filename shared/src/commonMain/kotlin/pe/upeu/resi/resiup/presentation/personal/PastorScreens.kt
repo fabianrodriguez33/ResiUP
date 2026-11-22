@@ -71,7 +71,7 @@ import pe.upeu.resi.resiup.presentation.components.Segmentos
 import pe.upeu.resi.resiup.presentation.components.TituloPantalla
 import pe.upeu.resi.resiup.presentation.components.VarianteBoton
 import pe.upeu.resi.resiup.presentation.login.aMensaje
-import pe.upeu.resi.resiup.presentation.residente.ReservasRepository
+import pe.upeu.resi.resiup.domain.repository.ReservasRepository
 import pe.upeu.resi.resiup.presentation.theme.Acento
 import pe.upeu.resi.resiup.presentation.theme.Espacio
 import pe.upeu.resi.resiup.presentation.util.Carga
@@ -225,10 +225,10 @@ private fun DetalleCulto(vm: CultosViewModel, sesion: SesionCulto, onListo: () -
         accion.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
         val sinPresentes = (presentes as? Carga.Exito)?.datos?.isEmpty() == true
         if (sinPresentes) {
-            val acciones = org.koin.compose.koinInject<AccionesPastorApi>()
+            val acciones = org.koin.compose.koinInject<pe.upeu.resi.resiup.domain.repository.AccionesPastorRepository>()
             val alcanceCulto = androidx.compose.runtime.rememberCoroutineScope()
             ResiBoton("Eliminar culto", {
-                alcanceCulto.launch { pe.upeu.resi.resiup.data.remote.ejecutarLlamada { acciones.eliminarCulto(sesion.id) }.onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Culto eliminado exitosamente"); onListo() } }
+                alcanceCulto.launch { acciones.eliminarCulto(sesion.id).onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Culto eliminado exitosamente"); onListo() } }
             }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
         }
         if (!sesion.cerrada) {
@@ -387,7 +387,7 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
     var elegida by remember { mutableStateOf<ReservaPastor?>(null) }
     var rechazando by remember { mutableStateOf<ReservaPastor?>(null) }
     var cancelando by remember { mutableStateOf<ReservaPastor?>(null) }
-    val acciones = org.koin.compose.koinInject<AccionesPastorApi>()
+    val acciones = org.koin.compose.koinInject<pe.upeu.resi.resiup.domain.repository.AccionesPastorRepository>()
     val titulo = when (grupo) { "almuerzo" -> "Reservas de almuerzo"; "cena" -> "Reservas de cenas"; else -> "Reservas de desayunos" }
     val cerrada = claveGrupo(grupo) in cerradas
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
@@ -445,7 +445,7 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
     }
     cancelando?.let { r ->
         DialogoMotivo("Cancelar reserva", "El residente verá el motivo y podrá volver a reservar.", "Motivo", "Cancelar reserva",
-            { m -> cancelando = null; alcance.launch { pe.upeu.resi.resiup.data.remote.ejecutarLlamada { acciones.cancelarReserva(r.id, m) }.onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Reserva cancelada exitosamente"); vm.cargar() } } },
+            { m -> cancelando = null; alcance.launch { acciones.cancelarReserva(r.id, m).onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Reserva cancelada exitosamente"); vm.cargar() } } },
             { cancelando = null }, destructivo = true)
     }
     rechazando?.let { r ->

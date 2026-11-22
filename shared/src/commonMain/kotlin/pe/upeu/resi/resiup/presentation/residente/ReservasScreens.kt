@@ -30,7 +30,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
-import pe.upeu.resi.resiup.data.remote.ReservaRequestDto
+import pe.upeu.resi.resiup.domain.repository.ReservasRepository
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -52,10 +52,6 @@ import pe.upeu.resi.resiup.presentation.components.rememberSelectorImagen
 import pe.upeu.resi.resiup.presentation.components.ResiIcono
 import pe.upeu.resi.resiup.presentation.tramites.EvidenciaImagen
 import pe.upeu.resi.resiup.presentation.util.fechaConDia
-import pe.upeu.resi.resiup.data.remote.ReservasApi
-import pe.upeu.resi.resiup.data.remote.aApi
-import pe.upeu.resi.resiup.data.remote.aDominio
-import pe.upeu.resi.resiup.data.remote.ejecutarLlamada
 import pe.upeu.resi.resiup.domain.error.ErrorApi
 import pe.upeu.resi.resiup.domain.model.ComidaOfertada
 import pe.upeu.resi.resiup.domain.model.EstadoReserva
@@ -87,14 +83,6 @@ import pe.upeu.resi.resiup.presentation.util.aCarga
 import pe.upeu.resi.resiup.presentation.util.aErrorApi
 import pe.upeu.resi.resiup.presentation.util.fechaLegible
 import pe.upeu.resi.resiup.presentation.util.formatoLima
-
-/** Reservas de alimentación del residente. Solo con conexión: el servidor valida horarios, días cerrados y duplicados. */
-class ReservasRepository(private val api: ReservasApi) {
-    suspend fun oferta() = ejecutarLlamada { api.oferta().comidas.map { it.aDominio() } }
-    suspend fun mias() = ejecutarLlamada { api.mias(0).contenido.map { it.aDominio() } }
-    suspend fun reservar(n: NuevaReserva) = ejecutarLlamada { api.reservar(ReservaRequestDto(n.tipo.aApi(), n.fecha, n.motivo, n.curso, n.evidenciaId)).aDominio() }
-    suspend fun cancelar(id: Long) = ejecutarLlamada { api.cancelar(id).aDominio() }
-}
 
 data class ReservasUi(val oferta: List<ComidaOfertada>, val historial: List<Reserva>)
 

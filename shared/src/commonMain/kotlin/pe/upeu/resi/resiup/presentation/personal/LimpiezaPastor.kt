@@ -105,12 +105,12 @@ private fun InicioLimpieza(s: LimpiezaFormState, vm: LimpiezaPreceptorViewModel,
     var calendario by remember { mutableStateOf(false) }
     val habilesHoy = s.fecha == hoy && s.fecha.dayOfWeek.ordinal < 5
     var eliminandoDia by remember { mutableStateOf(false) }
-    val accionesDia = org.koin.compose.koinInject<AccionesPastorApi>()
+    val accionesDia = org.koin.compose.koinInject<pe.upeu.resi.resiup.domain.repository.AccionesPastorRepository>()
     val alcanceDia = androidx.compose.runtime.rememberCoroutineScope()
     if (eliminandoDia) {
         pe.upeu.resi.resiup.presentation.components.DialogoMotivo(
             "Eliminar toda la evaluación", "Se eliminan las evaluaciones de todas las habitaciones de ${s.fecha.toString().fechaLegible()}. Queda anotado quién y por qué.", "Motivo", "Eliminar",
-            { m -> eliminandoDia = false; alcanceDia.launch { pe.upeu.resi.resiup.data.remote.ejecutarLlamada { accionesDia.eliminarLimpiezaDelDia(s.fecha.toString(), m) }.onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Evaluación eliminada exitosamente"); vm.cargar() } } },
+            { m -> eliminandoDia = false; alcanceDia.launch { accionesDia.eliminarLimpiezaDelDia(s.fecha.toString(), m).onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Evaluación eliminada exitosamente"); vm.cargar() } } },
             { eliminandoDia = false }, destructivo = true,
         )
     }
@@ -161,12 +161,12 @@ private fun Habitaciones(s: LimpiezaFormState, vm: LimpiezaPreceptorViewModel) {
             }
         }
     }
-    val acciones = org.koin.compose.koinInject<AccionesPastorApi>()
+    val acciones = org.koin.compose.koinInject<pe.upeu.resi.resiup.domain.repository.AccionesPastorRepository>()
     val alcance = androidx.compose.runtime.rememberCoroutineScope()
     eliminando?.let { h ->
         pe.upeu.resi.resiup.presentation.components.DialogoMotivo(
             "Eliminar evaluación", "Se elimina la evaluación de la habitación ${h.numero} de ${s.fecha.toString().fechaLegible()} para volver a evaluarla. Queda anotado quién y por qué.", "Motivo", "Eliminar",
-            { m -> eliminando = null; alcance.launch { pe.upeu.resi.resiup.data.remote.ejecutarLlamada { acciones.eliminarLimpieza(h.id, s.fecha.toString(), m) }.onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Evaluación eliminada exitosamente"); vm.cargar() } } },
+            { m -> eliminando = null; alcance.launch { acciones.eliminarLimpieza(h.id, s.fecha.toString(), m).onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Evaluación eliminada exitosamente"); vm.cargar() } } },
             { eliminando = null }, destructivo = true,
         )
     }

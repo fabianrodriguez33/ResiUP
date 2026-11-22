@@ -98,11 +98,11 @@ fun datosModule(config: ConfigEntorno) = module {
     single<HttpClient> { crearHttpClient(get<HttpClientEngine>(), get(), get(), get()) }
     single { AuthApi(get()) }
     single { ResidenteApi(get()) }
-    single { pe.upeu.resi.resiup.presentation.admin.AdminApi(get()) }
-    single { pe.upeu.resi.resiup.presentation.personal.AccionesPastorApi(get()) }
+    single<pe.upeu.resi.resiup.domain.repository.AdministracionRepository> { pe.upeu.resi.resiup.data.repository.AdministracionRepositoryImpl(get()) }
+    single<pe.upeu.resi.resiup.domain.repository.AccionesPastorRepository> { pe.upeu.resi.resiup.data.repository.AccionesPastorRepositoryImpl(get()) }
     single { PermisoApi(get()) }
     single { pe.upeu.resi.resiup.data.remote.ReservasApi(get()) }
-    single { pe.upeu.resi.resiup.presentation.residente.ReservasRepository(get()) }
+    single<pe.upeu.resi.resiup.domain.repository.ReservasRepository> { pe.upeu.resi.resiup.data.repository.ReservasRepositoryImpl(get()) }
     single { CultoApi(get()) }
     single { LimpiezaApi(get()) }
     single { FamiliaApi(get()) }

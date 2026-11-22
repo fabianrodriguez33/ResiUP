@@ -122,8 +122,8 @@ fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
         }
         // Semestre en curso, visible en el inicio de cada rol (arriba a la izquierda).
         if (sesion != null && !verBandeja && volver == null && !subpantalla) {
-            val api = koinInject<pe.upeu.resi.resiup.presentation.admin.AdminApi>()
-            val semestre by androidx.compose.runtime.produceState<String?>(initialValue = null, sesion.usuario) { value = pe.upeu.resi.resiup.data.remote.ejecutarLlamada { api.semestreActual() }.getOrNull()?.nombre }
+            val api = koinInject<pe.upeu.resi.resiup.domain.repository.AdministracionRepository>()
+            val semestre by androidx.compose.runtime.produceState<String?>(initialValue = null, sesion.usuario) { value = api.semestreActual().getOrNull()?.nombre }
             semestre?.let { n ->
                 Text("Semestre $n", Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(top = Espacio.m, start = Espacio.l), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             }

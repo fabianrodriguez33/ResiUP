@@ -27,6 +27,8 @@ interface ResidenteRepository {
     suspend fun perfil(): Result<Perfil>
     suspend fun qr(): Result<QrPersonal>
     suspend fun ranking(): Result<pe.upeu.resi.resiup.domain.model.Ranking> = Result.failure(UnsupportedOperationException())
+    /** Ranking y notas de un rango de fechas (una semana, por ejemplo). */
+    suspend fun rankingDe(desde: String, hasta: String): Result<pe.upeu.resi.resiup.domain.model.Ranking> = Result.failure(UnsupportedOperationException())
     /** Id de la evidencia que es su foto de perfil (null si no tiene). */
     suspend fun fotoPerfil(): Result<Long?> = Result.failure(UnsupportedOperationException())
     suspend fun cambiarFoto(evidenciaId: Long): Result<Unit> = Result.failure(UnsupportedOperationException())
@@ -101,4 +103,12 @@ interface GaritaRepository {
     suspend fun permisosDe(qr: String): Result<pe.upeu.resi.resiup.domain.model.PermisosDeResidente>
     suspend fun registrar(qr: String, tipo: TipoMovimiento, solicitudId: Long? = null): Result<MovimientoRegistrado>
     suspend fun historial(pagina: Int): Result<Pagina<MovimientoRegistrado>>
+}
+
+/** Reservas de alimentación del residente. Solo con conexión: el servidor valida horarios, días cerrados y duplicados. */
+interface ReservasRepository {
+    suspend fun oferta(): Result<List<pe.upeu.resi.resiup.domain.model.ComidaOfertada>>
+    suspend fun mias(): Result<List<pe.upeu.resi.resiup.domain.model.Reserva>>
+    suspend fun reservar(n: pe.upeu.resi.resiup.domain.model.NuevaReserva): Result<pe.upeu.resi.resiup.domain.model.Reserva>
+    suspend fun cancelar(id: Long): Result<pe.upeu.resi.resiup.domain.model.Reserva>
 }

@@ -53,11 +53,12 @@ class ResidenteRepositoryImpl(private val api: ResidenteApi, private val sesione
     }
     override suspend fun fotoPerfil() = ejecutarLlamada { api.fotoPerfil() }
     override suspend fun cambiarFoto(evidenciaId: Long) = ejecutarLlamada { api.cambiarFoto(evidenciaId) }
-    override suspend fun ranking() = ejecutarLlamada {
-        val r = api.ranking()
+    private fun aRanking(r: pe.upeu.resi.resiup.data.remote.dto.RankingDto): pe.upeu.resi.resiup.domain.model.Ranking {
         fun p(d: pe.upeu.resi.resiup.data.remote.dto.PuestoDto) = pe.upeu.resi.resiup.domain.model.Puesto(d.posicion, d.total, d.valor)
-        pe.upeu.resi.resiup.domain.model.Ranking(p(r.cultos), p(r.limpieza))
+        return pe.upeu.resi.resiup.domain.model.Ranking(p(r.cultos), p(r.limpieza))
     }
+    override suspend fun ranking() = ejecutarLlamada { aRanking(api.ranking()) }
+    override suspend fun rankingDe(desde: String, hasta: String) = ejecutarLlamada { aRanking(api.rankingDe(desde, hasta)) }
     override suspend fun asistencias(pagina: Int) = ejecutarLlamada { api.asistencias(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
     override suspend fun diasConCulto(desde: String, hasta: String) = ejecutarLlamada { api.diasConCulto(desde, hasta) }
     override suspend fun limpieza(pagina: Int) = ejecutarLlamada { api.limpieza(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }

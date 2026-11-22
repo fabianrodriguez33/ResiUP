@@ -22,17 +22,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.request.parameter
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
+import pe.upeu.resi.resiup.domain.model.*
+import pe.upeu.resi.resiup.domain.repository.AdministracionRepository
 import org.koin.compose.koinInject
-import pe.upeu.resi.resiup.data.remote.dto.PaginaDto
-import pe.upeu.resi.resiup.data.remote.ejecutarLlamada
 import pe.upeu.resi.resiup.domain.error.ErrorApi
 import pe.upeu.resi.resiup.presentation.components.BannerMensaje
 import pe.upeu.resi.resiup.presentation.components.CampoDesplegable
@@ -61,39 +54,6 @@ import pe.upeu.resi.resiup.presentation.util.ContenidoCarga
 import pe.upeu.resi.resiup.presentation.util.aCarga
 import pe.upeu.resi.resiup.presentation.util.aErrorApi
 
-// ---------------------------------------------------------------- datos (solo lo que usa esta pantalla)
-
-@Serializable data class HabAdmin(val id: Long, val numero: String, val capacidad: Int, val activa: Boolean = true, val ocupantes: Long = 0, val disponibles: Long = 0)
-@Serializable data class HabResumenAdmin(val id: Long, val numero: String, val cama: String? = null)
-@Serializable data class ResidenteAdmin(val id: Long, val codigo: String, val nombreCompleto: String, val telefono: String? = null, val activo: Boolean = true, val habitacion: HabResumenAdmin? = null)
-@Serializable data class AutorizacionAdmin(val id: Long, val tipo: String, val inicio: String, val fin: String? = null, val referencia: String, val revocada: Boolean = false, val motivoRevocacion: String? = null, val vigente: Boolean = false)
-@Serializable data class NuevoResidenteAdmin(val username: String, val password: String, val nombreCompleto: String, val codigo: String, val telefono: String, val email: String, val carrera: String? = null, val ciclo: Int? = null)
-@Serializable data class AsignacionAdmin(val habitacionId: Long, val cama: String?)
-@Serializable data class NuevaAutorizacionAdmin(val tipo: String, val referencia: String)
-@Serializable data class RevocacionAdmin(val motivo: String)
-@Serializable data class SemestreAdmin(val id: Long, val nombre: String, val inicio: String, val fin: String, val activo: Boolean = false)
-@Serializable data class OcupanteAdmin(val residenteId: Long, val codigo: String, val nombreCompleto: String, val cama: String? = null)
-@Serializable data class NuevoSemestreAdmin(val nombre: String, val inicio: String, val fin: String)
-
-private const val B = "api/v1/"
-
-/** Llamadas de administración (todas con conexión; el servidor valida cada dato). */
-class AdminApi(private val c: HttpClient) {
-    suspend fun residentes(): List<ResidenteAdmin> = c.get("${B}residentes") { parameter("pagina", 0); parameter("tamanio", 100) }.body<PaginaDto<ResidenteAdmin>>().contenido
-    suspend fun habitaciones(): List<HabAdmin> = c.get("${B}habitaciones").body()
-    suspend fun ocupantes(habitacionId: Long): List<OcupanteAdmin> = c.get("${B}habitaciones/$habitacionId/ocupantes").body()
-    suspend fun semestres(): List<SemestreAdmin> = c.get("${B}semestres").body()
-    suspend fun semestreActual(): SemestreAdmin = c.get("${B}semestres/actual").body()
-    suspend fun terminarSemestre() { c.post("${B}semestres/terminar") }
-    suspend fun crearSemestre(s: NuevoSemestreAdmin): SemestreAdmin = c.post("${B}semestres") { setBody(s) }.body()
-    suspend fun liberar(id: Long) { c.post("${B}residentes/$id/liberar-habitacion") }
-    suspend fun crear(r: NuevoResidenteAdmin): ResidenteAdmin = c.post("${B}residentes") { setBody(r) }.body()
-    suspend fun asignar(id: Long, a: AsignacionAdmin) { c.post("${B}residentes/$id/asignacion") { setBody(a) } }
-    suspend fun autorizaciones(id: Long): List<AutorizacionAdmin> = c.get("${B}residentes/$id/autorizaciones").body()
-    suspend fun autorizar(id: Long, a: NuevaAutorizacionAdmin) { c.post("${B}residentes/$id/autorizaciones") { setBody(a) } }
-    suspend fun revocar(id: Long, motivo: String) { c.post("${B}autorizaciones/$id/revocar") { setBody(RevocacionAdmin(motivo)) } }
-}
-
 private sealed interface RutaAdmin {
     data object Inicio : RutaAdmin
     data object Residentes : RutaAdmin
@@ -108,7 +68,7 @@ private fun String.tipoLegible() = when (this) { "CORTO" -> "Corto"; "LARGO" -> 
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun AdministradorScreen(nombre: String, onIr: (String) -> Unit, onSubpantalla: (Boolean) -> Unit = {}) {
-    val api = koinInject<AdminApi>()
+    val api = koinInject<AdministracionRepository>()
     var ruta by remember { mutableStateOf<RutaAdmin>(RutaAdmin.Inicio) }
     val atras: () -> Unit = {
         ruta = when (ruta) { is RutaAdmin.Nuevo, is RutaAdmin.Detalle -> RutaAdmin.Residentes; else -> RutaAdmin.Inicio }
@@ -139,10 +99,10 @@ fun AdministradorScreen(nombre: String, onIr: (String) -> Unit, onSubpantalla: (
 }
 
 @Composable
-private fun Residentes(api: AdminApi, onNuevo: () -> Unit, onAbrir: (ResidenteAdmin) -> Unit) {
+private fun Residentes(api: AdministracionRepository, onNuevo: () -> Unit, onAbrir: (ResidenteAdmin) -> Unit) {
     var estado by remember { mutableStateOf<Carga<List<ResidenteAdmin>>>(Carga.Cargando) }
     var reintento by remember { mutableStateOf(0) }
-    LaunchedEffect(reintento) { estado = ejecutarLlamada { api.residentes() }.aCarga() }
+    LaunchedEffect(reintento) { estado = api.residentes().aCarga() }
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla("Residentes", Modifier.padding(top = Espacio.l), subtitulo = "Lista de residentes")
         ResiBoton("Nuevo residente", onNuevo, Modifier.fillMaxWidth())
@@ -164,7 +124,7 @@ private fun Residentes(api: AdminApi, onNuevo: () -> Unit, onAbrir: (ResidenteAd
 }
 
 @Composable
-private fun NuevoResidente(api: AdminApi, onListo: () -> Unit) {
+private fun NuevoResidente(api: AdministracionRepository, onListo: () -> Unit) {
     val alcance = rememberCoroutineScope()
     var usuario by remember { mutableStateOf("") }
     var clave by remember { mutableStateOf("") }
@@ -191,7 +151,7 @@ private fun NuevoResidente(api: AdminApi, onListo: () -> Unit) {
         ResiBoton("Registrar residente", {
             enviando = true; errores = emptyMap(); error = null
             alcance.launch {
-                ejecutarLlamada { api.crear(NuevoResidenteAdmin(usuario.trim(), clave, nombre.trim(), codigo, celular, correo.trim(), carrera.trim().ifBlank { null }, ciclo)) }
+                api.crear(NuevoResidenteAdmin(usuario.trim(), clave, nombre.trim(), codigo, celular, correo.trim(), carrera.trim().ifBlank { null }, ciclo))
                     .onSuccess { Mensajes.exito("Residente registrado exitosamente"); onListo() }
                     .onFailure { e -> val x = e.aErrorApi(); if (x is ErrorApi.Validacion) errores = x.porCampo else error = x }
                 enviando = false
@@ -201,7 +161,7 @@ private fun NuevoResidente(api: AdminApi, onListo: () -> Unit) {
 }
 
 @Composable
-private fun DetalleResidente(api: AdminApi, r: ResidenteAdmin, onSinHabitacion: () -> Unit) {
+private fun DetalleResidente(api: AdministracionRepository, r: ResidenteAdmin, onSinHabitacion: () -> Unit) {
     val alcance = rememberCoroutineScope()
     var habitaciones by remember { mutableStateOf<List<HabAdmin>>(emptyList()) }
     var autorizaciones by remember { mutableStateOf<Carga<List<AutorizacionAdmin>>>(Carga.Cargando) }
@@ -214,8 +174,8 @@ private fun DetalleResidente(api: AdminApi, r: ResidenteAdmin, onSinHabitacion: 
     var quitando by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<ErrorApi?>(null) }
     LaunchedEffect(reintento) {
-        autorizaciones = ejecutarLlamada { api.autorizaciones(r.id) }.aCarga()
-        ejecutarLlamada { api.habitaciones() }.onSuccess { habitaciones = it.filter { h -> h.activa } }
+        autorizaciones = api.autorizaciones(r.id).aCarga()
+        api.habitaciones().onSuccess { habitaciones = it.filter { h -> h.activa } }
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla(r.nombreCompleto, subtitulo = "${r.codigo} · ${r.habitacion?.let { "Hab. ${it.numero} ${it.cama ?: ""}".trim() } ?: "Sin habitación"}")
@@ -228,7 +188,7 @@ private fun DetalleResidente(api: AdminApi, r: ResidenteAdmin, onSinHabitacion: 
         ResiBoton("Asignar habitación", {
             val h = hab ?: return@ResiBoton
             alcance.launch {
-                ejecutarLlamada { api.asignar(r.id, AsignacionAdmin(h.id, cama)) }
+                api.asignar(r.id, AsignacionAdmin(h.id, cama))
                     .onSuccess { error = null; Mensajes.exito("Habitación asignada exitosamente"); reintento++ }.onFailure { error = it.aErrorApi() }
             }
         }, Modifier.fillMaxWidth(), habilitado = hab != null)
@@ -252,7 +212,7 @@ private fun DetalleResidente(api: AdminApi, r: ResidenteAdmin, onSinHabitacion: 
         ResiCampoTexto(referencia, { referencia = it.take(100) }, "Referencia (número de la hoja firmada)")
         ResiBoton("Registrar autorización", {
             alcance.launch {
-                ejecutarLlamada { api.autorizar(r.id, NuevaAutorizacionAdmin(tipo, referencia.trim())) }
+                api.autorizar(r.id, NuevaAutorizacionAdmin(tipo, referencia.trim()))
                     .onSuccess { error = null; referencia = ""; Mensajes.exito("Autorización registrada exitosamente"); reintento++ }.onFailure { error = it.aErrorApi() }
             }
         }, Modifier.fillMaxWidth(), habilitado = referencia.isNotBlank())
@@ -261,27 +221,27 @@ private fun DetalleResidente(api: AdminApi, r: ResidenteAdmin, onSinHabitacion: 
     if (quitando) {
         pe.upeu.resi.resiup.presentation.components.DialogoConfirmacion(
             "Quitar de la habitación", "${r.nombreCompleto} quedará sin habitación ni cama. Podrás asignarle otra después.", "Quitar",
-            { quitando = false; alcance.launch { ejecutarLlamada { api.liberar(r.id) }.onSuccess { error = null; Mensajes.exito("Habitación liberada exitosamente"); onSinHabitacion() }.onFailure { error = it.aErrorApi() } } },
+            { quitando = false; alcance.launch { api.liberar(r.id).onSuccess { error = null; Mensajes.exito("Habitación liberada exitosamente"); onSinHabitacion() }.onFailure { error = it.aErrorApi() } } },
             { quitando = false }, destructivo = true,
         )
     }
     revocando?.let { a ->
         DialogoMotivo(
             "Revocar autorización", "El residente volverá a necesitar a su padre o madre para este tipo de permiso.", "Motivo", "Revocar",
-            { m -> revocando = null; alcance.launch { ejecutarLlamada { api.revocar(a.id, m) }.onSuccess { Mensajes.exito("Autorización revocada exitosamente"); reintento++ }.onFailure { error = it.aErrorApi() } } },
+            { m -> revocando = null; alcance.launch { api.revocar(a.id, m).onSuccess { Mensajes.exito("Autorización revocada exitosamente"); reintento++ }.onFailure { error = it.aErrorApi() } } },
             { revocando = null }, destructivo = true,
         )
     }
 }
 
 @Composable
-private fun Habitaciones(api: AdminApi) {
+private fun Habitaciones(api: AdministracionRepository) {
     var estado by remember { mutableStateOf<Carga<List<HabAdmin>>>(Carga.Cargando) }
     var reintento by remember { mutableStateOf(0) }
     var elegida by remember { mutableStateOf<HabAdmin?>(null) }
     var ocupantes by remember { mutableStateOf<Carga<List<OcupanteAdmin>>>(Carga.Cargando) }
-    LaunchedEffect(reintento) { estado = ejecutarLlamada { api.habitaciones() }.aCarga() }
-    LaunchedEffect(elegida) { elegida?.let { ocupantes = Carga.Cargando; ocupantes = ejecutarLlamada { api.ocupantes(it.id) }.aCarga() } }
+    LaunchedEffect(reintento) { estado = api.habitaciones().aCarga() }
+    LaunchedEffect(elegida) { elegida?.let { ocupantes = Carga.Cargando; ocupantes = api.ocupantes(it.id).aCarga() } }
     elegida?.let { h ->
         androidx.compose.ui.window.Dialog(onDismissRequest = { elegida = null }) {
             ResiTarjeta {
@@ -318,7 +278,7 @@ private fun Habitaciones(api: AdminApi) {
 }
 
 @Composable
-private fun Semestres(api: AdminApi) {
+private fun Semestres(api: AdministracionRepository) {
     val alcance = rememberCoroutineScope()
     var estado by remember { mutableStateOf<Carga<List<SemestreAdmin>>>(Carga.Cargando) }
     var reintento by remember { mutableStateOf(0) }
@@ -330,11 +290,11 @@ private fun Semestres(api: AdminApi) {
     var terminando by remember { mutableStateOf(false) }
     var errores by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var error by remember { mutableStateOf<ErrorApi?>(null) }
-    LaunchedEffect(reintento) { estado = ejecutarLlamada { api.semestres() }.aCarga() }
+    LaunchedEffect(reintento) { estado = api.semestres().aCarga() }
     if (terminando) {
         pe.upeu.resi.resiup.presentation.components.DialogoConfirmacion(
             "Terminar semestre", "El semestre actual se cierra hoy. Las habitaciones no se vacían hasta que crees el siguiente. ¿Continuar?", "Terminar",
-            { terminando = false; alcance.launch { ejecutarLlamada { api.terminarSemestre() }.onSuccess { Mensajes.exito("Semestre terminado exitosamente"); reintento++ }.onFailure { error = it.aErrorApi() } } },
+            { terminando = false; alcance.launch { api.terminarSemestre().onSuccess { Mensajes.exito("Semestre terminado exitosamente"); reintento++ }.onFailure { error = it.aErrorApi() } } },
             { terminando = false }, destructivo = true,
         )
     }
@@ -372,7 +332,7 @@ private fun Semestres(api: AdminApi) {
             {
                 confirmar = false
                 alcance.launch {
-                    ejecutarLlamada { api.crearSemestre(NuevoSemestreAdmin(nombre.trim(), inicio, fin)) }
+                    api.crearSemestre(NuevoSemestreAdmin(nombre.trim(), inicio, fin))
                         .onSuccess { Mensajes.exito("Semestre ${nombre.trim()} creado exitosamente"); creando = false; nombre = ""; inicio = ""; fin = ""; errores = emptyMap(); error = null; reintento++ }
                         .onFailure { e -> val x = e.aErrorApi(); if (x is ErrorApi.Validacion) errores = x.porCampo else error = x }
                 }
