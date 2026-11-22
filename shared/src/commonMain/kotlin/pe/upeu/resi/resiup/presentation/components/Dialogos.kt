@@ -1,5 +1,6 @@
 package pe.upeu.resi.resiup.presentation.components
 
+import androidx.compose.runtime.remember
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
@@ -44,8 +45,14 @@ fun DialogoConfirmacion(
 /** Devuelve la fecha elegida como milisegundos UTC a medianoche (convención de Material 3). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SelectorFecha(onFechaElegida: (Long) -> Unit, onCancelar: () -> Unit, anios: IntRange? = null, mesInicialMillis: Long? = null) {
-    val estado = rememberDatePickerState(initialDisplayedMonthMillis = mesInicialMillis, yearRange = anios ?: DatePickerDefaults.YearRange)
+fun SelectorFecha(onFechaElegida: (Long) -> Unit, onCancelar: () -> Unit, anios: IntRange? = null, mesInicialMillis: Long? = null, desdeMillis: Long? = null) {
+    // [desdeMillis] = primer día elegible (medianoche UTC); los anteriores salen deshabilitados.
+    val fechasPermitidas = remember(desdeMillis) {
+        object : androidx.compose.material3.SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long) = desdeMillis == null || utcTimeMillis >= desdeMillis
+        }
+    }
+    val estado = rememberDatePickerState(initialDisplayedMonthMillis = mesInicialMillis ?: desdeMillis, yearRange = anios ?: DatePickerDefaults.YearRange, selectableDates = fechasPermitidas)
     DatePickerDialog(
         onDismissRequest = onCancelar,
         confirmButton = {

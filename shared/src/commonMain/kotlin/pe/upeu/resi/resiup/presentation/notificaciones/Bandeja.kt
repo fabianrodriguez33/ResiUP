@@ -118,7 +118,7 @@ fun CampanaAvisos(noLeidas: Int, onClick: () -> Unit, modifier: Modifier = Modif
         modifier.size(44.dp).background(MaterialTheme.colorScheme.background.copy(alpha = 0.92f), CircleShape).semantics { contentDescription = descripcion }.clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        ResiIcono(ResiIconos.Campana, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        ResiIcono(ResiIconos.CampanaLlena, null, Modifier.size(26.dp), tint = pe.upeu.resi.resiup.presentation.theme.Acento.Azul.color())
         if (noLeidas > 0) {
             Box(
                 Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 2.dp).background(MaterialTheme.colorScheme.error, CircleShape)

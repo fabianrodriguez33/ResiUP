@@ -59,13 +59,22 @@ import pe.upeu.resi.resiup.presentation.personal.SolicitudRevisionViewModel
 import pe.upeu.resi.resiup.presentation.personal.PermisosAprobadosViewModel
 import pe.upeu.resi.resiup.presentation.personal.PermisosEnEsperaViewModel
 import pe.upeu.resi.resiup.presentation.personal.PermisosTodosViewModel
+import pe.upeu.resi.resiup.presentation.personal.PermisosEnRevisionViewModel
+import pe.upeu.resi.resiup.presentation.personal.CultosViewModel
+import pe.upeu.resi.resiup.presentation.personal.ReservasPastorViewModel
 import pe.upeu.resi.resiup.presentation.residente.EditarPerfilViewModel
 import pe.upeu.resi.resiup.presentation.residente.AsistenciasViewModel
 import pe.upeu.resi.resiup.presentation.residente.InicioResidenteViewModel
+import pe.upeu.resi.resiup.presentation.residente.NotasResidenteViewModel
 import pe.upeu.resi.resiup.presentation.residente.LimpiezaResidenteViewModel
 import pe.upeu.resi.resiup.presentation.residente.MisSolicitudesViewModel
 import pe.upeu.resi.resiup.presentation.residente.MovimientosViewModel
 import pe.upeu.resi.resiup.presentation.residente.PerfilViewModel
+import pe.upeu.resi.resiup.presentation.residente.RankingViewModel
+import pe.upeu.resi.resiup.presentation.personal.PermisosGaritaViewModel
+import pe.upeu.resi.resiup.presentation.residente.ReservasViewModel
+import pe.upeu.resi.resiup.presentation.residente.ReservaFormViewModel
+import pe.upeu.resi.resiup.presentation.residente.FotoPerfilViewModel
 import pe.upeu.resi.resiup.presentation.residente.SolicitudDetalleViewModel
 import pe.upeu.resi.resiup.presentation.residente.SolicitudFormViewModel
 import pe.upeu.resi.resiup.data.remote.ConfigEntorno
@@ -89,7 +98,11 @@ fun datosModule(config: ConfigEntorno) = module {
     single<HttpClient> { crearHttpClient(get<HttpClientEngine>(), get(), get(), get()) }
     single { AuthApi(get()) }
     single { ResidenteApi(get()) }
+    single<pe.upeu.resi.resiup.domain.repository.AdministracionRepository> { pe.upeu.resi.resiup.data.repository.AdministracionRepositoryImpl(get()) }
+    single<pe.upeu.resi.resiup.domain.repository.AccionesPastorRepository> { pe.upeu.resi.resiup.data.repository.AccionesPastorRepositoryImpl(get()) }
     single { PermisoApi(get()) }
+    single { pe.upeu.resi.resiup.data.remote.ReservasApi(get()) }
+    single<pe.upeu.resi.resiup.domain.repository.ReservasRepository> { pe.upeu.resi.resiup.data.repository.ReservasRepositoryImpl(get(), get()) }
     single { CultoApi(get()) }
     single { LimpiezaApi(get()) }
     single { FamiliaApi(get()) }
@@ -99,7 +112,7 @@ fun datosModule(config: ConfigEntorno) = module {
     single { pe.upeu.resi.resiup.data.remote.NotificacionesApi(get()) }
     single { pe.upeu.resi.resiup.data.remote.TramitesApi(get()) }
     single { pe.upeu.resi.resiup.data.remote.NotasApi(get()) }
-    single<ResidenteRepository> { ResidenteRepositoryImpl(get(), get()) }
+    single<ResidenteRepository> { ResidenteRepositoryImpl(get(), get(), get()) }
     single<PermisoRepository> { PermisoRepositoryImpl(get()) }
     single<CultoRepository> { CultoRepositoryImpl(get()) }
     single<LimpiezaRepository> { LimpiezaRepositoryImpl(get()) }
@@ -140,6 +153,12 @@ val presentacionModule = module {
     viewModelOf(::LoginViewModel)
     // Residente
     viewModelOf(::InicioResidenteViewModel)
+    viewModelOf(::RankingViewModel)
+    viewModelOf(::ReservasViewModel)
+    viewModelOf(::PermisosGaritaViewModel)
+    viewModelOf(::ReservaFormViewModel)
+    viewModelOf(::FotoPerfilViewModel)
+    viewModelOf(::NotasResidenteViewModel)
     viewModelOf(::PerfilViewModel)
     viewModelOf(::AsistenciasViewModel)
     viewModelOf(::LimpiezaResidenteViewModel)
@@ -157,6 +176,9 @@ val presentacionModule = module {
     viewModelOf(::PermisosAprobadosViewModel)
     viewModelOf(::PermisosEnEsperaViewModel)
     viewModelOf(::PermisosTodosViewModel)
+    viewModelOf(::PermisosEnRevisionViewModel)
+    viewModelOf(::CultosViewModel)
+    viewModelOf(::ReservasPastorViewModel)
     viewModelOf(::EditarPerfilViewModel)
     // Cuenta de cualquier rol
     viewModelOf(::PerfilCuentaViewModel)

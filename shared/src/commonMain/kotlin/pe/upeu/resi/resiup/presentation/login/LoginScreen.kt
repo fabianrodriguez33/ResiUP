@@ -31,11 +31,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import pe.upeu.resi.resiup.presentation.components.BannerMensaje
 import pe.upeu.resi.resiup.presentation.components.ChipEstado
 import pe.upeu.resi.resiup.presentation.components.EstadoVisual
-import pe.upeu.resi.resiup.presentation.components.IsotipoResi
+import androidx.compose.ui.layout.ContentScale
+import org.jetbrains.compose.resources.painterResource
+import resiup.shared.generated.resources.Res
+import resiup.shared.generated.resources.residencia_azul
 import pe.upeu.resi.resiup.presentation.components.ResiBoton
 import pe.upeu.resi.resiup.presentation.components.ResiCampoTexto
 import pe.upeu.resi.resiup.presentation.components.VarianteBoton
@@ -63,36 +67,34 @@ fun LoginScreen(
     val colores = ResiTheme.colores
 
     Column(Modifier.fillMaxSize().background(colores.marca)) {
-        Column(
-            Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = Espacio.xl, vertical = Espacio.xl).alpha(entrada.value),
-            verticalArrangement = Arrangement.spacedBy(Espacio.s),
-        ) {
-            Image(IsotipoResi, null, Modifier.size(56.dp))
-            Spacer(Modifier.height(Espacio.l))
-            Text("Hola,", style = MaterialTheme.typography.displaySmall, color = colores.sobreMarca.copy(alpha = 0.85f))
-            Text("bienvenido a ResiUP", style = MaterialTheme.typography.displaySmall, color = colores.sobreMarca)
-            Text(
-                "Residencia Universitaria Fernando Stahl",
-                style = MaterialTheme.typography.bodyMedium,
-                color = colores.sobreMarca.copy(alpha = 0.75f),
-            )
-        }
-        Surface(Modifier.weight(1f).fillMaxWidth(), shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp), color = MaterialTheme.colorScheme.background) {
+        Column(Modifier.fillMaxWidth().statusBarsPadding().alpha(entrada.value), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+            Image(painterResource(Res.drawable.residencia_azul), null, Modifier.fillMaxWidth(), contentScale = ContentScale.FillWidth)
             Column(
-                Modifier.imePadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(Espacio.xl).alpha(entrada.value),
+                Modifier.fillMaxWidth().padding(horizontal = Espacio.xl).padding(top = Espacio.l, bottom = Espacio.xl),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Espacio.s),
+            ) {
+                Text("Bienvenido a ResiUP", style = MaterialTheme.typography.displaySmall, color = colores.sobreMarca, textAlign = TextAlign.Center)
+                Text(
+                    "Más que una residencia, una hermandad con propósito",
+                    style = MaterialTheme.typography.bodyLarge, color = colores.sobreMarca, textAlign = TextAlign.Center,
+                )
+            }
+        }
+        Surface(Modifier.weight(1f).fillMaxWidth(), shape = RoundedCornerShape(topStart = 44.dp, topEnd = 44.dp), color = MaterialTheme.colorScheme.background) {
+            Column(
+                Modifier.imePadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = Espacio.xl, vertical = Espacio.xl).alpha(entrada.value),
                 verticalArrangement = Arrangement.spacedBy(Espacio.m),
             ) {
-                Text("Entra a tu cuenta", style = MaterialTheme.typography.headlineSmall)
+                Column(Modifier.padding(start = Espacio.m, bottom = Espacio.s)) {
+                    Text("Inicia Sesión", style = MaterialTheme.typography.headlineLarge, color = pe.upeu.resi.resiup.presentation.theme.Acento.Azul.color())
+                    Text("para estar al día con tu espacio.", style = MaterialTheme.typography.bodyMedium, color = pe.upeu.resi.resiup.presentation.theme.Acento.Azul.color())
+                }
                 aviso?.let { BannerMensaje(it, EstadoVisual.Advertencia) }
                 ResiCampoTexto(estado.usuario, onUsuario, "Usuario o código", error = estado.usuarioError, tipoTeclado = KeyboardType.Ascii, habilitado = !estado.cargando)
                 ResiCampoTexto(estado.clave, onClave, "Contraseña", error = estado.claveError, esClave = true, habilitado = !estado.cargando)
                 estado.error?.let { BannerMensaje(it, EstadoVisual.Error) }
                 ResiBoton("Ingresar", onIngresar, Modifier.fillMaxWidth(), cargando = estado.cargando)
                 ResiBoton("Olvidé mi contraseña", onOlvide, Modifier.fillMaxWidth(), variante = VarianteBoton.Terciario, habilitado = !estado.cargando)
-                Text(
-                    "¿No tienes cuenta? La administración de la residencia te la crea.",
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         }
     }

@@ -11,7 +11,7 @@ enum class Acento(
     private val claro: Color, private val claroSuave: Color,
     private val oscuro: Color, private val oscuroSuave: Color,
 ) {
-    Azul(Color(0xFF1F63E0), Color(0xFFE3ECFF), Color(0xFF7FB0FF), Color(0xFF7FB0FF).copy(alpha = 0.18f)),
+    Azul(Color(0xFF012E6A), Color(0xFFD9E8FF), Color(0xFF7FB0FF), Color(0xFF7FB0FF).copy(alpha = 0.18f)),
     Verde(Color(0xFF0F9D58), Color(0xFFDDF5E8), Color(0xFF5ED79B), Color(0xFF5ED79B).copy(alpha = 0.18f)),
     Naranja(Color(0xFFEA580C), Color(0xFFFFE8D6), Color(0xFFFF9D5C), Color(0xFFFF9D5C).copy(alpha = 0.18f)),
     Violeta(Color(0xFF7C3AED), Color(0xFFEDE4FF), Color(0xFFB794FF), Color(0xFFB794FF).copy(alpha = 0.18f)),

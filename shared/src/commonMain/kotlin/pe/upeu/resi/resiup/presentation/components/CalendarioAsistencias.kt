@@ -49,15 +49,15 @@ private val NOMBRES_DIA = listOf("lunes", "martes", "miércoles", "jueves", "vie
 
 /**
  * Calendario mensual de asistencias a cultos. Cada día se distingue por una marca además del color
- * («✓» asistió, «!» después del corte, «–» sin registro) y tiene descripción para lectores de pantalla.
+ * («✓» asistió, «!» tardanza, «–» sin registro) y tiene descripción para lectores de pantalla.
  */
 @Composable
-fun CalendarioAsistencias(asistencias: List<AsistenciaCulto>, hoy: LocalDate, modifier: Modifier = Modifier) {
+fun CalendarioAsistencias(asistencias: List<AsistenciaCulto>, hoy: LocalDate, modifier: Modifier = Modifier, onElegir: ((LocalDate) -> Unit)? = null, conMarcas: Boolean = true, diasConCulto: Set<String>? = null) {
     var anio by remember { mutableStateOf(hoy.year) }
     var mes by remember { mutableStateOf(hoy.month.ordinal + 1) }
     var seleccion by remember { mutableStateOf<LocalDate?>(null) }
     val desde = remember(asistencias) { asistencias.fechaMasAntigua() }
-    val semanas = remember(anio, mes, asistencias, hoy, desde) { armarMes(anio, mes, asistencias, hoy, desde) }
+    val semanas = remember(anio, mes, asistencias, hoy, desde, diasConCulto) { armarMes(anio, mes, asistencias, hoy, desde, diasConCulto) }
     val esMesActual = anio == hoy.year && mes == hoy.month.ordinal + 1
 
     ResiTarjeta(modifier) {
@@ -78,16 +78,16 @@ fun CalendarioAsistencias(asistencias: List<AsistenciaCulto>, hoy: LocalDate, mo
         semanas.forEach { semana ->
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 semana.forEach { dia ->
-                    CeldaDia(dia, dia.fecha == seleccion, Modifier.weight(1f)) { seleccion = if (dia.fecha == seleccion) null else dia.fecha }
+                    CeldaDia(dia, dia.fecha == seleccion, Modifier.weight(1f)) { if (onElegir != null) onElegir(dia.fecha) else seleccion = if (dia.fecha == seleccion) null else dia.fecha }
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().padding(top = Espacio.m), horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+        if (conMarcas) Row(Modifier.fillMaxWidth().padding(top = Espacio.m), horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
             Leyenda("✓", "Asistió")
-            Leyenda("!", "Tras el corte")
+            Leyenda("!", "Tardanza")
             Leyenda("–", "Sin registro")
         }
-        seleccion?.let { fecha ->
+        if (conMarcas) seleccion?.let { fecha ->
             val dia = semanas.flatten().firstOrNull { it.fecha == fecha }
             if (dia != null) DetalleDia(dia)
         }
@@ -105,7 +105,7 @@ private fun Leyenda(marca: String, texto: String) {
 private fun DiaCalendario.descripcion(): String {
     val base = "${NOMBRES_DIA[fecha.dayOfWeek.ordinal]} ${fecha.legible()}"
     return when {
-        asistencias.isNotEmpty() -> base + ": asistió a " + asistencias.joinToString(" y ") { "culto ${it.tipo.etiqueta.lowercase()}" + if (it.despuesDelCorte) " después del corte" else "" }
+        asistencias.isNotEmpty() -> base + ": asistió a " + asistencias.joinToString(" y ") { "culto ${it.tipo.etiqueta.lowercase()}" + if (it.despuesDelCorte) " con tardanza" else "" }
         sinRegistro -> "$base: sin registro de asistencia"
         !habil -> "$base: sin culto"
         else -> base
@@ -163,7 +163,7 @@ private fun DetalleDia(dia: DiaCalendario) {
         when {
             dia.asistencias.isNotEmpty() -> dia.asistencias.forEach {
                 Text(
-                    "Culto ${it.tipo.etiqueta.lowercase()} · registrado ${it.registradoEn.formatoLima()}" + if (it.despuesDelCorte) " (después del corte)" else "",
+                    "Culto ${it.tipo.etiqueta.lowercase()} · registrado ${it.registradoEn.formatoLima()}" + if (it.despuesDelCorte) " (tardanza)" else "",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }

@@ -8,12 +8,12 @@ import androidx.compose.ui.graphics.Color
 
 // Paleta PROPUESTA (no oficial). Reemplazar por los valores del manual de marca UPeU cuando exista.
 internal object Paleta {
-    val AzulInstitucional = Color(0xFF0A2F6B)
-    val AzulSecundario = Color(0xFF2F7BFF)
+    val AzulInstitucional = Color(0xFF012E6A)
+    val AzulSecundario = Color(0xFF365586)
     val AzulVivo = Color(0xFF1F63E0)
 
-    val LuzPrimarioContenedor = Color(0xFFDDE8FF)
-    val LuzSecundarioContenedor = Color(0xFFDCE9FB)
+    val LuzPrimarioContenedor = Color(0xFFD9E8FF)
+    val LuzSecundarioContenedor = Color(0xFFD9E8FF)
     val LuzFondo = Color(0xFFF1F5FF)
     val LuzSuperficie = Color(0xFFFFFFFF)
     val LuzSuperficieVariante = Color(0xFFEEF1F6)
@@ -78,7 +78,7 @@ internal val ResiColoresOscuro = ResiColores(
 )
 
 internal val EsquemaClaro: ColorScheme = lightColorScheme(
-    primary = Paleta.AzulVivo,
+    primary = Paleta.AzulInstitucional,
     onPrimary = Color.White,
     primaryContainer = Paleta.LuzPrimarioContenedor,
     onPrimaryContainer = Color(0xFF06214D),

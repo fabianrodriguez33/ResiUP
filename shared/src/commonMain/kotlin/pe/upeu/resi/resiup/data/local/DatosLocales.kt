@@ -58,6 +58,7 @@ class DatosLocales(db: ResiDb) {
                 retornoAutorizado = Instant.parse(it.retorno_autorizado), estado = enumONull<EstadoSolicitud>(it.estado) ?: EstadoSolicitud.Vencido,
                 requiereApoderado = it.requiere_apoderado != 0L, comentarioDecision = it.comentario_decision, creadoEn = Instant.parse(it.creado_en),
                 ampliaciones = emptyList(), justificaciones = emptyList(), // el detalle completo se consulta en línea
+                garitaSalida = it.garita_salida?.let { s -> Instant.parse(s) }, garitaEntrada = it.garita_entrada?.let { s -> Instant.parse(s) },
             )
         }
     }
@@ -109,7 +110,7 @@ class DatosLocales(db: ResiDb) {
             q.guardarSolicitud(
                 it.id, it.residenteCodigo, it.residenteNombre, it.tipo.name, it.motivo, it.destino, it.salida.toString(),
                 it.retornoSolicitado.toString(), it.retornoAutorizado.toString(), it.estado.name, if (it.requiereApoderado) 1 else 0,
-                it.comentarioDecision, it.creadoEn.toString(),
+                it.comentarioDecision, it.creadoEn.toString(), it.garitaSalida?.toString(), it.garitaEntrada?.toString(),
             )
         }
     }
@@ -118,6 +119,10 @@ class DatosLocales(db: ResiDb) {
         q.borrarDiasSinCulto()
         lista.forEach { q.guardarDiaSinCulto(it.fecha, it.motivo) }
     }
+
+    /** Copia local de una consulta en línea (se guarda como texto JSON y se borra junto con los demás datos al cambiar de usuario). */
+    fun leerCopia(clave: String): String? = q.leerMeta("copia:$clave").executeAsOneOrNull()
+    fun guardarCopia(clave: String, json: String) = q.guardarMeta("copia:$clave", json)
 
     fun marcarSincronizado(ahoraMillis: Long) = q.guardarMeta(SINCRONIZADO_EN, ahoraMillis.toString())
 

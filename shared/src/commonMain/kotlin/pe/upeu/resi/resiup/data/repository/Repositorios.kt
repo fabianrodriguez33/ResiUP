@@ -36,7 +36,7 @@ import pe.upeu.resi.resiup.domain.repository.ResidenteRepository
 
 const val TAMANIO_PAGINA = 20
 
-class ResidenteRepositoryImpl(private val api: ResidenteApi, private val sesiones: SesionStore) : ResidenteRepository {
+class ResidenteRepositoryImpl(private val api: ResidenteApi, private val sesiones: SesionStore, private val locales: pe.upeu.resi.resiup.data.local.DatosLocales? = null) : ResidenteRepository {
     override suspend fun perfil() = ejecutarLlamada { api.perfil().aPerfil() }
     /**
      * Con conexión se pide al servidor (y se renueva la copia cifrada). Sin red se muestra la última copia: el servidor
@@ -51,7 +51,16 @@ class ResidenteRepositoryImpl(private val api: ResidenteApi, private val sesione
         }
         return r
     }
+    override suspend fun fotoPerfil() = ejecutarLlamada { api.fotoPerfil() }
+    override suspend fun cambiarFoto(evidenciaId: Long) = ejecutarLlamada { api.cambiarFoto(evidenciaId) }
+    private fun aRanking(r: pe.upeu.resi.resiup.data.remote.dto.RankingDto): pe.upeu.resi.resiup.domain.model.Ranking {
+        fun p(d: pe.upeu.resi.resiup.data.remote.dto.PuestoDto) = pe.upeu.resi.resiup.domain.model.Puesto(d.posicion, d.total, d.valor)
+        return pe.upeu.resi.resiup.domain.model.Ranking(p(r.cultos), p(r.limpieza))
+    }
+    override suspend fun ranking() = conRespaldoLocal(locales, "ranking", pe.upeu.resi.resiup.data.remote.dto.RankingDto.serializer()) { api.ranking() }.map { aRanking(it) }
+    override suspend fun rankingDe(desde: String, hasta: String) = conRespaldoLocal(locales, "ranking:$desde:$hasta", pe.upeu.resi.resiup.data.remote.dto.RankingDto.serializer()) { api.rankingDe(desde, hasta) }.map { aRanking(it) }
     override suspend fun asistencias(pagina: Int) = ejecutarLlamada { api.asistencias(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
+    override suspend fun diasConCulto(desde: String, hasta: String) = ejecutarLlamada { api.diasConCulto(desde, hasta) }
     override suspend fun limpieza(pagina: Int) = ejecutarLlamada { api.limpieza(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
     override suspend fun resumenLimpieza() = ejecutarLlamada { api.resumenLimpieza().aDominio() }
     override suspend fun movimientos(pagina: Int) = ejecutarLlamada { api.movimientos(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
@@ -69,11 +78,14 @@ class PermisoRepositoryImpl(private val api: PermisoApi) : PermisoRepository {
     override suspend fun detalle(id: Long) = ejecutarLlamada { api.detalle(id).aDominio() }
     override suspend fun cancelar(id: Long) = ejecutarLlamada { api.cancelar(id).aDominio() }
     override suspend fun justificar(id: Long, motivo: String) = ejecutarLlamada { api.justificar(id, JustificacionRequestDto(motivo)) }
+    override suspend fun listarGarita(pagina: Int) = ejecutarLlamada { api.listarGarita(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
+    override suspend fun aprobadosHoy() = ejecutarLlamada { api.aprobadosHoy() }
     override suspend fun listar(estado: EstadoSolicitud?, pagina: Int) =
         ejecutarLlamada { api.listar(estado?.aApi(), pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
     override suspend fun enlaceApoderado(id: Long) = ejecutarLlamada { api.enlaceApoderado(id).aDominio() }
     override suspend fun resumenDelResidente(id: Long) = ejecutarLlamada { api.resumen(id).aDominio() }
     override suspend fun anular(id: Long, motivo: String) = ejecutarLlamada { api.anular(id, motivo.trim()).aDominio() }
+    override suspend fun decidir(id: Long, aprobar: Boolean, comentario: String?) = ejecutarLlamada { api.decidir(id, aprobar, comentario?.trim()?.ifBlank { null }).aDominio() }
 }
 
 private fun NuevaSolicitud.aDto() = SolicitudRequestDto(
@@ -95,12 +107,32 @@ class FamiliaRepositoryImpl(private val api: FamiliaApi) : FamiliaRepository {
 class CultoRepositoryImpl(private val api: CultoApi) : CultoRepository {
     override suspend fun abrirSesion(tipo: TipoCulto) = ejecutarLlamada { api.abrir(tipo.aApi()).aDominio() }
     override suspend fun sesionesDeHoy() = ejecutarLlamada { api.hoy().map { it.aDominio() } }
+    override suspend fun presentesHoy() = ejecutarLlamada { api.presentesHoy() }
     override suspend fun registrarAsistencia(sesionId: Long, qr: String) = ejecutarLlamada { api.registrar(sesionId, qr).aRegistrada() }
     override suspend fun cerrarSesion(sesionId: Long) = ejecutarLlamada { api.cerrar(sesionId).aDominio() }
+    override suspend fun sesionesDeFecha(fecha: String) = ejecutarLlamada { api.porFecha(fecha).map { it.aDominio() } }
+    override suspend fun presentes(sesionId: Long) = ejecutarLlamada {
+        api.presentes(sesionId).map { pe.upeu.resi.resiup.domain.repository.AsistenciaPresente(it.codigo, it.nombreCompleto, it.despuesDelCorte) }
+    }
+    override suspend fun reabrirSesion(sesionId: Long) = ejecutarLlamada { api.reabrir(sesionId).aDominio() }
+    override suspend fun registrarPorCodigo(sesionId: Long, codigo: String) = ejecutarLlamada { api.registrarCodigo(sesionId, codigo).aRegistrada() }
+    override suspend fun exportarPresentes(sesionId: Long) = ejecutarLlamada { api.exportar(sesionId) }
 }
 
 class LimpiezaRepositoryImpl(private val api: LimpiezaApi) : LimpiezaRepository {
     override suspend fun habitaciones(fecha: String) = ejecutarLlamada { api.habitaciones(fecha).map { it.aDominio() } }
+
+    override suspend fun detalleHabitacion(habitacionId: Long, fecha: String) = ejecutarLlamada {
+        val d = api.detalleHabitacion(habitacionId, fecha)
+        NuevaEvaluacionHabitacion(habitacionId, d.fecha, d.basura, d.olores, d.residentes.map { pe.upeu.resi.resiup.domain.model.PuntajePersonal(it.residenteId, it.ropero, it.cama, it.escritorio, it.piso) })
+    }
+
+    override suspend fun reemplazarHabitacion(evaluacion: NuevaEvaluacionHabitacion) = ejecutarLlamada {
+        api.reemplazarHabitacion(
+            evaluacion.habitacionId,
+            LimpiezaHabitacionRequestDto(evaluacion.fecha, evaluacion.basura, evaluacion.olores, evaluacion.personas.map { PuntajePersonalDto(it.residenteId, it.ropero, it.cama, it.escritorio, it.piso) }),
+        ).map { it.aDominio() }
+    }
 
     override suspend fun registrarHabitacion(evaluacion: NuevaEvaluacionHabitacion) = ejecutarLlamada {
         api.registrarHabitacion(
@@ -114,7 +146,15 @@ class LimpiezaRepositoryImpl(private val api: LimpiezaApi) : LimpiezaRepository 
 }
 
 class GaritaRepositoryImpl(private val api: GaritaApi) : GaritaRepository {
-    override suspend fun verificar(qr: String) = ejecutarLlamada { api.verificar(qr).aDominio() }
-    override suspend fun registrar(qr: String, tipo: TipoMovimiento) = ejecutarLlamada { api.registrar(qr, tipo.aApi()).aDominio() }
+    override suspend fun verificar(qr: String, solicitudId: Long?) = ejecutarLlamada { api.verificar(qr, solicitudId).aDominio() }
+    override suspend fun permisosDe(qr: String) = ejecutarLlamada {
+        val d = api.permisosDe(qr)
+        pe.upeu.resi.resiup.domain.model.PermisosDeResidente(
+            d.mensaje, d.residente?.nombreCompleto, d.residente?.codigo,
+            d.permisos.map { pe.upeu.resi.resiup.domain.model.PermisoParaGarita(it.id, when (it.tipo) { "CORTO" -> pe.upeu.resi.resiup.domain.model.TipoPermiso.Corto; "LARGO" -> pe.upeu.resi.resiup.domain.model.TipoPermiso.Largo; else -> pe.upeu.resi.resiup.domain.model.TipoPermiso.Pernocte }, it.destino, kotlin.time.Instant.parse(it.salida), kotlin.time.Instant.parse(it.retorno), it.salidaAbierta) },
+            d.resultado !in listOf("QR_INVALIDO", "QR_REVOCADO", "RESIDENTE_INACTIVO"),
+        )
+    }
+    override suspend fun registrar(qr: String, tipo: TipoMovimiento, solicitudId: Long?) = ejecutarLlamada { api.registrar(qr, tipo.aApi(), solicitudId).aDominio() }
     override suspend fun historial(pagina: Int) = ejecutarLlamada { api.historial(pagina, TAMANIO_PAGINA).aDominio { it.aDominio() } }
 }

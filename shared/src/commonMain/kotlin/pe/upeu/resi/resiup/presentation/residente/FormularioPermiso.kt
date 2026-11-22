@@ -2,6 +2,8 @@ package pe.upeu.resi.resiup.presentation.residente
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -82,7 +84,7 @@ abstract class PermisoFormViewModel(
     fun destino(v: String) = _estado.update { it.copy(destino = v.take(200), errores = it.errores - "destino", error = null) }
     fun responsableNombre(v: String) = _estado.update { it.copy(responsableNombre = v.take(150), errores = it.errores - "responsableNombre", error = null) }
     fun responsableCelular(v: String) = _estado.update { it.copy(responsableCelular = v.take(30), errores = it.errores - "responsableCelular", error = null) }
-    fun acompanante(v: String) = _estado.update { it.copy(acompanante = v.take(150), error = null) }
+    fun acompanante(v: String) = _estado.update { it.copy(acompanante = v.take(150), errores = it.errores - "acompanante", error = null) }
 
     fun salida(v: Instant) = _estado.update {
         // En un corto, al cambiar el día de salida el ingreso sigue a la misma hora de ese día.
@@ -90,10 +92,15 @@ abstract class PermisoFormViewModel(
             val h = it.retorno.toLocalDateTime(ZonaResidencia)
             v.conHoraLima(h.hour, h.minute)
         } else it.retorno
-        it.copy(salida = v, retorno = retorno, errores = it.errores - "salida" - "retorno", error = null)
+        // Si la salida nueva deja al ingreso anterior antes de ella, se vuelve a pedir el ingreso.
+        if (retorno != null && retorno <= v) it.copy(salida = v, retorno = null, errores = it.errores - "salida" + ("retorno" to "Vuelve a elegir el ingreso: debe ser después de la salida"), error = null)
+        else it.copy(salida = v, retorno = retorno, errores = it.errores - "salida" - "retorno", error = null)
     }
 
-    fun retorno(v: Instant) = _estado.update { it.copy(retorno = v, errores = it.errores - "retorno", error = null) }
+    fun retorno(v: Instant) = _estado.update {
+        if (it.salida != null && v <= it.salida) it.copy(errores = it.errores + ("retorno" to "El ingreso debe ser después de la salida"), error = null)
+        else it.copy(retorno = v, errores = it.errores - "retorno", error = null)
+    }
 
     /** Valida lo básico en el cliente; las reglas reales (superposición, tipos) las aplica el servidor. */
     fun enviar() {
@@ -118,12 +125,13 @@ abstract class PermisoFormViewModel(
                 claveCliente = cola?.nuevaClave(), creadaEn = HorarioEnvio.reloj(),
             )
             enviarSolicitud(nueva)
-                .onSuccess { c -> alCrear(); _estado.update { it.copy(enviando = false, creada = c) } }
+                .onSuccess { c -> alCrear(); pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Permiso registrado exitosamente"); _estado.update { it.copy(enviando = false, creada = c) } }
                 .onFailure { e ->
                     val err = e.aErrorApi()
-                    if (cola != null && (err == ErrorApi.SinConexion || err == ErrorApi.TiempoAgotado)) {
+                    if (cola != null && !pernocta && (err == ErrorApi.SinConexion || err == ErrorApi.TiempoAgotado)) {
                         // Sin red: el permiso queda pendiente y la app lo envía sola cuando vuelva la conexión.
                         cola.encolar(nueva)
+                        pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Permiso guardado: se enviará cuando vuelva la conexión")
                         _estado.update { it.copy(enviando = false, enCola = true) }
                         return@onFailure
                     }
@@ -145,6 +153,7 @@ abstract class PermisoFormViewModel(
         if (s.tipo == TipoPermiso.Pernocte) {
             if (s.responsableNombre.isBlank()) put("responsableNombre", "Indica quién recibe en esa casa")
             if (s.responsableCelular.count { it.isDigit() } < 6) put("responsableCelular", "Indica un celular válido")
+            if (s.acompanante.isBlank()) put("acompanante", "Indica con quién vas (escribe «Nadie» si vas solo)")
         }
         if (s.salida == null) put("salida", "Elige fecha y hora de salida")
         else if (s.salida < ahora().minus(Duration.parse("5m"))) put("salida", "La salida no puede estar en el pasado")
@@ -155,7 +164,7 @@ abstract class PermisoFormViewModel(
         } else if (s.salida != null && s.tipo == TipoPermiso.Largo && (s.retorno - s.salida).inWholeMinutes <= CORTO_MAX_MINUTOS) {
             put("retorno", "Una salida de hasta 2 horas es un permiso «Corto».")
         } else if (s.salida != null && s.tipo == TipoPermiso.Largo && !mismoDia(s.salida, s.retorno)) {
-            put("retorno", "Un permiso largo debe regresar el mismo día (hasta las 23:59). Si regresas otro día, tu padre o madre debe pedir «Pernoctar fuera».")
+            put("retorno", "Un permiso largo debe regresar el mismo día (hasta las 23:59). Si regresas otro día, elige «Pernoctar».")
         } else if (s.salida != null && s.tipo == TipoPermiso.Pernocte && mismoDia(s.salida, s.retorno)) {
             put("retorno", "Para pernoctar fuera el ingreso debe ser otro día.")
         }
@@ -164,13 +173,13 @@ abstract class PermisoFormViewModel(
     private fun mismoDia(a: Instant, b: Instant) = a.toLocalDateTime(ZonaResidencia).date == b.toLocalDateTime(ZonaResidencia).date
 }
 
-/** Formulario del residente: solo corto y largo (el pernoctar lo envía su padre/madre). */
+/** Formulario del residente: corto, largo y pernoctar fuera (este último siempre espera el visto bueno del padre/madre). */
 class SolicitudFormViewModel(
     repo: PermisoRepository,
     consultas: ConsultasResidenteRepository? = null,
     alCrear: () -> Unit = {},
     cola: pe.upeu.resi.resiup.data.repository.ColaPermisos? = null,
-) : PermisoFormViewModel(listOf(TipoPermiso.Corto, TipoPermiso.Largo), false, { repo.crear(it) }, alCrear, cola) {
+) : PermisoFormViewModel(listOf(TipoPermiso.Corto, TipoPermiso.Largo, TipoPermiso.Pernocte), false, { repo.crear(it) }, alCrear, cola) {
     private val _privilegio = MutableStateFlow<Boolean?>(null)
 
     /** Verdadero si el residente tiene el privilegio de enviar sus permisos sin pasar antes por su padre/madre (null = aún no se sabe). */
@@ -181,42 +190,30 @@ class SolicitudFormViewModel(
     }
 }
 
-/** Campos del formulario según el tipo de permiso; los comparten el residente y el padre/madre. */
+/** Campos del formulario según el tipo de permiso, como en el prototipo; los comparten el residente y el padre/madre. */
 @Composable
 fun CamposPermiso(s: SolicitudFormState, vm: PermisoFormViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         if (vm.tiposPermitidos.size > 1) {
-            Text("Tipo de permiso", style = MaterialTheme.typography.labelMedium)
-            Segmentos(vm.tiposPermitidos, s.tipo, { it.etiqueta }, vm::tipo)
-            Text(
-                when (s.tipo) {
-                    TipoPermiso.Corto -> "Corto: sales y vuelves el mismo día, hasta 2 horas."
-                    TipoPermiso.Largo -> "Largo: más de 2 horas."
-                    TipoPermiso.Pernocte -> "Pernoctar fuera: duerme en otra casa. Se indica quién lo recibe."
-                },
-                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Segmentos(vm.tiposPermitidos, s.tipo, { if (it == TipoPermiso.Pernocte) "Pernoctar" else it.etiqueta }, vm::tipo)
         }
         ResiCampoTexto(s.destino, vm::destino, "Lugar", error = s.errores["destino"], habilitado = !s.enviando)
+        ResiCampoTexto(s.motivo, vm::motivo, "Motivo", error = s.errores["motivo"], habilitado = !s.enviando)
         if (s.tipo == TipoPermiso.Pernocte) {
-            ResiCampoTexto(s.responsableNombre, vm::responsableNombre, "Responsable de la casa a donde va", error = s.errores["responsableNombre"], habilitado = !s.enviando)
+            ResiCampoTexto(s.responsableNombre, vm::responsableNombre, "Nombre del responsable de la casa a donde va:", error = s.errores["responsableNombre"], habilitado = !s.enviando)
             ResiCampoTexto(
-                s.responsableCelular, vm::responsableCelular, "Celular del responsable", error = s.errores["responsableCelular"],
+                s.responsableCelular, vm::responsableCelular, "Celular del responsable de la casa a donde va:", error = s.errores["responsableCelular"],
                 tipoTeclado = KeyboardType.Phone, habilitado = !s.enviando,
             )
+            ResiCampoTexto(s.acompanante, vm::acompanante, "Acompañado de:", error = s.errores["acompanante"], habilitado = !s.enviando)
         }
-        ResiCampoTexto(s.motivo, vm::motivo, "Motivo", error = s.errores["motivo"], habilitado = !s.enviando)
-        CampoFechaHora(if (s.tipo == TipoPermiso.Corto) "Salida (fecha y hora)" else "Salida", s.salida, s.errores["salida"], vm::salida)
-        if (s.tipo == TipoPermiso.Corto) {
-            CampoHora("Hora de ingreso", s.retorno, s.salida, s.errores["retorno"], vm::retorno)
-        } else {
-            CampoFechaHora("Ingreso", s.retorno, s.errores["retorno"], vm::retorno)
-        }
-        if (s.tipo == TipoPermiso.Pernocte) {
-            ResiCampoTexto(s.acompanante, vm::acompanante, "Acompañado de", ayuda = "Si va solo, déjalo vacío: se registra «Nadie».", habilitado = !s.enviando)
-        }
-        if (s.tipo != TipoPermiso.Corto && s.retorno != null && s.salida != null) {
-            Text("Del ${s.salida.formatoLima()} al ${s.retorno.formatoLima()}", Modifier.padding(start = Espacio.xs), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s), verticalAlignment = Alignment.Top) {
+            CampoFechaHora("Fecha y hora de salida", s.salida, s.errores["salida"], vm::salida, Modifier.weight(1f))
+            if (s.tipo == TipoPermiso.Corto) {
+                CampoHora("Hora de ingreso", s.retorno, s.salida, s.errores["retorno"], vm::retorno, Modifier.weight(1f))
+            } else {
+                CampoFechaHora("Fecha y hora de ingreso", s.retorno, s.errores["retorno"], vm::retorno, Modifier.weight(1f), habilitado = s.salida != null, desde = s.salida)
+            }
         }
     }
 }
