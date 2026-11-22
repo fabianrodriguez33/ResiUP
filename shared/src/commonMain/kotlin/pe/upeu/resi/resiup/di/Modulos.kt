@@ -71,6 +71,7 @@ import pe.upeu.resi.resiup.presentation.residente.MisSolicitudesViewModel
 import pe.upeu.resi.resiup.presentation.residente.MovimientosViewModel
 import pe.upeu.resi.resiup.presentation.residente.PerfilViewModel
 import pe.upeu.resi.resiup.presentation.residente.RankingViewModel
+import pe.upeu.resi.resiup.presentation.personal.PermisosGaritaViewModel
 import pe.upeu.resi.resiup.presentation.residente.ReservasViewModel
 import pe.upeu.resi.resiup.presentation.residente.ReservaFormViewModel
 import pe.upeu.resi.resiup.presentation.residente.FotoPerfilViewModel
@@ -97,6 +98,8 @@ fun datosModule(config: ConfigEntorno) = module {
     single<HttpClient> { crearHttpClient(get<HttpClientEngine>(), get(), get(), get()) }
     single { AuthApi(get()) }
     single { ResidenteApi(get()) }
+    single { pe.upeu.resi.resiup.presentation.admin.AdminApi(get()) }
+    single { pe.upeu.resi.resiup.presentation.personal.AccionesPastorApi(get()) }
     single { PermisoApi(get()) }
     single { pe.upeu.resi.resiup.data.remote.ReservasApi(get()) }
     single { pe.upeu.resi.resiup.presentation.residente.ReservasRepository(get()) }
@@ -152,6 +155,7 @@ val presentacionModule = module {
     viewModelOf(::InicioResidenteViewModel)
     viewModelOf(::RankingViewModel)
     viewModelOf(::ReservasViewModel)
+    viewModelOf(::PermisosGaritaViewModel)
     viewModelOf(::ReservaFormViewModel)
     viewModelOf(::FotoPerfilViewModel)
     viewModelOf(::NotasResidenteViewModel)

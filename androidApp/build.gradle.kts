@@ -29,6 +29,7 @@ kotlin {
     }
 }
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation(project(":shared"))
 
     implementation(libs.androidx.activity.compose)
@@ -59,6 +60,9 @@ android {
                 keyPassword = firma.getProperty("keyPassword")
             }
         }
+    }
+    compileOptions {
+        isCoreLibraryDesugaringEnabled = true // java.time en Android 7 (minSdk 24)
     }
     packaging {
         resources {

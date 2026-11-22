@@ -31,6 +31,27 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import pe.upeu.resi.resiup.data.remote.ReservaRequestDto
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.window.Dialog
+import org.jetbrains.compose.resources.decodeToImageBitmap
+import pe.upeu.resi.resiup.domain.model.ImagenElegida
+import pe.upeu.resi.resiup.domain.repository.TramitesRepository
+import pe.upeu.resi.resiup.presentation.components.rememberSelectorImagen
+import pe.upeu.resi.resiup.presentation.components.ResiIcono
+import pe.upeu.resi.resiup.presentation.tramites.EvidenciaImagen
+import pe.upeu.resi.resiup.presentation.util.fechaConDia
 import pe.upeu.resi.resiup.data.remote.ReservasApi
 import pe.upeu.resi.resiup.data.remote.aApi
 import pe.upeu.resi.resiup.data.remote.aDominio
@@ -71,7 +92,7 @@ import pe.upeu.resi.resiup.presentation.util.formatoLima
 class ReservasRepository(private val api: ReservasApi) {
     suspend fun oferta() = ejecutarLlamada { api.oferta().comidas.map { it.aDominio() } }
     suspend fun mias() = ejecutarLlamada { api.mias(0).contenido.map { it.aDominio() } }
-    suspend fun reservar(n: NuevaReserva) = ejecutarLlamada { api.reservar(ReservaRequestDto(n.tipo.aApi(), n.fecha, n.motivo, n.curso)).aDominio() }
+    suspend fun reservar(n: NuevaReserva) = ejecutarLlamada { api.reservar(ReservaRequestDto(n.tipo.aApi(), n.fecha, n.motivo, n.curso, n.evidenciaId)).aDominio() }
     suspend fun cancelar(id: Long) = ejecutarLlamada { api.cancelar(id).aDominio() }
 }
 
@@ -96,30 +117,41 @@ class ReservasViewModel(private val repo: ReservasRepository) : ViewModel() {
 }
 
 data class ReservaFormState(
-    val motivo: String = "", val curso: String = "", val turno: Boolean? = null,
+    val motivo: String = "", val curso: String = "", val turno: Boolean? = null, val foto: ImagenElegida? = null,
     val errores: Map<String, String> = emptyMap(), val enviando: Boolean = false, val error: ErrorApi? = null, val creada: Boolean = false,
 )
 
-class ReservaFormViewModel(private val repo: ReservasRepository) : ViewModel() {
+class ReservaFormViewModel(private val repo: ReservasRepository, private val tramites: TramitesRepository) : ViewModel() {
     private val _estado = MutableStateFlow(ReservaFormState())
     val estado: StateFlow<ReservaFormState> = _estado.asStateFlow()
 
     fun motivo(v: String) = _estado.update { it.copy(motivo = v.take(300), errores = it.errores - "motivo", error = null) }
     fun curso(v: String) = _estado.update { it.copy(curso = v.take(100), error = null) }
     fun turno(v: Boolean) = _estado.update { it.copy(turno = v, errores = it.errores - "turno", error = null) }
+    fun foto(v: ImagenElegida?) { if (v != null) _estado.update { it.copy(foto = v, errores = it.errores - "foto", error = null) } }
 
     fun enviar(comida: ComidaOfertada, ofertaCena: List<ComidaOfertada>) {
         val s = _estado.value
         if (s.enviando) return
-        if (s.motivo.isBlank()) { _estado.update { it.copy(errores = mapOf("motivo" to "Indica el motivo")) }; return }
-        // Las dos cenas (táper y segundo turno) son opciones de la misma comida.
-        if (comida.tipo.esCena && s.turno == null) { _estado.update { it.copy(errores = mapOf("turno" to "Elige turno o táper")) }; return }
+        // Las dos cenas (táper y segundo turno) son opciones de la misma comida. Motivo y foto son obligatorios.
+        val faltas = buildMap {
+            if (comida.tipo.esCena && s.turno == null) put("turno", "Elige turno o táper")
+            if (s.motivo.isBlank()) put("motivo", "Indica el motivo")
+            if (s.curso.isBlank()) put("curso", "Indica el curso o actividad")
+            if (s.foto == null) put("foto", "Adjunta una foto")
+        }
+        if (faltas.isNotEmpty()) { _estado.update { it.copy(errores = faltas) }; return }
         val tipo = if (comida.tipo.esCena) (if (s.turno == true) TipoReserva.CenaSegundoTurno else TipoReserva.CenaTaper) else comida.tipo
         val fecha = (ofertaCena.firstOrNull { it.tipo == tipo } ?: comida).fecha
         _estado.update { it.copy(enviando = true, error = null) }
         viewModelScope.launch {
-            repo.reservar(NuevaReserva(tipo, fecha, s.motivo.trim(), s.curso.trim().ifBlank { null }))
-                .onSuccess { _estado.update { it.copy(enviando = false, creada = true) } }
+            val evidencia = tramites.subirEvidencia(s.foto!!).getOrElse { e ->
+                val err = e.aErrorApi()
+                _estado.update { it.copy(enviando = false, error = err) }
+                return@launch
+            }
+            repo.reservar(NuevaReserva(tipo, fecha, s.motivo.trim(), s.curso.trim(), evidencia))
+                .onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Reserva enviada exitosamente"); _estado.update { it.copy(enviando = false, creada = true) } }
                 .onFailure { e ->
                     val err = e.aErrorApi()
                     _estado.update { if (err is ErrorApi.Validacion) it.copy(enviando = false, errores = err.porCampo) else it.copy(enviando = false, error = err) }
@@ -177,12 +209,18 @@ private fun InicioReservas(estado: Carga<ReservasUi>, reintentar: () -> Unit, on
                 if (estado.datos.historial.isEmpty()) Text("Aún no tienes reservas.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 estado.datos.historial.forEach { r ->
                     ResiTarjeta(onClick = { onDetalle(r) }) {
-                        ElementoLista(r.tipo.etiqueta, subtitulo = r.fecha.fechaLegible(), icono = ResiIconos.Cena, acento = Acento.Azul, final = { ChipEstado(r.estado.etiqueta, r.estado.aVisual()) })
+                        ElementoLista(r.tipo.etiqueta, subtitulo = r.fecha.fechaConDia(), icono = r.tipo.icono(), acento = Acento.Azul, final = { ChipEstado(r.estado.etiqueta, r.estado.aVisual()) })
                     }
                 }
             }
         }
     }
+}
+
+private fun TipoReserva.icono() = when (this) {
+    TipoReserva.Almuerzo -> ResiIconos.Almuerzo
+    TipoReserva.Desayuno -> ResiIconos.Desayuno
+    else -> ResiIconos.Cena
 }
 
 private fun EstadoReserva.aVisual() = when (this) {
@@ -197,6 +235,7 @@ private fun FormularioReserva(comida: ComidaOfertada, oferta: List<ComidaOfertad
     val vm = koinViewModel<ReservaFormViewModel>()
     val s by vm.estado.collectAsState()
     LaunchedEffect(s.creada) { if (s.creada) onListo() }
+    val abrirGaleria = rememberSelectorImagen(vm::foto)
     val nombre = when {
         comida.tipo.esCena -> "Cena"
         else -> comida.tipo.etiqueta
@@ -205,9 +244,32 @@ private fun FormularioReserva(comida: ComidaOfertada, oferta: List<ComidaOfertad
         TituloPantalla("Reserva de $nombre", subtitulo = "Llene los datos")
         if (comida.tipo.esCena) pe.upeu.resi.resiup.presentation.components.CampoDesplegable("Turno o Táper", listOf(true, false), s.turno, { if (it) "Turno" else "Táper" }, vm::turno)
         ResiCampoTexto(s.motivo, vm::motivo, "Motivo", error = s.errores["motivo"], habilitado = !s.enviando)
-        if (comida.tipo != TipoReserva.Desayuno) ResiCampoTexto(s.curso, vm::curso, "Curso", error = s.errores["curso"], habilitado = !s.enviando)
+        ResiCampoTexto(s.curso, vm::curso, "Curso", error = s.errores["curso"], habilitado = !s.enviando)
+        CampoFoto(s.foto, s.errores["foto"], !s.enviando, abrirGaleria)
         s.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
         ResiBoton("Enviar reserva", { vm.enviar(comida, oferta) }, Modifier.fillMaxWidth(), cargando = s.enviando)
+    }
+}
+
+/** Campo «Adjuntar foto» del formulario: la foto es obligatoria; al elegirla se muestra una vista previa. */
+@Composable
+private fun CampoFoto(foto: ImagenElegida?, error: String?, habilitado: Boolean, onElegir: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+        Box(
+            Modifier.fillMaxWidth().heightIn(min = 96.dp).clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant)
+                .clickable(enabled = habilitado, role = Role.Button, onClickLabel = "Adjuntar foto", onClick = onElegir).padding(vertical = Espacio.m),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+                ResiIcono(ResiIconos.Adjuntar, null, tint = MaterialTheme.colorScheme.onSurface, tamano = 44.dp)
+                Text(if (foto == null) "Adjuntar foto" else "Foto adjunta · toca para cambiarla", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        foto?.let { f ->
+            val bitmap = remember(f) { runCatching { f.bytes.decodeToImageBitmap() }.getOrNull() }
+            if (bitmap != null) Image(bitmap, "Foto elegida", Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Fit)
+        }
+        error?.let { Text(it, Modifier.padding(start = Espacio.l), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error) }
     }
 }
 
@@ -216,30 +278,55 @@ private fun DetalleReserva(r: Reserva, onListo: () -> Unit, onVolver: () -> Unit
     val repo = org.koin.compose.koinInject<ReservasRepository>()
     val alcance = androidx.compose.runtime.rememberCoroutineScope()
     var confirmar by remember { mutableStateOf(false) }
+    var verFoto by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<ErrorApi?>(null) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+        // Como en el prototipo: flecha arriba y el estado debajo, en una píldora centrada.
+        Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
             BotonAtras(onVolver)
-            ChipEstado(r.estado.etiqueta, r.estado.aVisual())
+            ChipEstado(r.estado.etiqueta, r.estado.aVisual(), Modifier.width(128.dp), centrado = true)
         }
         ResiTarjeta {
-            Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                    Dato("Tipo", r.tipo.etiqueta, Modifier.weight(1f)); Dato("Registrado", r.creadaEn.formatoLima(), Modifier.weight(1f))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                    Dato("Tipo", r.tipo.etiqueta)
+                    Dato("Motivo", r.motivo)
+                    Dato("Curso", r.curso ?: "-")
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                    Dato("Motivo", r.motivo, Modifier.weight(1f)); Dato("Curso", r.curso ?: "-", Modifier.weight(1f))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                    Dato("Registrado", r.creadaEn.formatoLima())
+                    if (r.evidenciaId != null) {
+                        Column {
+                            Text("Archivo", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                            Box(
+                                Modifier.padding(top = Espacio.xs).size(48.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primary)
+                                    .clickable(role = Role.Button, onClickLabel = "Ver la foto adjunta") { verFoto = true },
+                                contentAlignment = Alignment.Center,
+                            ) { ResiIcono(ResiIconos.Adjuntar, null, tint = Color.White, tamano = 28.dp) }
+                        }
+                    }
+                    r.comentario?.let { Dato("Comentario del pastor", it) }
                 }
-                r.comentario?.let { Dato("Comentario del pastor", it) }
             }
         }
         error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
+        // Se puede cancelar mientras esté pendiente o reservada (el servidor la rechaza si ya terminó el plazo).
         if (r.estado.activa) ResiBoton("Cancelar reserva", { confirmar = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
+    }
+    if (verFoto && r.evidenciaId != null) {
+        Dialog(onDismissRequest = { verFoto = false }) {
+            ResiTarjeta {
+                Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                    EvidenciaImagen(r.evidenciaId)
+                    ResiBoton("Cerrar", { verFoto = false }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
+                }
+            }
+        }
     }
     if (confirmar) {
         DialogoConfirmacion("Cancelar reserva", "¿Seguro que deseas cancelar esta reserva?", "Cancelar reserva", {
             confirmar = false
-            alcance.launch { repo.cancelar(r.id).onSuccess { onListo() }.onFailure { error = it.aErrorApi() } }
+            alcance.launch { repo.cancelar(r.id).onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Reserva cancelada exitosamente"); onListo() }.onFailure { error = it.aErrorApi() } }
         }, { confirmar = false }, destructivo = true)
     }
 }

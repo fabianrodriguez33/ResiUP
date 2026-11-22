@@ -1,5 +1,6 @@
 package pe.upeu.resi.resiup.presentation.personal
 
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -103,6 +104,16 @@ private fun InicioLimpieza(s: LimpiezaFormState, vm: LimpiezaPreceptorViewModel,
     val hoy = remember { hoyLima() }
     var calendario by remember { mutableStateOf(false) }
     val habilesHoy = s.fecha == hoy && s.fecha.dayOfWeek.ordinal < 5
+    var eliminandoDia by remember { mutableStateOf(false) }
+    val accionesDia = org.koin.compose.koinInject<AccionesPastorApi>()
+    val alcanceDia = androidx.compose.runtime.rememberCoroutineScope()
+    if (eliminandoDia) {
+        pe.upeu.resi.resiup.presentation.components.DialogoMotivo(
+            "Eliminar toda la evaluación", "Se eliminan las evaluaciones de todas las habitaciones de ${s.fecha.toString().fechaLegible()}. Queda anotado quién y por qué.", "Motivo", "Eliminar",
+            { m -> eliminandoDia = false; alcanceDia.launch { pe.upeu.resi.resiup.data.remote.ejecutarLlamada { accionesDia.eliminarLimpiezaDelDia(s.fecha.toString(), m) }.onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Evaluación eliminada exitosamente"); vm.cargar() } } },
+            { eliminandoDia = false }, destructivo = true,
+        )
+    }
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla(
             "Limpieza", Modifier.padding(top = Espacio.l), subtitulo = "Evaluación individual sobre 20 puntos",
@@ -111,13 +122,16 @@ private fun InicioLimpieza(s: LimpiezaFormState, vm: LimpiezaPreceptorViewModel,
         FranjaSemana(s.fecha, vm::cambiarFecha)
         Text("Evaluaciones del ${s.fecha.toString().fechaLegible()}", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         s.mensaje?.let { BannerMensaje(it, EstadoVisual.Exito) }
-        ResiBoton("Crear nueva evaluación", onCrear, Modifier.fillMaxWidth(), habilitado = habilesHoy)
         when (val h = s.habitaciones) {
             Carga.Cargando -> IndicadorCarga(Modifier.padding(Espacio.xl))
             is Carga.Fallo -> BannerMensaje(h.error.aMensaje(), EstadoVisual.Error)
-            is Carga.Exito -> if (h.datos.any { it.evaluados > 0 }) {
+            is Carga.Exito -> if (!h.datos.any { it.evaluados > 0 }) {
+                // Sin ninguna evaluación ese día: se puede crear (solo hoy y de lunes a viernes).
+                ResiBoton("Crear nueva evaluación", onCrear, Modifier.fillMaxWidth(), habilitado = habilesHoy)
+            } else {
                 val completa = h.datos.all { it.completa || it.residentes.isEmpty() }
-                ResiTarjeta {
+                ResiBoton("Eliminar toda la evaluación", { eliminandoDia = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
+                ResiTarjeta(onClick = onCrear) {
                     ElementoLista(
                         "Evaluación", subtitulo = s.fecha.toString().fechaLegible(), icono = ResiIconos.Limpieza, acento = Acento.Ambar,
                         final = { ChipEstado(if (completa) "Terminada" else "En Curso", if (completa) EstadoVisual.Exito else EstadoVisual.Advertencia) },
@@ -132,10 +146,35 @@ private fun InicioLimpieza(s: LimpiezaFormState, vm: LimpiezaPreceptorViewModel,
 @Composable
 private fun Habitaciones(s: LimpiezaFormState, vm: LimpiezaPreceptorViewModel) {
     var piso by remember { mutableStateOf<String?>(null) }
+    var eliminando by remember { mutableStateOf<HabitacionLimpieza?>(null) }
+    var elegidaEvaluada by remember { mutableStateOf<HabitacionLimpieza?>(null) }
+    elegidaEvaluada?.let { h ->
+        androidx.compose.ui.window.Dialog(onDismissRequest = { elegidaEvaluada = null }) {
+            ResiTarjeta {
+                Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                    Text("Habitación ${h.numero}", style = MaterialTheme.typography.titleLarge)
+                    Text("Ya fue evaluada. Puedes modificar los puntajes o eliminar la evaluación para volver a hacerla.", style = MaterialTheme.typography.bodyMedium)
+                    ResiBoton("Modificar evaluación", { elegidaEvaluada = null; vm.editar(h) }, Modifier.fillMaxWidth())
+                    ResiBoton("Eliminar evaluación", { elegidaEvaluada = null; eliminando = h }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
+                    ResiBoton("Cerrar", { elegidaEvaluada = null }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
+                }
+            }
+        }
+    }
+    val acciones = org.koin.compose.koinInject<AccionesPastorApi>()
+    val alcance = androidx.compose.runtime.rememberCoroutineScope()
+    eliminando?.let { h ->
+        pe.upeu.resi.resiup.presentation.components.DialogoMotivo(
+            "Eliminar evaluación", "Se elimina la evaluación de la habitación ${h.numero} de ${s.fecha.toString().fechaLegible()} para volver a evaluarla. Queda anotado quién y por qué.", "Motivo", "Eliminar",
+            { m -> eliminando = null; alcance.launch { pe.upeu.resi.resiup.data.remote.ejecutarLlamada { acciones.eliminarLimpieza(h.id, s.fecha.toString(), m) }.onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Evaluación eliminada exitosamente"); vm.cargar() } } },
+            { eliminando = null }, destructivo = true,
+        )
+    }
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla("Evaluación ${s.fecha.toString().fechaLegible().substringBeforeLast(' ')}", Modifier.padding(top = Espacio.l), subtitulo = "Elige la habitación")
+        // El título, la flecha y el selector de piso quedan quietos; solo las habitaciones se desplazan.
+        CampoDesplegable("Elige el piso", PISOS, piso, { "$it PISO" }, { piso = it })
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-            CampoDesplegable("Elige el piso", PISOS, piso, { "$it PISO" }, { piso = it })
             when (val h = s.habitaciones) {
                 Carga.Cargando -> IndicadorCarga(Modifier.padding(Espacio.xl))
                 is Carga.Fallo -> BannerMensaje(h.error.aMensaje(), EstadoVisual.Error)
@@ -147,7 +186,7 @@ private fun Habitaciones(s: LimpiezaFormState, vm: LimpiezaPreceptorViewModel) {
                     delPiso.chunked(2).forEach { fila ->
                         Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
                             fila.forEach { hab ->
-                                ResiTarjeta(Modifier.weight(1f), onClick = { vm.abrir(hab) }) {
+                                ResiTarjeta(Modifier.weight(1f), onClick = { if (hab.completa) elegidaEvaluada = hab else vm.abrir(hab) }) {
                                     ElementoLista(
                                         hab.numero, subtitulo = if (hab.completa) "Evaluado" else "Falta evaluación", icono = ResiIconos.Limpieza,
                                         acento = if (hab.completa) Acento.Verde else Acento.Ambar,
@@ -182,6 +221,7 @@ private fun Habitacion(s: LimpiezaFormState, hab: HabitacionLimpieza, vm: Limpie
             }
             s.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else if (it is ErrorApi.Validacion) it.porCampo.values.firstOrNull() ?: it.aMensaje() else it.aMensaje(), EstadoVisual.Error) }
         }
+        if (s.edicion) ResiBoton("Guardar cambios", vm::guardarCambios, Modifier.fillMaxWidth(), habilitado = !s.enviando, cargando = s.enviando)
         ResiBoton("Registrar evaluación", vm::registrarCriterio, Modifier.fillMaxWidth().padding(bottom = Espacio.m), habilitado = s.criterioCompleto && !s.enviando, cargando = s.enviando)
     }
 }

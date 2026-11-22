@@ -20,6 +20,7 @@ object Destinos {
 
     /** Pantalla secundaria del residente (se abre desde los accesos del inicio; no es una pestaña de la barra). */
     const val Notas = "notas"
+    const val Ranking = "ranking"
 }
 
 /** Cada rol ve únicamente las opciones que puede usar. */
@@ -39,6 +40,7 @@ fun Rol.destinos(): List<ItemNavegacion> = when (this) {
         ItemNavegacion(Destinos.Mas, "Más", ResiIconos.Mas),
     )
     Rol.Garita -> listOf(
+        ItemNavegacion(Destinos.Inicio, "Inicio", ResiIconos.Inicio),
         ItemNavegacion(Destinos.Escanear, "Escanear", ResiIconos.Escanear),
         ItemNavegacion(Destinos.Historial, "Historial", ResiIconos.Historial),
         ItemNavegacion(Destinos.Mas, "Cuenta", ResiIconos.Perfil),

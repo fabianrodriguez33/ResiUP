@@ -172,6 +172,11 @@ data class VerificacionGarita(
     val minutosTarde: Int?,
 )
 
+/** Un permiso aprobado que garita puede elegir al escanear: [salidaAbierta] = el residente ya salio con el y falta su retorno. */
+data class PermisoParaGarita(val id: Long, val tipo: TipoPermiso, val destino: String, val salida: Instant, val retorno: Instant, val salidaAbierta: Boolean)
+
+data class PermisosDeResidente(val mensaje: String, val nombreCompleto: String?, val codigo: String?, val permisos: List<PermisoParaGarita>, val valido: Boolean)
+
 data class MovimientoRegistrado(
     val id: Long,
     val codigo: String,

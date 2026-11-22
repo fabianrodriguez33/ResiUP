@@ -1,5 +1,6 @@
 package pe.upeu.resi.resiup.presentation.residente
 
+import androidx.compose.foundation.clickable
 import pe.upeu.resi.resiup.presentation.theme.Acento
 import pe.upeu.resi.resiup.presentation.perfil.VerificarCorreoDialogo
 import pe.upeu.resi.resiup.presentation.components.ResiIcono
@@ -103,24 +104,23 @@ fun InicioResidenteScreen(onIr: (String) -> Unit, vm: InicioResidenteViewModel =
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
             TarjetaHola(
                 ui.perfil.nombreCompleto,
-                ui.perfil.habitacion?.let { listOfNotNull("Habitación ${it.numero}", it.etiquetaCama).joinToString(" · ") } ?: "Sin habitación asignada",
+                ui.perfil.habitacion?.let { listOfNotNull("Habitación ${it.numero}", it.etiquetaCama).joinToString(" · ") } ?: "Sin habitación",
                 Acento.Rosa, { onIr(Destinos.Perfil) }, Modifier.padding(top = 40.dp), onQr = { verQr = true },
                 foto = koinViewModel<FotoPerfilViewModel>().foto.collectAsState().value,
             )
             val ranking = koinViewModel<RankingViewModel>().estado.collectAsState().value
             val r = (ranking as? Carga.Exito)?.datos
             Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                TarjetaRanking("Ranking en Cultos", r?.cultos?.posicion, r?.cultos?.total ?: 0, ResiIconos.Asistencias, Acento.Naranja, Modifier.weight(1f))
-                TarjetaRanking("Ranking en Limpieza", r?.limpieza?.posicion, r?.limpieza?.total ?: 0, ResiIconos.Limpieza, Acento.Verde, Modifier.weight(1f))
+                TarjetaRanking("Ranking en Cultos", r?.cultos?.posicion, r?.cultos?.total ?: 0, ResiIconos.Cruz, Acento.Naranja, Modifier.weight(1f).clickable { onIr(Destinos.Ranking) })
+                TarjetaRanking("Ranking en Limpieza", r?.limpieza?.posicion, r?.limpieza?.total ?: 0, ResiIconos.Asistencias, Acento.Verde, Modifier.weight(1f).clickable { onIr(Destinos.Ranking) })
             }
             EncabezadoSeccion("Accesos")
             CuadriculaModulos(
                 listOf(
                     ModuloUi("Permisos", ResiIconos.Permisos, Acento.Azul, { onIr(Destinos.Permisos) }),
-                    ModuloUi("Reservas", ResiIconos.Cena, Acento.Azul, { onIr(Destinos.Reservas) }),
-                    ModuloUi("Asistencias", ResiIconos.Calendario, Acento.Verde, { onIr(Destinos.Asistencias) }),
-                    ModuloUi("Limpieza", ResiIconos.Limpieza, Acento.Naranja, { onIr(Destinos.Limpieza) }),
-                    ModuloUi("Notas", ResiIconos.Notas, Acento.Violeta, { onIr(Destinos.Notas) }),
+                    ModuloUi("Reservas", ResiIconos.Reservas, Acento.Azul, { onIr(Destinos.Reservas) }),
+                    ModuloUi("Asistencias", ResiIconos.Calendario, Acento.Azul, { onIr(Destinos.Asistencias) }),
+                    ModuloUi("Limpieza", ResiIconos.Limpieza, Acento.Azul, { onIr(Destinos.Limpieza) }),
                 ),
             )
         }
@@ -208,6 +208,7 @@ internal fun DatoPerfil(
 @Composable
 fun AsistenciasScreen(vm: AsistenciasViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
+    val diasConCulto by vm.diasConCulto.collectAsState()
     val hoy = remember { hoyLima() }
     var dia by remember { mutableStateOf(hoy) }
     var calendario by remember { mutableStateOf(false) }
@@ -219,7 +220,10 @@ fun AsistenciasScreen(vm: AsistenciasViewModel = koinViewModel()) {
         FranjaSemana(dia, { dia = it })
         Text("Historial del ${dia.toString().fechaLegible()}", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         ContenidoConsulta(estado, vm::reintentar, Modifier.weight(1f)) { lista ->
-            if (dia > hoy || dia.dayOfWeek.ordinal >= 5) {
+            // Sin culto: fin de semana, fecha futura o un día hábil en que el pastor no abrió ningún culto (si se sabe).
+            val sinCulto = dia > hoy || dia.dayOfWeek.ordinal >= 5 ||
+                (dia < hoy && diasConCulto?.let { dia.toString() !in it && lista.none { a -> a.fecha == dia.toString() } } == true)
+            if (sinCulto) {
                 Text("No hay cultos registrados", Modifier.fillMaxWidth().padding(top = Espacio.l), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
             } else {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
@@ -228,7 +232,7 @@ fun AsistenciasScreen(vm: AsistenciasViewModel = koinViewModel()) {
             }
             if (calendario) {
                 Dialog(onDismissRequest = { calendario = false }) {
-                    CalendarioAsistencias(lista, hoy, onElegir = { dia = it; calendario = false })
+                    CalendarioAsistencias(lista, hoy, onElegir = { dia = it; calendario = false }, diasConCulto = diasConCulto)
                 }
             }
         }
@@ -272,17 +276,15 @@ fun LimpiezaResidenteScreen(vm: LimpiezaResidenteViewModel = koinViewModel()) {
         ContenidoConsulta(estado, vm::reintentar, Modifier.weight(1f)) { ui ->
             val evaluacion = ui.evaluaciones.firstOrNull { it.fecha == dia.toString() }
             if (evaluacion == null) {
-                Text("Todavía no tienes evaluaciones", Modifier.fillMaxWidth().padding(top = Espacio.l), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+                Text("No hay evaluaciones registradas", Modifier.fillMaxWidth().padding(top = Espacio.l), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
             } else {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
                     CriterioLimpieza.entries.chunked(2).forEach { fila ->
                         Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
-                            fila.forEach { c -> PuntajeCriterio(c, evaluacion.puntajes[c], Modifier.weight(1f)) }
+                            fila.forEach { c -> PuntajeCriterio(c, evaluacion.puntajes[c], evaluacion.total >= NOTA_MINIMA_LIMPIEZA, Modifier.weight(1f)) }
                             if (fila.size == 1) Spacer(Modifier.weight(1f))
                         }
                     }
-                    Text("Total: ${evaluacion.total}/${evaluacion.maximo}", Modifier.padding(top = Espacio.s), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                    evaluacion.observacion?.let { Text("“$it”", style = MaterialTheme.typography.bodyMedium) }
                 }
             }
             if (calendario) {
@@ -294,9 +296,12 @@ fun LimpiezaResidenteScreen(vm: LimpiezaResidenteViewModel = koinViewModel()) {
     }
 }
 
-/** Un criterio con su nota: verde si es la máxima, rojo si es menor. */
+/** Nota mínima de limpieza para estar habilitado (12/20): con el total evaluado desde ahí los puntajes van en verde; por debajo, en rojo. */
+private const val NOTA_MINIMA_LIMPIEZA = 12
+
+/** Un criterio con su nota: verde si el total del día aprueba (12 o más sobre 20), rojo si no. */
 @Composable
-private fun PuntajeCriterio(c: CriterioLimpieza, puntaje: Int?, modifier: Modifier = Modifier) {
+private fun PuntajeCriterio(c: CriterioLimpieza, puntaje: Int?, aprobado: Boolean, modifier: Modifier = Modifier) {
     val (nombre, icono) = when (c) {
         CriterioLimpieza.Cama -> "Cama" to ResiIconos.Cama
         CriterioLimpieza.Ropero -> "Ropero" to ResiIconos.Ropero
@@ -306,7 +311,7 @@ private fun PuntajeCriterio(c: CriterioLimpieza, puntaje: Int?, modifier: Modifi
         CriterioLimpieza.Piso -> "Piso" to ResiIconos.Piso
     }
     val colores = pe.upeu.resi.resiup.presentation.theme.ResiTheme.colores
-    val bueno = puntaje != null && puntaje >= c.maximo
+    val bueno = aprobado
     ResiTarjeta(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
             Box(Modifier.size(36.dp).background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {

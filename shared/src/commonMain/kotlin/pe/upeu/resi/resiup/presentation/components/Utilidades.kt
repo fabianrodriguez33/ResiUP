@@ -8,7 +8,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +34,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlin.time.Instant
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.toLocalDateTime
 import pe.upeu.resi.resiup.domain.model.EstadoSolicitud
 import pe.upeu.resi.resiup.presentation.theme.Espacio
 import pe.upeu.resi.resiup.presentation.util.combinarFechaHora
@@ -51,36 +58,57 @@ fun QrVista(matriz: List<List<Boolean>>, modifier: Modifier = Modifier, descripc
     }
 }
 
-/** Selector segmentado simple (2-3 opciones). */
+/**
+ * Selector segmentado (2-3 opciones): el fondo blanco de la opción elegida se desliza al cambiar y también se puede
+ * arrastrar con el dedo de una opción a otra.
+ */
 @Composable
 fun <T> Segmentos(opciones: List<T>, seleccionada: T, etiqueta: (T) -> String, onSeleccion: (T) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp)).padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        opciones.forEach { o ->
-            val activa = o == seleccionada
-            Text(
-                etiqueta(o),
-                Modifier.weight(1f).heightIn(min = 44.dp)
-                    .background(if (activa) MaterialTheme.colorScheme.surface else Color.Transparent, RoundedCornerShape(11.dp))
-                    .clickable(role = Role.Tab) { onSeleccion(o) }
-                    .padding(vertical = 11.dp),
-                style = MaterialTheme.typography.labelLarge,
-                color = if (activa) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
+    val indice = opciones.indexOf(seleccionada).coerceAtLeast(0)
+    val posicion by androidx.compose.animation.core.animateFloatAsState(indice.toFloat(), androidx.compose.animation.core.tween(220), label = "segmento")
+    val alElegir by androidx.compose.runtime.rememberUpdatedState(onSeleccion)
+    androidx.compose.foundation.layout.BoxWithConstraints(
+        modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp)).padding(4.dp)
+            .pointerInput(opciones) {
+                detectHorizontalDragGestures { cambio, _ ->
+                    val destino = (cambio.position.x / size.width * opciones.size).toInt().coerceIn(0, opciones.size - 1)
+                    alElegir(opciones[destino])
+                }
+            },
+    ) {
+        val ancho = maxWidth / opciones.size
+        Box(Modifier.offset(x = ancho * posicion).width(ancho).height(44.dp).background(MaterialTheme.colorScheme.surface, RoundedCornerShape(11.dp)))
+        Row(Modifier.fillMaxWidth()) {
+            opciones.forEach { o ->
+                val activa = o == seleccionada
+                Box(Modifier.weight(1f).height(44.dp).clickable(role = Role.Tab) { onSeleccion(o) }, contentAlignment = Alignment.Center) {
+                    Text(
+                        etiqueta(o),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (activa) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                }
+            }
         }
     }
 }
 
 /** Botón que abre selector de fecha y luego de hora; entrega un instante en hora de Lima. */
 @Composable
-fun CampoFechaHora(etiqueta: String, valor: Instant?, error: String?, onElegido: (Instant) -> Unit, modifier: Modifier = Modifier) {
+fun CampoFechaHora(etiqueta: String, valor: Instant?, error: String?, onElegido: (Instant) -> Unit, modifier: Modifier = Modifier, habilitado: Boolean = true, desde: Instant? = null) {
     var paso by remember { mutableStateOf(0) }
     var fechaMillis by remember { mutableLongStateOf(0L) }
     androidx.compose.foundation.layout.Column(modifier) {
-        PildoraSelector(valor?.formatoLima() ?: etiqueta, { paso = 1 }, Modifier.fillMaxWidth())
+        PildoraSelector(valor?.formatoLima() ?: etiqueta, { paso = 1 }, Modifier.fillMaxWidth(), habilitado = habilitado)
         if (error != null) Text(error, Modifier.padding(start = Espacio.l, top = Espacio.xs), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
     }
-    if (paso == 1) SelectorFecha({ fechaMillis = it; paso = 2 }, { paso = 0 })
+    // No se eligen días anteriores a hoy (hora de Lima) ni, en un ingreso, anteriores a la salida.
+    val primerDia = remember(desde) {
+        val d = (desde ?: pe.upeu.resi.resiup.presentation.util.ahora()).toLocalDateTime(pe.upeu.resi.resiup.presentation.util.ZonaResidencia).date
+        d.atStartOfDayIn(kotlinx.datetime.TimeZone.UTC).toEpochMilliseconds()
+    }
+    if (paso == 1) SelectorFecha({ fechaMillis = it; paso = 2 }, { paso = 0 }, desdeMillis = primerDia)
     if (paso == 2) SelectorHora({ h, m -> onElegido(combinarFechaHora(fechaMillis, h, m)); paso = 0 }, { paso = 0 })
 }
 
@@ -98,7 +126,7 @@ fun CampoHora(etiqueta: String, valor: Instant?, base: Instant?, error: String?,
 /** Cómo ve el residente su permiso: En revisión, En garita, Salida, Entrada... */
 fun pe.upeu.resi.resiup.domain.model.SolicitudPermiso.estadoParaResidente(): Pair<String, EstadoVisual> = when (estado) {
     EstadoSolicitud.PendienteApoderado -> "Pendiente" to EstadoVisual.Advertencia
-    EstadoSolicitud.PendientePreceptor, EstadoSolicitud.Borrador -> "En revisión" to EstadoVisual.Advertencia
+    EstadoSolicitud.PendientePreceptor, EstadoSolicitud.Borrador -> "En revisión" to EstadoVisual.Revision
     EstadoSolicitud.Aprobado -> when {
         garitaEntrada != null -> "Entrada" to EstadoVisual.Exito
         garitaSalida != null -> "Salida" to EstadoVisual.Info

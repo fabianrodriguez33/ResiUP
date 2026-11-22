@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.Text
 import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
@@ -80,10 +81,11 @@ fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
     val avisos: GestorAvisos = koinInject()
     val noLeidas by avisos.noLeidas.collectAsState()
     var verBandeja by rememberSaveable { mutableStateOf(false) }
+    var subpantalla by remember { mutableStateOf(false) } // el administrador navega por dentro de su inicio
     // Pantalla secundaria abierta desde los accesos del inicio (por ahora, Notas del residente). La barra sigue visible.
     var secundaria by rememberSaveable { mutableStateOf<String?>(null) }
     // Residente y pastor navegan desde los accesos del inicio (sin barra inferior): cada pantalla se abre con flecha de regreso.
-    val sinBarra = rol == Rol.Residente || rol == Rol.Preceptor
+    val sinBarra = true // todos los roles navegan desde los accesos del inicio, con flecha de regreso
     val irA: (String) -> Unit = { destino -> if (destino == Destinos.Notas) secundaria = destino else { seleccionado = destino; secundaria = null } }
     val inicio = items.first().id
     val volver: (() -> Unit)? = if (sinBarra && (seleccionado != inicio || secundaria != null)) ({ seleccionado = inicio; secundaria = null }) else null
@@ -111,13 +113,22 @@ fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
             } else if (rol == Rol.Residente && secundaria == Destinos.Notas) {
                 NotasResidenteScreen(onVolver = { secundaria = null })
             } else {
-                ContenidoReal(rol, sesion, seleccionado, irA, onCerrarSesion)
+                ContenidoReal(rol, sesion, seleccionado, irA, onCerrarSesion, { subpantalla = it })
             }
         }
         }
         if (sesion != null && !verBandeja && volver == null) {
             CampanaAvisos(noLeidas, { verBandeja = true }, Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = Espacio.xs, end = Espacio.s))
         }
+        // Semestre en curso, visible en el inicio de cada rol (arriba a la izquierda).
+        if (sesion != null && !verBandeja && volver == null && !subpantalla) {
+            val api = koinInject<pe.upeu.resi.resiup.presentation.admin.AdminApi>()
+            val semestre by androidx.compose.runtime.produceState<String?>(initialValue = null, sesion.usuario) { value = pe.upeu.resi.resiup.data.remote.ejecutarLlamada { api.semestreActual() }.getOrNull()?.nombre }
+            semestre?.let { n ->
+                Text("Semestre $n", Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(top = Espacio.m, start = Espacio.l), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        pe.upeu.resi.resiup.presentation.components.AvisoAlPie(Modifier.align(Alignment.BottomCenter))
         if (!sinBarra) BarraNavegacionResi(
             items, seleccionado, { seleccionado = it; verBandeja = false; secundaria = null },
             Modifier.align(Alignment.BottomCenter).padding(WindowInsets.navigationBars.asPaddingValues()),
@@ -126,7 +137,7 @@ fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
 }
 
 @Composable
-private fun ContenidoReal(rol: Rol, sesion: Sesion, destino: String, irA: (String) -> Unit, onCerrarSesion: () -> Unit) {
+private fun ContenidoReal(rol: Rol, sesion: Sesion, destino: String, irA: (String) -> Unit, onCerrarSesion: () -> Unit, onSubpantalla: (Boolean) -> Unit = {}) {
     when (rol) {
         Rol.Residente -> when (destino) {
             Destinos.Inicio -> InicioResidenteScreen(irA)
@@ -134,6 +145,7 @@ private fun ContenidoReal(rol: Rol, sesion: Sesion, destino: String, irA: (Strin
             Destinos.Asistencias -> AsistenciasScreen()
             Destinos.Limpieza -> LimpiezaResidenteScreen()
             Destinos.Reservas -> pe.upeu.resi.resiup.presentation.residente.ReservasResidenteScreen()
+            Destinos.Ranking -> pe.upeu.resi.resiup.presentation.residente.RankingSemanaScreen()
             else -> PerfilResidenteScreen(sesion, onCerrarSesion)
         }
         Rol.Preceptor -> when (destino) {
@@ -146,7 +158,9 @@ private fun ContenidoReal(rol: Rol, sesion: Sesion, destino: String, irA: (Strin
             else -> PerfilCuentaScreen(rol, onCerrarSesion)
         }
         Rol.Garita -> when (destino) {
+            Destinos.Inicio -> pe.upeu.resi.resiup.presentation.personal.InicioGaritaScreen(sesion.nombreCompleto, irA)
             Destinos.Escanear -> EscanerGaritaScreen()
+            Destinos.Solicitudes -> pe.upeu.resi.resiup.presentation.personal.PermisosGaritaScreen()
             Destinos.Historial -> HistorialGaritaScreen()
             else -> PerfilCuentaScreen(rol, onCerrarSesion)
         }
@@ -157,10 +171,7 @@ private fun ContenidoReal(rol: Rol, sesion: Sesion, destino: String, irA: (Strin
             else -> PerfilCuentaScreen(rol, onCerrarSesion)
         }
         Rol.Administrador -> when (destino) {
-            Destinos.Inicio -> Column(Modifier.fillMaxSize().padding(Espacio.l)) {
-                TituloPantalla("Administración", subtitulo = sesion.nombreCompleto)
-                EstadoVacio("Gestión desde el panel web", "Los usuarios, residentes, habitaciones, días sin culto y el Excel de notas se administran desde el panel web de la residencia (dirección del servidor terminada en /panel).")
-            }
+            Destinos.Inicio -> pe.upeu.resi.resiup.presentation.admin.AdministradorScreen(sesion.nombreCompleto, irA, onSubpantalla)
             else -> PerfilCuentaScreen(rol, onCerrarSesion)
         }
     }

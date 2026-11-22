@@ -145,7 +145,7 @@ fun PerfilCuentaScreen(rol: Rol, onCerrarSesion: () -> Unit, vm: PerfilCuentaVie
             if (f == null) {
                 TituloPantalla("Mi Perfil", subtitulo = "Tus datos personales")
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
-                    AvatarInicial(p.nombreCompleto, Acento.Turquesa, tamano = 112.dp, foto = foto)
+                    if (foto != null) AvatarInicial(p.nombreCompleto, Acento.Turquesa, tamano = 112.dp, foto = foto) else pe.upeu.resi.resiup.presentation.components.AvatarSilueta(112.dp)
                     ResiBoton(if (fotoEstado.subiendo) "Subiendo…" else "Cambiar foto", elegirFoto, variante = VarianteBoton.Terciario, habilitado = !fotoEstado.subiendo)
                     fotoEstado.error?.let { BannerMensaje(it.textoVisible(), EstadoVisual.Error) }
                     Text(p.nombreCompleto, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
@@ -156,8 +156,8 @@ fun PerfilCuentaScreen(rol: Rol, onCerrarSesion: () -> Unit, vm: PerfilCuentaVie
                     "Email", p.email, ResiIconos.Correo, Acento.Azul,
                     final = if (p.email.isNullOrBlank()) null else { { ChipEstado(if (p.emailVerificado) "Verificado" else "Sin verificar", if (p.emailVerificado) EstadoVisual.Exito else EstadoVisual.Advertencia) } },
                 )
-                DatoPerfil("Celular", p.telefono, ResiIconos.Telefono, Acento.Verde)
-                DatoPerfil("Cargo", if (rol == Rol.Preceptor) "Pastor" else rol.etiqueta, ResiIconos.Notas, Acento.Violeta)
+                DatoPerfil("Celular", p.telefono, ResiIconos.Telefono, Acento.Azul)
+                DatoPerfil("Cargo", if (rol == Rol.Preceptor) "Pastor" else rol.etiqueta, ResiIconos.Libro, Acento.Azul)
                 if (!p.email.isNullOrBlank() && !p.emailVerificado) {
                     ResiBoton("Verificar mi correo", { verificando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
                 }

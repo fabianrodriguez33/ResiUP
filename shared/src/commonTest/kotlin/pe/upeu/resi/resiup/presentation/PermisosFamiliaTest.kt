@@ -156,10 +156,10 @@ class PermisosFamiliaTest {
         val salida = ahora().plus(3.days).conHoraLima(14, 0)
         vm.salida(salida); vm.retorno(salida.conHoraLima(23, 0))
         vm.enviar()
-        assertEquals(setOf("responsableNombre", "responsableCelular", "retorno"), vm.estado.value.errores.keys)
+        assertEquals(setOf("responsableNombre", "responsableCelular", "acompanante", "retorno"), vm.estado.value.errores.keys)
         assertNull(familia.recibida)
 
-        vm.responsableNombre("Haydee Bazán Abanto"); vm.responsableCelular("+51 968 110 422")
+        vm.responsableNombre("Haydee Bazán Abanto"); vm.responsableCelular("+51 968 110 422"); vm.acompanante("Nadie")
         vm.retorno(salida.plus(3.days).conHoraLima(10, 30))
         vm.enviar()
         val enviada = familia.recibida!!
@@ -167,7 +167,7 @@ class PermisosFamiliaTest {
         assertEquals(1L, enviada.residenteId, "con un solo hijo se elige solo")
         assertEquals("Haydee Bazán Abanto", enviada.responsableNombre)
         assertEquals("+51 968 110 422", enviada.responsableCelular)
-        assertEquals("Nadie", enviada.acompanante, "sin acompañante se registra «Nadie»")
+        assertEquals("Nadie", enviada.acompanante, "quien va solo escribe «Nadie»")
     }
 
     @Test

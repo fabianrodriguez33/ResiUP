@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun ResiCampoTexto(
@@ -50,7 +51,11 @@ fun ResiCampoTexto(
         keyboardOptions = KeyboardOptions(keyboardType = if (esClave) KeyboardType.Password else tipoTeclado),
         visualTransformation = if (esClave && !visible) PasswordVisualTransformation() else VisualTransformation.None,
         trailingIcon = if (esClave) {
-            { TextButton(onClick = { visible = !visible }) { Text(if (visible) "Ocultar" else "Mostrar") } }
+            {
+                androidx.compose.material3.IconButton(onClick = { visible = !visible }) {
+                    ResiIcono(if (visible) ResiIconos.OjoTachado else ResiIconos.Ojo, if (visible) "Ocultar contraseña" else "Mostrar contraseña", tint = pe.upeu.resi.resiup.presentation.theme.Acento.Azul.color(), tamano = 26.dp)
+                }
+            }
         } else null,
         supportingText = (error ?: ayuda)?.let { texto -> { Text(texto) } },
     )

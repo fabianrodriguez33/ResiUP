@@ -212,8 +212,9 @@ class ModulosTest {
 
     private class GaritaFalsa(var verificacion: Result<VerificacionGarita>, var registro: Result<MovimientoRegistrado>) : GaritaRepository {
         var verificaciones = 0
-        override suspend fun verificar(qr: String): Result<VerificacionGarita> { verificaciones++; return verificacion }
-        override suspend fun registrar(qr: String, tipo: TipoMovimiento) = registro
+        override suspend fun verificar(qr: String, solicitudId: Long?): Result<VerificacionGarita> { verificaciones++; return verificacion }
+        override suspend fun permisosDe(qr: String) = Result.success(pe.upeu.resi.resiup.domain.model.PermisosDeResidente("", null, null, emptyList(), true))
+        override suspend fun registrar(qr: String, tipo: TipoMovimiento, solicitudId: Long?) = registro
         override suspend fun historial(pagina: Int) = Result.success(Pagina<MovimientoRegistrado>(emptyList(), 0, 0, true))
     }
 
@@ -329,6 +330,8 @@ class ModulosTest {
     ) : LimpiezaRepository {
         var enviada: NuevaEvaluacionHabitacion? = null
         override suspend fun habitaciones(fecha: String) = lista
+        override suspend fun detalleHabitacion(habitacionId: Long, fecha: String): Result<NuevaEvaluacionHabitacion> = Result.failure(UnsupportedOperationException())
+        override suspend fun reemplazarHabitacion(evaluacion: NuevaEvaluacionHabitacion): Result<List<EvaluacionLimpieza>> = registrarHabitacion(evaluacion)
         override suspend fun registrarHabitacion(evaluacion: NuevaEvaluacionHabitacion): Result<List<EvaluacionLimpieza>> {
             enviada = evaluacion
             return respuesta ?: Result.success(evaluacion.personas.map { EvaluacionLimpieza(it.residenteId, evaluacion.fecha, 0, 20, emptyMap(), null) })

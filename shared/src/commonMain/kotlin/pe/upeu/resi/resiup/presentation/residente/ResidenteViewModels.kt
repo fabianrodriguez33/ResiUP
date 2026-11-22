@@ -44,10 +44,26 @@ class MovimientosViewModel(repo: ResidenteRepository) : ListaViewModel<Movimient
 private fun <T> ViewModel.compartir(flujo: Flow<Consulta<T>>): StateFlow<Consulta<T>> =
     flujo.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Consulta.Cargando)
 
-class AsistenciasViewModel(private val consultas: ConsultasResidenteRepository, private val sync: Sincronizador) : ViewModel() {
+class AsistenciasViewModel(
+    private val consultas: ConsultasResidenteRepository,
+    private val sync: Sincronizador,
+    private val residente: ResidenteRepository,
+) : ViewModel() {
     val estado = compartir(consultas.asistencias().comoConsulta(sync.estado, consultas.ultimaSincronizacion()))
-    init { sync.refrescar() }
-    fun reintentar() = sync.refrescar(forzar = true)
+
+    /** Fechas (aaaa-mm-dd) con culto abierto por el pastor; null mientras no se sepa (sin conexión o sin cargar). */
+    private val _diasConCulto = MutableStateFlow<Set<String>?>(null)
+    val diasConCulto: StateFlow<Set<String>?> = _diasConCulto.asStateFlow()
+
+    init { sync.refrescar(); cargarDiasConCulto() }
+    fun reintentar() { sync.refrescar(forzar = true); cargarDiasConCulto() }
+
+    private fun cargarDiasConCulto() {
+        viewModelScope.launch {
+            val hoy = hoyLima()
+            residente.diasConCulto(hoy.minus(400, kotlinx.datetime.DateTimeUnit.DAY).toString(), hoy.toString()).onSuccess { _diasConCulto.value = it.toSet() }
+        }
+    }
 }
 
 class MisSolicitudesViewModel(

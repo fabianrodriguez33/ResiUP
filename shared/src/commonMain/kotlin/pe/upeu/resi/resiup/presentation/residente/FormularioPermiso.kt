@@ -84,7 +84,7 @@ abstract class PermisoFormViewModel(
     fun destino(v: String) = _estado.update { it.copy(destino = v.take(200), errores = it.errores - "destino", error = null) }
     fun responsableNombre(v: String) = _estado.update { it.copy(responsableNombre = v.take(150), errores = it.errores - "responsableNombre", error = null) }
     fun responsableCelular(v: String) = _estado.update { it.copy(responsableCelular = v.take(30), errores = it.errores - "responsableCelular", error = null) }
-    fun acompanante(v: String) = _estado.update { it.copy(acompanante = v.take(150), error = null) }
+    fun acompanante(v: String) = _estado.update { it.copy(acompanante = v.take(150), errores = it.errores - "acompanante", error = null) }
 
     fun salida(v: Instant) = _estado.update {
         // En un corto, al cambiar el día de salida el ingreso sigue a la misma hora de ese día.
@@ -125,12 +125,13 @@ abstract class PermisoFormViewModel(
                 claveCliente = cola?.nuevaClave(), creadaEn = HorarioEnvio.reloj(),
             )
             enviarSolicitud(nueva)
-                .onSuccess { c -> alCrear(); _estado.update { it.copy(enviando = false, creada = c) } }
+                .onSuccess { c -> alCrear(); pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Permiso registrado exitosamente"); _estado.update { it.copy(enviando = false, creada = c) } }
                 .onFailure { e ->
                     val err = e.aErrorApi()
                     if (cola != null && !pernocta && (err == ErrorApi.SinConexion || err == ErrorApi.TiempoAgotado)) {
                         // Sin red: el permiso queda pendiente y la app lo envía sola cuando vuelva la conexión.
                         cola.encolar(nueva)
+                        pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Permiso guardado: se enviará cuando vuelva la conexión")
                         _estado.update { it.copy(enviando = false, enCola = true) }
                         return@onFailure
                     }
@@ -152,6 +153,7 @@ abstract class PermisoFormViewModel(
         if (s.tipo == TipoPermiso.Pernocte) {
             if (s.responsableNombre.isBlank()) put("responsableNombre", "Indica quién recibe en esa casa")
             if (s.responsableCelular.count { it.isDigit() } < 6) put("responsableCelular", "Indica un celular válido")
+            if (s.acompanante.isBlank()) put("acompanante", "Indica con quién vas (escribe «Nadie» si vas solo)")
         }
         if (s.salida == null) put("salida", "Elige fecha y hora de salida")
         else if (s.salida < ahora().minus(Duration.parse("5m"))) put("salida", "La salida no puede estar en el pasado")
@@ -203,14 +205,14 @@ fun CamposPermiso(s: SolicitudFormState, vm: PermisoFormViewModel) {
                 s.responsableCelular, vm::responsableCelular, "Celular del responsable de la casa a donde va:", error = s.errores["responsableCelular"],
                 tipoTeclado = KeyboardType.Phone, habilitado = !s.enviando,
             )
-            ResiCampoTexto(s.acompanante, vm::acompanante, "Acompañado de:", habilitado = !s.enviando)
+            ResiCampoTexto(s.acompanante, vm::acompanante, "Acompañado de:", error = s.errores["acompanante"], habilitado = !s.enviando)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s), verticalAlignment = Alignment.Top) {
             CampoFechaHora("Fecha y hora de salida", s.salida, s.errores["salida"], vm::salida, Modifier.weight(1f))
             if (s.tipo == TipoPermiso.Corto) {
                 CampoHora("Hora de ingreso", s.retorno, s.salida, s.errores["retorno"], vm::retorno, Modifier.weight(1f))
             } else {
-                CampoFechaHora("Fecha y hora de ingreso", s.retorno, s.errores["retorno"], vm::retorno, Modifier.weight(1f))
+                CampoFechaHora("Fecha y hora de ingreso", s.retorno, s.errores["retorno"], vm::retorno, Modifier.weight(1f), habilitado = s.salida != null, desde = s.salida)
             }
         }
     }

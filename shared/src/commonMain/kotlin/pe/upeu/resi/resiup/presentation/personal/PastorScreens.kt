@@ -102,19 +102,19 @@ class CultosViewModel(private val repo: CultoRepository) : ViewModel() {
         viewModelScope.launch { _sesiones.value = repo.sesionesDeFecha(f.toString()).aCarga() }
     }
 
-    fun crear(tipo: TipoCulto, alListo: () -> Unit) = ejecutar(alListo) { repo.abrirSesion(tipo).map { } }
-    fun terminar(id: Long, alListo: () -> Unit) = ejecutar(alListo) { repo.cerrarSesion(id).map { } }
-    fun reabrir(id: Long, alListo: () -> Unit) = ejecutar(alListo) { repo.reabrirSesion(id).map { } }
+    fun crear(tipo: TipoCulto, alListo: () -> Unit) = ejecutar(alListo, "Culto ${tipo.etiqueta.lowercase()} creado exitosamente") { repo.abrirSesion(tipo).map { } }
+    fun terminar(id: Long, alListo: () -> Unit) = ejecutar(alListo, "Culto terminado exitosamente") { repo.cerrarSesion(id).map { } }
+    fun reabrir(id: Long, alListo: () -> Unit) = ejecutar(alListo, "Culto abierto nuevamente") { repo.reabrirSesion(id).map { } }
 
     suspend fun presentes(id: Long) = repo.presentes(id)
     suspend fun exportar(id: Long) = repo.exportarPresentes(id)
 
-    private fun ejecutar(alListo: () -> Unit, bloque: suspend () -> Result<Unit>) {
+    private fun ejecutar(alListo: () -> Unit, mensajeOk: String, bloque: suspend () -> Result<Unit>) {
         if (_accion.value.trabajando) return
         _accion.value = AccionCulto(trabajando = true)
         viewModelScope.launch {
             bloque()
-                .onSuccess { _accion.value = AccionCulto(); _fecha.value = hoyLima(); cargar(); alListo() }
+                .onSuccess { _accion.value = AccionCulto(); _fecha.value = hoyLima(); cargar(); pe.upeu.resi.resiup.presentation.components.Mensajes.exito(mensajeOk); alListo() }
                 .onFailure { _accion.value = AccionCulto(error = it.aErrorApi()) }
         }
     }
@@ -173,7 +173,7 @@ private fun ListaCultos(vm: CultosViewModel, onNuevo: () -> Unit, onDetalle: (Se
                     }
                     if (s.datos.isEmpty()) Text("No hay cultos registrados", Modifier.fillMaxWidth().padding(top = Espacio.m), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
                     // Solo se crea el culto de hoy, y mientras no haya otro abierto ni estén los dos.
-                    val puedeCrear = fecha == hoy && s.datos.none { !it.cerrada } && s.datos.size < TipoCulto.entries.size
+                    val puedeCrear = fecha == hoy && fecha.dayOfWeek.ordinal < 5 && s.datos.none { !it.cerrada } && s.datos.size < TipoCulto.entries.size
                     ResiBoton("Crear nuevo culto", onNuevo, Modifier.fillMaxWidth(), habilitado = puedeCrear)
                 }
             }
@@ -223,6 +223,14 @@ private fun DetalleCulto(vm: CultosViewModel, sesion: SesionCulto, onListo: () -
             }
         }
         accion.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
+        val sinPresentes = (presentes as? Carga.Exito)?.datos?.isEmpty() == true
+        if (sinPresentes) {
+            val acciones = org.koin.compose.koinInject<AccionesPastorApi>()
+            val alcanceCulto = androidx.compose.runtime.rememberCoroutineScope()
+            ResiBoton("Eliminar culto", {
+                alcanceCulto.launch { pe.upeu.resi.resiup.data.remote.ejecutarLlamada { acciones.eliminarCulto(sesion.id) }.onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Culto eliminado exitosamente"); onListo() } }
+            }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
+        }
         if (!sesion.cerrada) {
             ResiBoton("Terminar culto", { vm.terminar(sesion.id, onListo) }, Modifier.fillMaxWidth(), cargando = accion.trabajando)
         } else {
@@ -240,24 +248,19 @@ private fun DetalleCulto(vm: CultosViewModel, sesion: SesionCulto, onListo: () -
 
 data class ReservaPastor(val id: Long, val nombre: String, val codigo: String, val tipo: TipoReserva, val estado: EstadoReserva, val motivo: String, val curso: String?)
 
-class ReservasPastorViewModel(
-    private val api: ReservasApi,
-    private val residentes: pe.upeu.resi.resiup.domain.repository.ResidenteRepository,
-) : ViewModel() {
+class ReservasPastorViewModel(private val api: ReservasApi) : ViewModel() {
     private val _fecha = MutableStateFlow(hoyLima())
     val fecha: StateFlow<LocalDate> = _fecha.asStateFlow()
     private val _lista = MutableStateFlow<Carga<List<ReservaPastor>>>(Carga.Cargando)
     val lista: StateFlow<Carga<List<ReservaPastor>>> = _lista.asStateFlow()
     private val _cerradas = MutableStateFlow<Set<String>>(emptySet())
     val cerradas: StateFlow<Set<String>> = _cerradas.asStateFlow()
+    private val _abiertas = MutableStateFlow<Set<String>>(emptySet())
+    val abiertas: StateFlow<Set<String>> = _abiertas.asStateFlow()
     private val _error = MutableStateFlow<ErrorApi?>(null)
     val error: StateFlow<ErrorApi?> = _error.asStateFlow()
-    private val _residentes = MutableStateFlow<List<pe.upeu.resi.resiup.domain.model.ResidenteResumen>>(emptyList())
-    val residentesActivos: StateFlow<List<pe.upeu.resi.resiup.domain.model.ResidenteResumen>> = _residentes.asStateFlow()
-    private val _enviando = MutableStateFlow(false)
-    val enviando: StateFlow<Boolean> = _enviando.asStateFlow()
 
-    init { cargar(); viewModelScope.launch { residentes.listarResidentes().onSuccess { _residentes.value = it } } }
+    init { cargar() }
 
     fun elegir(f: LocalDate) { _fecha.value = f; cargar() }
 
@@ -266,32 +269,30 @@ class ReservasPastorViewModel(
         viewModelScope.launch {
             _lista.value = ejecutarLlamada { api.delDia(f.toString(), null).map { ReservaPastor(it.id, it.residenteNombre, it.codigo, it.tipo.aTipoReserva(), it.estado.aEstadoReserva(), it.motivo, it.curso) } }.aCarga()
             ejecutarLlamada { api.cierres(f.toString()) }.onSuccess { _cerradas.value = it.toSet() }
+            ejecutarLlamada { api.aperturas(f.toString()) }.onSuccess { _abiertas.value = it.toSet() }
         }
     }
 
     fun decidir(id: Long, aprobar: Boolean, comentario: String?) {
         viewModelScope.launch {
-            ejecutarLlamada { api.decidir(id, aprobar, comentario) }.onSuccess { _error.value = null; cargar() }.onFailure { _error.value = it.aErrorApi() }
+            ejecutarLlamada { api.decidir(id, aprobar, comentario) }.onSuccess { _error.value = null; pe.upeu.resi.resiup.presentation.components.Mensajes.exito(if (aprobar) "Reserva aprobada exitosamente" else "Reserva rechazada exitosamente"); cargar() }.onFailure { _error.value = it.aErrorApi() }
+        }
+    }
+
+    /** Las reservas de una comida no abren solas: el pastor o monitor las abre para la fecha elegida. */
+    fun abrir(grupo: String, alListo: () -> Unit = {}) {
+        viewModelScope.launch {
+            ejecutarLlamada { api.abrir(_fecha.value.toString(), grupo) }.onSuccess { _error.value = null; pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Reservas abiertas exitosamente"); cargar(); alListo() }.onFailure { _error.value = it.aErrorApi() }
         }
     }
 
     fun cerrar(grupo: String) {
         viewModelScope.launch {
-            ejecutarLlamada { api.cerrar(_fecha.value.toString(), grupo) }.onSuccess { _error.value = null; cargar() }.onFailure { _error.value = it.aErrorApi() }
+            ejecutarLlamada { api.cerrar(_fecha.value.toString(), grupo) }.onSuccess { _error.value = null; pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Reservas cerradas exitosamente"); cargar() }.onFailure { _error.value = it.aErrorApi() }
         }
     }
 
     suspend fun exportar(grupo: String) = ejecutarLlamada { api.exportar(_fecha.value.toString(), grupo) }
-
-    fun crear(tipo: TipoReserva, residenteId: Long, motivo: String, curso: String?, alListo: () -> Unit) {
-        if (_enviando.value) return
-        _enviando.value = true
-        viewModelScope.launch {
-            ejecutarLlamada { api.crearComoPastor(pe.upeu.resi.resiup.data.remote.ReservaPastorRequestDto(residenteId, tipo.aApi(), _fecha.value.toString(), motivo, curso)) }
-                .onSuccess { _error.value = null; _enviando.value = false; cargar(); alListo() }
-                .onFailure { _error.value = it.aErrorApi(); _enviando.value = false }
-        }
-    }
 
     fun limpiarError() { _error.value = null }
 }
@@ -300,7 +301,6 @@ private sealed interface RutaReservasPastor {
     data object Inicio : RutaReservasPastor
     data class Fecha(val grupo: String) : RutaReservasPastor
     data class Lista(val grupo: String) : RutaReservasPastor
-    data class Nueva(val grupo: String) : RutaReservasPastor
 }
 
 private fun nombreGrupo(grupo: String) = when (grupo) { "almuerzo" -> "Almuerzo"; "cena" -> "Cena"; else -> "Desayuno" }
@@ -313,7 +313,7 @@ fun ReservasPastorScreen() {
     var ruta by remember { mutableStateOf<RutaReservasPastor>(RutaReservasPastor.Inicio) }
     val atras: () -> Unit = {
         vm.limpiarError()
-        ruta = when (val r = ruta) { is RutaReservasPastor.Lista -> RutaReservasPastor.Fecha(r.grupo); is RutaReservasPastor.Nueva -> RutaReservasPastor.Fecha(r.grupo); else -> RutaReservasPastor.Inicio }
+        ruta = when (val r = ruta) { is RutaReservasPastor.Lista -> RutaReservasPastor.Fecha(r.grupo); else -> RutaReservasPastor.Inicio }
     }
     BackHandler(enabled = ruta != RutaReservasPastor.Inicio, onBack = atras)
     val alInicio = LocalVolver.current
@@ -329,17 +329,22 @@ fun ReservasPastorScreen() {
                     ),
                 )
             }
-            is RutaReservasPastor.Fecha -> FechaReservas(vm, r.grupo, onLista = { ruta = RutaReservasPastor.Lista(r.grupo) }, onNueva = { ruta = RutaReservasPastor.Nueva(r.grupo) })
+            is RutaReservasPastor.Fecha -> FechaReservas(vm, r.grupo, onLista = { ruta = RutaReservasPastor.Lista(r.grupo) })
             is RutaReservasPastor.Lista -> ListaReservasPastor(vm, r.grupo)
-            is RutaReservasPastor.Nueva -> NuevaReservaPastor(vm, r.grupo, onListo = { ruta = RutaReservasPastor.Fecha(r.grupo) })
         }
     }
 }
 
 /** «Almuerzo / Elija la fecha»: calendario, franja de la semana y el botón para crear una reserva. */
 @Composable
-private fun FechaReservas(vm: ReservasPastorViewModel, grupo: String, onLista: () -> Unit, onNueva: () -> Unit) {
+private fun FechaReservas(vm: ReservasPastorViewModel, grupo: String, onLista: () -> Unit) {
     val fecha by vm.fecha.collectAsState()
+    val abiertas by vm.abiertas.collectAsState()
+    val cerradas by vm.cerradas.collectAsState()
+    val error by vm.error.collectAsState()
+    val yaCreada = claveGrupo(grupo) in abiertas || claveGrupo(grupo) in cerradas
+    // Almuerzo y desayuno se sirven de lunes a viernes; la cena, de lunes a jueves (no hay fines de semana ni cena el viernes).
+    val sirve = if (grupo == "cena") fecha.dayOfWeek.ordinal < 4 else fecha.dayOfWeek.ordinal < 5
     val hoy = remember { hoyLima() }
     var calendario by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
@@ -352,7 +357,20 @@ private fun FechaReservas(vm: ReservasPastorViewModel, grupo: String, onLista: (
             Text("Reservas del ${fecha.toString().fechaLegible()}", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             ResiIcono(ResiIconos.ChevronDerecha, null, tint = MaterialTheme.colorScheme.primary, tamano = 22.dp)
         }
-        ResiBoton("Crear nueva reserva", onNueva, Modifier.fillMaxWidth())
+        error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
+        // Crear una nueva reserva abre las reservas de esa comida en la fecha elegida (solo de hoy en adelante); luego se ve la lista.
+        if (yaCreada) {
+            val cerradaHoy = claveGrupo(grupo) in cerradas
+            ResiTarjeta(onClick = onLista) {
+                ElementoLista(
+                    "Reservas de ${nombreGrupo(grupo).lowercase()}", subtitulo = fecha.toString().fechaLegible(),
+                    icono = if (grupo == "almuerzo") ResiIconos.Almuerzo else if (grupo == "cena") ResiIconos.Cena else ResiIconos.Desayuno, acento = Acento.Azul,
+                    final = { ChipEstado(if (cerradaHoy) "Cerradas" else "Abiertas", if (cerradaHoy) EstadoVisual.Info else EstadoVisual.Exito) },
+                )
+            }
+        }
+        else if (!sirve) Text("No hay reservas de ${nombreGrupo(grupo).lowercase()} este día", Modifier.fillMaxWidth().padding(top = Espacio.m), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+        else ResiBoton("Crear nueva reserva", { vm.abrir(claveGrupo(grupo), onLista) }, Modifier.fillMaxWidth(), habilitado = fecha >= hoy)
     }
     if (calendario) Dialog(onDismissRequest = { calendario = false }) { CalendarioAsistencias(emptyList(), hoy, onElegir = { vm.elegir(it); calendario = false }, conMarcas = false) }
 }
@@ -368,6 +386,8 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
     var turno by remember { mutableStateOf(true) }
     var elegida by remember { mutableStateOf<ReservaPastor?>(null) }
     var rechazando by remember { mutableStateOf<ReservaPastor?>(null) }
+    var cancelando by remember { mutableStateOf<ReservaPastor?>(null) }
+    val acciones = org.koin.compose.koinInject<AccionesPastorApi>()
     val titulo = when (grupo) { "almuerzo" -> "Reservas de almuerzo"; "cena" -> "Reservas de cenas"; else -> "Reservas de desayunos" }
     val cerrada = claveGrupo(grupo) in cerradas
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
@@ -388,7 +408,7 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
                     }
                     if (visibles.isEmpty()) Text("No hay reservas", Modifier.fillMaxWidth().padding(top = Espacio.l), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
                     visibles.forEach { r ->
-                        ResiTarjeta(onClick = if (r.estado == EstadoReserva.Pendiente && !cerrada) ({ elegida = r }) else null) {
+                        ResiTarjeta(onClick = if ((r.estado == EstadoReserva.Pendiente && !cerrada) || r.estado == EstadoReserva.Reservado) ({ elegida = r }) else null) {
                             ElementoLista(
                                 r.nombre, subtitulo = r.codigo, icono = if (grupo == "almuerzo") ResiIconos.Almuerzo else if (grupo == "cena") ResiIconos.Cena else ResiIconos.Desayuno, acento = Acento.Azul,
                                 final = { ChipEstado(r.estado.etiqueta, when (r.estado) { EstadoReserva.Pendiente -> EstadoVisual.Advertencia; EstadoReserva.Reservado -> EstadoVisual.Exito; EstadoReserva.Rechazada -> EstadoVisual.Error; else -> EstadoVisual.Neutro }) },
@@ -398,7 +418,7 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
                 }
             }
         }
-        // Como en los prototipos: «Cerrar reservas»; ya cerradas, queda en gris y aparece «Exportar».
+        // «Cerrar reservas»; ya cerradas, queda en gris y aparece «Exportar».
         Row(Modifier.fillMaxWidth().padding(bottom = Espacio.m), horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
             ResiBoton("Cerrar reservas", { vm.cerrar(claveGrupo(grupo)) }, Modifier.weight(1f), habilitado = !cerrada)
             if (cerrada) ResiBoton("Exportar", {
@@ -412,47 +432,23 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
                 Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
                     Text(r.nombre, style = MaterialTheme.typography.titleMedium)
                     Text("Motivo: ${r.motivo}" + (r.curso?.let { " · Curso: $it" } ?: ""), style = MaterialTheme.typography.bodyMedium)
-                    ResiBoton("Aprobar", { vm.decidir(r.id, true, null); elegida = null }, Modifier.fillMaxWidth())
-                    ResiBoton("Rechazar", { rechazando = r; elegida = null }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
+                    if (r.estado == EstadoReserva.Pendiente) {
+                        ResiBoton("Aprobar", { vm.decidir(r.id, true, null); elegida = null }, Modifier.fillMaxWidth())
+                        ResiBoton("Rechazar", { rechazando = r; elegida = null }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
+                    } else {
+                        // Reservada: el pastor puede cancelarla con motivo; el residente puede volver a reservar si el plazo sigue abierto.
+                        ResiBoton("Cancelar reserva", { cancelando = r; elegida = null }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
+                    }
                 }
             }
         }
     }
+    cancelando?.let { r ->
+        DialogoMotivo("Cancelar reserva", "El residente verá el motivo y podrá volver a reservar.", "Motivo", "Cancelar reserva",
+            { m -> cancelando = null; alcance.launch { pe.upeu.resi.resiup.data.remote.ejecutarLlamada { acciones.cancelarReserva(r.id, m) }.onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Reserva cancelada exitosamente"); vm.cargar() } } },
+            { cancelando = null }, destructivo = true)
+    }
     rechazando?.let { r ->
         DialogoMotivo("Rechazar reserva", "El residente verá el motivo.", "Motivo del rechazo", "Rechazar", { vm.decidir(r.id, false, it); rechazando = null }, { rechazando = null }, destructivo = true)
-    }
-}
-
-/** El pastor crea la reserva de un residente: almuerzo hasta la 1 p. m., cena y desayuno hasta las 6 p. m. (lo valida el servidor). */
-@Composable
-private fun NuevaReservaPastor(vm: ReservasPastorViewModel, grupo: String, onListo: () -> Unit) {
-    val residentes by vm.residentesActivos.collectAsState()
-    val error by vm.error.collectAsState()
-    val enviando by vm.enviando.collectAsState()
-    var residente by remember { mutableStateOf<pe.upeu.resi.resiup.domain.model.ResidenteResumen?>(null) }
-    var turno by remember { mutableStateOf<Boolean?>(null) }
-    var motivo by remember { mutableStateOf("") }
-    var curso by remember { mutableStateOf("") }
-    var aviso by remember { mutableStateOf<String?>(null) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla("Reserva de ${nombreGrupo(grupo)}", subtitulo = "Llene los datos")
-        CampoDesplegable("Residente", residentes, residente, { "${it.nombreCompleto} (${it.codigo})" }, { residente = it })
-        if (grupo == "cena") CampoDesplegable("Turno o Táper", listOf(true, false), turno, { if (it) "Turno" else "Táper" }, { turno = it })
-        pe.upeu.resi.resiup.presentation.components.ResiCampoTexto(motivo, { motivo = it.take(300) }, "Motivo", habilitado = !enviando)
-        if (grupo != "desayuno") pe.upeu.resi.resiup.presentation.components.ResiCampoTexto(curso, { curso = it.take(100) }, "Curso", habilitado = !enviando)
-        (aviso ?: error?.let { if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje() })?.let { BannerMensaje(it, EstadoVisual.Error) }
-        ResiBoton("Enviar reserva", {
-            val r = residente
-            when {
-                r == null -> aviso = "Elige al residente"
-                grupo == "cena" && turno == null -> aviso = "Elige turno o táper"
-                motivo.isBlank() -> aviso = "Indica el motivo"
-                else -> {
-                    aviso = null
-                    val tipo = when (grupo) { "almuerzo" -> TipoReserva.Almuerzo; "desayuno" -> TipoReserva.Desayuno; else -> if (turno == true) TipoReserva.CenaSegundoTurno else TipoReserva.CenaTaper }
-                    vm.crear(tipo, r.id, motivo.trim(), curso.trim().ifBlank { null }, onListo)
-                }
-            }
-        }, Modifier.fillMaxWidth(), cargando = enviando)
     }
 }

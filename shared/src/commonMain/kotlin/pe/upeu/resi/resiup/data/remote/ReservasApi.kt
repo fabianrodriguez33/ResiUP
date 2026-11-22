@@ -17,7 +17,7 @@ import kotlin.time.Instant
 @Serializable
 data class ReservaDto(
     val id: Long, val tipo: String, val fecha: String, val motivo: String = "", val curso: String? = null, val observacion: String? = null,
-    val estado: String, val creadaEn: String, val motivoCancelacion: String? = null,
+    val estado: String, val creadaEn: String, val motivoCancelacion: String? = null, val evidenciaId: Long? = null,
 )
 
 @Serializable
@@ -27,7 +27,7 @@ data class OfertaItemDto(val tipo: String, val fecha: String, val puedeReservar:
 data class OfertaDto(val comidas: List<OfertaItemDto> = emptyList())
 
 @Serializable
-data class ReservaRequestDto(val tipo: String, val fecha: String, val motivo: String, val curso: String? = null)
+data class ReservaRequestDto(val tipo: String, val fecha: String, val motivo: String, val curso: String? = null, val evidenciaId: Long? = null)
 
 @Serializable
 data class ReservaPastorDto(
@@ -41,9 +41,6 @@ data class DecisionReservaDto(val aprobar: Boolean, val comentario: String? = nu
 @Serializable
 data class CierreRequestDto(val fecha: String, val grupo: String)
 
-@Serializable
-data class ReservaPastorRequestDto(val residenteId: Long, val tipo: String, val fecha: String, val motivo: String, val curso: String? = null)
-
 private const val BASE = "api/v1/reservas"
 
 class ReservasApi(private val client: HttpClient) {
@@ -53,10 +50,11 @@ class ReservasApi(private val client: HttpClient) {
     suspend fun delDia(fecha: String, tipo: String?): List<ReservaPastorDto> =
         client.get("$BASE/del-dia") { parameter("fecha", fecha); if (tipo != null) parameter("tipo", tipo) }.body()
     suspend fun decidir(id: Long, aprobar: Boolean, comentario: String?): ReservaDto = client.post("$BASE/$id/decision") { setBody(DecisionReservaDto(aprobar, comentario)) }.body()
+    suspend fun abrir(fecha: String, grupo: String) { client.post("$BASE/abrir") { setBody(CierreRequestDto(fecha, grupo)) } }
+    suspend fun aperturas(fecha: String): List<String> = client.get("$BASE/aperturas") { parameter("fecha", fecha) }.body()
     suspend fun cerrar(fecha: String, grupo: String) { client.post("$BASE/cerrar") { setBody(CierreRequestDto(fecha, grupo)) } }
     suspend fun cierres(fecha: String): List<String> = client.get("$BASE/cierres") { parameter("fecha", fecha) }.body()
     suspend fun exportar(fecha: String, grupo: String): String = client.get("$BASE/exportar") { parameter("fecha", fecha); parameter("grupo", grupo) }.body()
-    suspend fun crearComoPastor(r: ReservaPastorRequestDto): ReservaDto = client.post("$BASE/pastor") { setBody(r) }.body()
     suspend fun mias(pagina: Int): PaginaDto<ReservaDto> = client.get("$BASE/mias") { parameter("pagina", pagina); parameter("tamanio", 20) }.body()
 }
 
@@ -83,6 +81,6 @@ internal fun String.aEstadoReserva() = when (this) {
     else -> EstadoReserva.CanceladaResidente
 }
 
-internal fun ReservaDto.aDominio() = Reserva(id, tipo.aTipoReserva(), fecha, motivo, curso, observacion, estado.aEstadoReserva(), Instant.parse(creadaEn), motivoCancelacion)
+internal fun ReservaDto.aDominio() = Reserva(id, tipo.aTipoReserva(), fecha, motivo, curso, observacion, estado.aEstadoReserva(), Instant.parse(creadaEn), motivoCancelacion, evidenciaId)
 
 internal fun OfertaItemDto.aDominio() = ComidaOfertada(tipo.aTipoReserva(), fecha, puedeReservar, motivoNoDisponible, reservaActiva?.aDominio())

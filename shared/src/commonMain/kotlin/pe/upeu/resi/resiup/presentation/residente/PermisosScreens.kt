@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
@@ -170,9 +171,12 @@ private fun SolicitudDetalleScreen(id: Long, onVolver: () -> Unit) {
             val (texto, visual) = s.estadoParaResidente()
             val aprobado = s.estado == EstadoSolicitud.Aprobado
             Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                    BotonAtras(onVolver)
-                    ChipEstado(texto, visual)
+                // Como en el prototipo: flecha y estado a la izquierda (el estado debajo de la flecha) y el QR a la derecha.
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                        BotonAtras(onVolver)
+                        ChipEstado(texto, visual, Modifier.width(128.dp), centrado = true)
+                    }
                     Spacer(Modifier.weight(1f))
                     if (aprobado) {
                         Box(
@@ -182,7 +186,7 @@ private fun SolicitudDetalleScreen(id: Long, onVolver: () -> Unit) {
                     }
                 }
                 ResiTarjeta { DatosSolicitud(s) }
-                if (aprobado || s.garitaSalida != null) {
+                if (s.garitaSalida != null) {
                     ResiTarjeta {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
                             DatoCelda("Garita Salida", s.garitaSalida?.formatoLima() ?: "-", Modifier.weight(1f))
@@ -192,7 +196,7 @@ private fun SolicitudDetalleScreen(id: Long, onVolver: () -> Unit) {
                 }
                 s.comentarioDecision?.let { BannerMensaje("Comentario del pastor: $it", EstadoVisual.Info) }
                 if (s.estado == EstadoSolicitud.PendienteApoderado) {
-                    BannerMensaje("Esperando a tu padre/madre: debe aceptar este permiso desde su cuenta (o con el enlace que le dé el personal).", EstadoVisual.Info)
+                    BannerMensaje("Esperando a tu padre/madre: debe aceptar este permiso; luego lo revisa el pastor.", EstadoVisual.Info)
                 }
                 if (s.estado == EstadoSolicitud.PendientePreceptor) {
                     BannerMensaje("El pastor está revisando tu permiso.", EstadoVisual.Info)

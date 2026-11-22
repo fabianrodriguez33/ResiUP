@@ -129,10 +129,10 @@ fun ElementoLista(
 }
 
 /** Tipos visuales de estado compartidos por permisos, asistencia y solicitudes. */
-enum class EstadoVisual { Exito, Advertencia, Error, Info, Neutro }
+enum class EstadoVisual { Exito, Advertencia, Error, Info, Neutro, Revision }
 
 @Composable
-fun ChipEstado(texto: String, estado: EstadoVisual, modifier: Modifier = Modifier) {
+fun ChipEstado(texto: String, estado: EstadoVisual, modifier: Modifier = Modifier, centrado: Boolean = false) {
     val c = ResiTheme.colores
     val e = MaterialTheme.colorScheme
     val (fondo, texto0) = when (estado) {
@@ -141,13 +141,15 @@ fun ChipEstado(texto: String, estado: EstadoVisual, modifier: Modifier = Modifie
         EstadoVisual.Error -> e.errorContainer to e.onErrorContainer
         EstadoVisual.Info -> c.infoContenedor to c.info
         EstadoVisual.Neutro -> e.surfaceVariant to e.onSurfaceVariant
+        EstadoVisual.Revision -> pe.upeu.resi.resiup.presentation.theme.Acento.Naranja.suave() to pe.upeu.resi.resiup.presentation.theme.Acento.Naranja.color()
     }
     Surface(modifier, shape = RoundedCornerShape(50), color = fondo) {
         Text(
             texto,
-            Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+            Modifier.then(if (centrado) Modifier.fillMaxWidth() else Modifier).padding(horizontal = 12.dp, vertical = 5.dp),
             style = MaterialTheme.typography.labelMedium,
             color = texto0,
+            textAlign = if (centrado) androidx.compose.ui.text.style.TextAlign.Center else androidx.compose.ui.text.style.TextAlign.Unspecified,
         )
     }
 }

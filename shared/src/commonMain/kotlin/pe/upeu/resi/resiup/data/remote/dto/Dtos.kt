@@ -153,10 +153,16 @@ data class SesionCultoDto(val id: Long, val fecha: String, val tipo: String, val
 data class AbrirSesionRequestDto(val tipo: String)
 
 @Serializable
-data class QrRequestDto(val qr: String)
+data class QrRequestDto(val qr: String, val solicitudId: Long? = null)
 
 @Serializable
 data class PuntajePersonalDto(val residenteId: Long, val ropero: Int, val cama: Int, val escritorio: Int, val piso: Int)
+
+@Serializable
+data class DetalleHabitacionDto(val fecha: String, val basura: Int, val olores: Int, val residentes: List<DetallePersonaDto>)
+
+@Serializable
+data class DetallePersonaDto(val residenteId: Long, val nombre: String = "", val ropero: Int, val cama: Int, val escritorio: Int, val piso: Int)
 
 @Serializable
 data class LimpiezaHabitacionRequestDto(val fecha: String, val basura: Int, val olores: Int, val residentes: List<PuntajePersonalDto>)
@@ -182,7 +188,13 @@ data class VerificacionDto(
 )
 
 @Serializable
-data class MovimientoRequestDto(val qr: String, val tipo: String)
+data class MovimientoRequestDto(val qr: String, val tipo: String, val solicitudId: Long? = null)
+
+@Serializable
+data class PermisoGaritaDto(val id: Long, val tipo: String, val destino: String = "", val motivo: String = "", val salida: String, val retorno: String, val salidaAbierta: Boolean = false)
+
+@Serializable
+data class PermisosDeResidenteDto(val resultado: String, val mensaje: String = "", val residente: ResidenteGaritaDto? = null, val permisos: List<PermisoGaritaDto> = emptyList())
 
 @Serializable
 data class MovimientoDto(

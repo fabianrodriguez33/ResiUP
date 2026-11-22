@@ -52,12 +52,12 @@ private val NOMBRES_DIA = listOf("lunes", "martes", "miércoles", "jueves", "vie
  * («✓» asistió, «!» tardanza, «–» sin registro) y tiene descripción para lectores de pantalla.
  */
 @Composable
-fun CalendarioAsistencias(asistencias: List<AsistenciaCulto>, hoy: LocalDate, modifier: Modifier = Modifier, onElegir: ((LocalDate) -> Unit)? = null, conMarcas: Boolean = true) {
+fun CalendarioAsistencias(asistencias: List<AsistenciaCulto>, hoy: LocalDate, modifier: Modifier = Modifier, onElegir: ((LocalDate) -> Unit)? = null, conMarcas: Boolean = true, diasConCulto: Set<String>? = null) {
     var anio by remember { mutableStateOf(hoy.year) }
     var mes by remember { mutableStateOf(hoy.month.ordinal + 1) }
     var seleccion by remember { mutableStateOf<LocalDate?>(null) }
     val desde = remember(asistencias) { asistencias.fechaMasAntigua() }
-    val semanas = remember(anio, mes, asistencias, hoy, desde) { armarMes(anio, mes, asistencias, hoy, desde) }
+    val semanas = remember(anio, mes, asistencias, hoy, desde, diasConCulto) { armarMes(anio, mes, asistencias, hoy, desde, diasConCulto) }
     val esMesActual = anio == hoy.year && mes == hoy.month.ordinal + 1
 
     ResiTarjeta(modifier) {
