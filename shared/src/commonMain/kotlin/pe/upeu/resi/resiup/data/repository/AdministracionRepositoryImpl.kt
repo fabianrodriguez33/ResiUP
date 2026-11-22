@@ -23,7 +23,19 @@ private const val B = "api/v1/"
 @Serializable private data class MotivoDto(val motivo: String)
 
 class AdministracionRepositoryImpl(private val c: HttpClient) : AdministracionRepository {
-    override suspend fun residentes() = ejecutarLlamada { c.get("${B}residentes") { parameter("pagina", 0); parameter("tamanio", 100) }.body<PaginaDto<ResidenteAdmin>>().contenido }
+    /** El servidor entrega como máximo 100 por página: se piden todas hasta la última para no cortar la lista. */
+    private suspend inline fun <reified T> todasLasPaginas(ruta: String): List<T> {
+        val todo = mutableListOf<T>()
+        var pagina = 0
+        do {
+            val r = c.get("$B$ruta") { parameter("pagina", pagina); parameter("tamanio", 100) }.body<PaginaDto<T>>()
+            todo += r.contenido
+            pagina++
+        } while (!r.ultima && r.contenido.isNotEmpty())
+        return todo
+    }
+
+    override suspend fun residentes() = ejecutarLlamada { todasLasPaginas<ResidenteAdmin>("residentes") }
     override suspend fun habitaciones() = ejecutarLlamada { c.get("${B}habitaciones").body<List<HabAdmin>>() }
     override suspend fun ocupantes(habitacionId: Long) = ejecutarLlamada { c.get("${B}habitaciones/$habitacionId/ocupantes").body<List<OcupanteAdmin>>() }
     override suspend fun semestres() = ejecutarLlamada { c.get("${B}semestres").body<List<SemestreAdmin>>() }
@@ -36,7 +48,7 @@ class AdministracionRepositoryImpl(private val c: HttpClient) : AdministracionRe
     override suspend fun autorizaciones(id: Long) = ejecutarLlamada { c.get("${B}residentes/$id/autorizaciones").body<List<AutorizacionAdmin>>() }
     override suspend fun autorizar(id: Long, a: NuevaAutorizacionAdmin) = ejecutarLlamada { c.post("${B}residentes/$id/autorizaciones") { setBody(a) }; Unit }
     override suspend fun revocar(id: Long, motivo: String) = ejecutarLlamada { c.post("${B}autorizaciones/$id/revocar") { setBody(RevocacionDto(motivo)) }; Unit }
-    override suspend fun usuarios() = ejecutarLlamada { c.get("${B}usuarios") { parameter("pagina", 0); parameter("tamanio", 100) }.body<PaginaDto<UsuarioAdmin>>().contenido }
+    override suspend fun usuarios() = ejecutarLlamada { todasLasPaginas<UsuarioAdmin>("usuarios") }
     override suspend fun crearUsuario(u: NuevoUsuarioAdmin) = ejecutarLlamada { c.post("${B}usuarios") { setBody(u) }.body<UsuarioAdmin>() }
 }
 
