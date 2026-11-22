@@ -61,6 +61,8 @@ private sealed interface RutaAdmin {
     data class Detalle(val residente: ResidenteAdmin) : RutaAdmin
     data object Habitaciones : RutaAdmin
     data object Semestres : RutaAdmin
+    data object Personal : RutaAdmin
+    data object NuevoPersonal : RutaAdmin
 }
 
 private fun String.tipoLegible() = when (this) { "CORTO" -> "Corto"; "LARGO" -> "Largo"; else -> "Pernoctar" }
@@ -71,7 +73,7 @@ fun AdministradorScreen(nombre: String, onIr: (String) -> Unit, onSubpantalla: (
     val api = koinInject<AdministracionRepository>()
     var ruta by remember { mutableStateOf<RutaAdmin>(RutaAdmin.Inicio) }
     val atras: () -> Unit = {
-        ruta = when (ruta) { is RutaAdmin.Nuevo, is RutaAdmin.Detalle -> RutaAdmin.Residentes; else -> RutaAdmin.Inicio }
+        ruta = when (ruta) { is RutaAdmin.Nuevo, is RutaAdmin.Detalle -> RutaAdmin.Residentes; RutaAdmin.NuevoPersonal -> RutaAdmin.Personal; else -> RutaAdmin.Inicio }
     }
     BackHandler(enabled = ruta != RutaAdmin.Inicio, onBack = atras)
     androidx.compose.runtime.LaunchedEffect(ruta) { onSubpantalla(ruta != RutaAdmin.Inicio) }
@@ -86,6 +88,7 @@ fun AdministradorScreen(nombre: String, onIr: (String) -> Unit, onSubpantalla: (
                         ModuloUi("Residentes", ResiIconos.Perfil, Acento.Azul, { ruta = RutaAdmin.Residentes }),
                         ModuloUi("Habitaciones", ResiIconos.Cama, Acento.Azul, { ruta = RutaAdmin.Habitaciones }),
                         ModuloUi("Semestres", ResiIconos.Calendario, Acento.Azul, { ruta = RutaAdmin.Semestres }),
+                        ModuloUi("Personal", ResiIconos.Perfil, Acento.Azul, { ruta = RutaAdmin.Personal }),
                     ),
                 )
             }
@@ -94,6 +97,8 @@ fun AdministradorScreen(nombre: String, onIr: (String) -> Unit, onSubpantalla: (
             is RutaAdmin.Detalle -> DetalleResidente(api, r.residente, onSinHabitacion = { ruta = RutaAdmin.Residentes })
             RutaAdmin.Habitaciones -> Habitaciones(api)
             RutaAdmin.Semestres -> Semestres(api)
+            RutaAdmin.Personal -> Personal(api, onNuevo = { ruta = RutaAdmin.NuevoPersonal })
+            RutaAdmin.NuevoPersonal -> NuevoPersonal(api, onListo = { ruta = RutaAdmin.Personal })
         }
     }
 }
@@ -339,5 +344,61 @@ private fun Semestres(api: AdministracionRepository) {
             },
             { confirmar = false }, destructivo = true,
         )
+    }
+}
+
+private fun String.rolLegible() = when (this) { "PRECEPTOR" -> "Pastor o monitor"; "GARITA" -> "Garita"; "ADMINISTRADOR" -> "Administrador"; "APODERADO" -> "Apoderado"; else -> this }
+
+@Composable
+private fun Personal(api: AdministracionRepository, onNuevo: () -> Unit) {
+    var estado by remember { mutableStateOf<Carga<List<UsuarioAdmin>>>(Carga.Cargando) }
+    var reintento by remember { mutableStateOf(0) }
+    LaunchedEffect(reintento) { estado = api.usuarios().map { l -> l.filter { it.rol != "RESIDENTE" && it.rol != "APODERADO" } }.aCarga() }
+    Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+        TituloPantalla("Personal", Modifier.padding(top = Espacio.l), subtitulo = "Pastores, monitores y garita")
+        ResiBoton("Nuevo personal", onNuevo, Modifier.fillMaxWidth())
+        ContenidoCarga(estado, { reintento++ }, Modifier.weight(1f)) { lista ->
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                if (lista.isEmpty()) Text("No hay personal registrado", style = MaterialTheme.typography.titleMedium)
+                lista.forEach { u ->
+                    ResiTarjeta {
+                        ElementoLista(
+                            u.nombreCompleto, subtitulo = "${u.username} · ${u.rol.rolLegible()}",
+                            icono = ResiIconos.Perfil, acento = Acento.Azul,
+                            final = { if (!u.activo) ChipEstado("Inactivo", EstadoVisual.Neutro) },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NuevoPersonal(api: AdministracionRepository, onListo: () -> Unit) {
+    val alcance = rememberCoroutineScope()
+    var nombre by remember { mutableStateOf("") }
+    var usuario by remember { mutableStateOf("") }
+    var clave by remember { mutableStateOf("") }
+    var rol by remember { mutableStateOf<String?>("PRECEPTOR") }
+    var errores by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var error by remember { mutableStateOf<ErrorApi?>(null) }
+    var enviando by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+        TituloPantalla("Nuevo personal", subtitulo = "Pastor, monitor o garita")
+        CampoDesplegable("Rol", listOf("PRECEPTOR", "GARITA"), rol, { it.rolLegible() }, { rol = it })
+        ResiCampoTexto(nombre, { nombre = it.take(150) }, "Nombre completo", error = errores["nombreCompleto"], habilitado = !enviando)
+        ResiCampoTexto(usuario, { usuario = it.take(50) }, "Usuario", error = errores["username"], habilitado = !enviando)
+        ResiCampoTexto(clave, { clave = it.take(72) }, "Contraseña (mínimo 8)", error = errores["password"], esClave = true, habilitado = !enviando)
+        error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
+        ResiBoton("Registrar", {
+            enviando = true; errores = emptyMap(); error = null
+            alcance.launch {
+                api.crearUsuario(NuevoUsuarioAdmin(usuario.trim(), clave, nombre.trim(), rol ?: "PRECEPTOR"))
+                    .onSuccess { Mensajes.exito("Personal registrado exitosamente"); onListo() }
+                    .onFailure { e -> val x = e.aErrorApi(); if (x is ErrorApi.Validacion) errores = x.porCampo else error = x }
+                enviando = false
+            }
+        }, Modifier.fillMaxWidth(), cargando = enviando)
     }
 }

@@ -36,6 +36,8 @@ class AdministracionRepositoryImpl(private val c: HttpClient) : AdministracionRe
     override suspend fun autorizaciones(id: Long) = ejecutarLlamada { c.get("${B}residentes/$id/autorizaciones").body<List<AutorizacionAdmin>>() }
     override suspend fun autorizar(id: Long, a: NuevaAutorizacionAdmin) = ejecutarLlamada { c.post("${B}residentes/$id/autorizaciones") { setBody(a) }; Unit }
     override suspend fun revocar(id: Long, motivo: String) = ejecutarLlamada { c.post("${B}autorizaciones/$id/revocar") { setBody(RevocacionDto(motivo)) }; Unit }
+    override suspend fun usuarios() = ejecutarLlamada { c.get("${B}usuarios") { parameter("pagina", 0); parameter("tamanio", 100) }.body<PaginaDto<UsuarioAdmin>>().contenido }
+    override suspend fun crearUsuario(u: NuevoUsuarioAdmin) = ejecutarLlamada { c.post("${B}usuarios") { setBody(u) }.body<UsuarioAdmin>() }
 }
 
 class AccionesPastorRepositoryImpl(private val c: HttpClient) : AccionesPastorRepository {

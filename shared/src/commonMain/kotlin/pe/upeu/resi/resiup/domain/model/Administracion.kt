@@ -14,3 +14,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class SemestreAdmin(val id: Long, val nombre: String, val inicio: String, val fin: String, val activo: Boolean = false)
 @Serializable data class OcupanteAdmin(val residenteId: Long, val codigo: String, val nombreCompleto: String, val cama: String? = null)
 @Serializable data class NuevoSemestreAdmin(val nombre: String, val inicio: String, val fin: String)
+
+/** Cuenta del personal (pastor o monitor, garita, administración). El rol «PRECEPTOR» es el de pastor o monitor. */
+@Serializable data class UsuarioAdmin(val id: Long, val username: String, val nombreCompleto: String, val rol: String, val activo: Boolean = true)
+@Serializable data class NuevoUsuarioAdmin(val username: String, val password: String, val nombreCompleto: String, val rol: String)

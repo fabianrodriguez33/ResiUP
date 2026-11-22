@@ -17,6 +17,8 @@ interface AdministracionRepository {
     suspend fun autorizaciones(id: Long): Result<List<AutorizacionAdmin>>
     suspend fun autorizar(id: Long, a: NuevaAutorizacionAdmin): Result<Unit>
     suspend fun revocar(id: Long, motivo: String): Result<Unit>
+    suspend fun usuarios(): Result<List<UsuarioAdmin>>
+    suspend fun crearUsuario(u: NuevoUsuarioAdmin): Result<UsuarioAdmin>
 }
 
 /** Correcciones del pastor, todas con constancia en el servidor. */
