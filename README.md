@@ -5,7 +5,7 @@ Arquitectura: Clean Architecture + MVVM · Ktor Client · Koin · Kotlinx Serial
 
 Plataformas:
 - **Android**: verificado (compilación, pruebas unitarias y lint).
-- **iOS**: **sin verificar**. El módulo declara los objetivos `iosArm64` e `iosSimulatorArm64`, pero no se compiló ni se probó, porque compilar para iOS exige macOS con Xcode y el equipo no tiene un Mac disponible.
+- **iOS**: **sin verificar**. El código Kotlin de iOS compila desde Windows, pero el enlace del framework se omite porque exige macOS con Xcode, y el equipo no tiene un Mac disponible. Por eso no se ha probado en simulador ni en dispositivo.
 
 ## Requisitos
 
@@ -54,4 +54,8 @@ Cobertura (Kover), para el informe que lee SonarQube:
 ```bash
 ./gradlew :shared:koverXmlReport
 ```
-El informe queda en `shared/build/reports/kover/report.xml`. Este comando está disponible después de fusionar `feature/kover-alva` en `develop`.
+El informe queda en `shared/build/reports/kover/report.xml`.
+
+## Servidor de producción
+
+La API de producción está en `https://resiup-api.onrender.com`, en Render, con el blueprint `render.yaml` de ResiAPI. Es un plan gratuito: la API se duerme tras unos 15 minutos sin uso y tarda cerca de 1 minuto en despertar, así que la primera petición puede demorar. Las fotos subidas se pierden al reiniciar.
