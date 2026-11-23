@@ -37,7 +37,8 @@ private class RepoFalso(
 ) : AuthRepository {
     var intentos = 0
     var cerrada = false
-    override suspend fun iniciarSesion(credenciales: Credenciales): Result<Sesion> { intentos++; return respuesta() }
+    var ultimoUsuario: String? = null
+    override suspend fun iniciarSesion(credenciales: Credenciales): Result<Sesion> { intentos++; ultimoUsuario = credenciales.usuario; return respuesta() }
     override suspend fun sesionGuardada(): Sesion? = guardada
     override suspend fun cerrarSesion() { cerrada = true; guardada = null }
     override suspend fun olvideClave(usuario: String) = Result.success(Unit)
@@ -80,6 +81,16 @@ class LoginYSesionTest {
         val estado = assertIs<EstadoSesion.Activa>(gestor.estado.value)
         assertEquals(Rol.Preceptor, estado.sesion.rol)
         assertEquals("", vm.estado.value.clave)
+    }
+
+    @Test
+    fun `el usuario pegado con espacios o caracteres invisibles se envia limpio`() = runTest {
+        val repo = RepoFalso()
+        val (vm, _) = armar(repo)
+        vm.alCambiarUsuario("\u200Bnav.garita\u00A0 \n")
+        vm.alCambiarClave("x")
+        vm.ingresar()
+        assertEquals("nav.garita", repo.ultimoUsuario)
     }
 
     @Test
