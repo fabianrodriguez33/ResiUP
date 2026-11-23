@@ -46,7 +46,8 @@ fun RankingSemanaScreen() {
     var porSemana by remember { mutableStateOf(true) }
     var dia by remember { mutableStateOf(hoy) }
     var estado by remember { mutableStateOf<Carga<Ranking>>(Carga.Cargando) }
-    LaunchedEffect(porSemana, dia) {
+    var reintento by remember { mutableStateOf(0) }
+    LaunchedEffect(porSemana, dia, reintento) {
         estado = Carga.Cargando
         val domingo = domingoDe(dia)
         estado = (if (porSemana) api.rankingDe(domingo.toString(), domingo.plus(6, DateTimeUnit.DAY).toString()) else api.ranking()).aCarga()
@@ -55,7 +56,7 @@ fun RankingSemanaScreen() {
         TituloPantalla("Ranking y notas", subtitulo = if (porSemana) "Elige una semana" else "Semestre en curso")
         Segmentos(listOf(true, false), porSemana, { if (it) "Semana" else "Semestre" }, { porSemana = it })
         if (porSemana) FranjaSemana(dia, { dia = it })
-        ContenidoCarga(estado, { dia = dia }, Modifier.fillMaxSize()) { r ->
+        ContenidoCarga(estado, { reintento++ }, Modifier.fillMaxSize()) { r ->
             Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
                     TarjetaCifra("Cultos", r.cultos.posicion?.let { "$it°" } ?: "—", "de ${r.cultos.total} residentes", ResiIconos.Cruz, Acento.Naranja,
