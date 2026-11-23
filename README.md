@@ -58,4 +58,4 @@ El informe queda en `shared/build/reports/kover/report.xml`.
 
 ## Servidor de producción
 
-La API desplegada está en Render (plan gratuito), con el blueprint `render.yaml` de ResiAPI. En el plan gratuito la API se duerme tras unos 15 minutos sin uso y tarda cerca de 1 minuto en despertar, así que la primera petición puede demorar. Las fotos subidas se pierden al reiniciar.
+La API de producción está en `https://resiup-api.onrender.com`, en Render, con el blueprint `render.yaml` de ResiAPI. Es un plan gratuito: la API se duerme tras unos 15 minutos sin uso y tarda cerca de 1 minuto en despertar, así que la primera petición puede demorar. Las fotos subidas se pierden al reiniciar.
