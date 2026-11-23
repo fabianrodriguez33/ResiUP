@@ -1,5 +1,6 @@
 package pe.upeu.resi.resiup.data
 
+import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.alloc
@@ -41,7 +42,7 @@ import pe.upeu.resi.resiup.data.local.AlmacenSeguro
  * Keychain de iOS. NO VERIFICADO: este módulo no se puede compilar ni ejecutar en Windows (requiere macOS/Xcode).
  * Revisar y probar en un Mac antes de afirmar que iOS funciona.
  */
-@OptIn(ExperimentalForeignApi::class)
+@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 class AlmacenSeguroIos : AlmacenSeguro {
 
     private fun consultaBase() = CFDictionaryCreateMutable(null, 0, kCFTypeDictionaryKeyCallBacks.ptr, kCFTypeDictionaryValueCallBacks.ptr).also {
@@ -52,7 +53,7 @@ class AlmacenSeguroIos : AlmacenSeguro {
 
     override fun guardar(valor: String) {
         borrar()
-        val datos = (valor as NSString).dataUsingEncoding(NSUTF8StringEncoding) ?: return
+        val datos = NSString.create(string = valor).dataUsingEncoding(NSUTF8StringEncoding) ?: return
         val consulta = consultaBase()
         CFDictionaryAddValue(consulta, kSecValueData, CFBridgingRetain(datos))
         CFDictionaryAddValue(consulta, kSecAttrAccessible, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly)
