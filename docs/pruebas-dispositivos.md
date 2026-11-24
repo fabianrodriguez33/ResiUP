@@ -8,9 +8,9 @@ En la columna Recorrido se anota cada paso como OK, FALLA (con el id del defecto
 
 | Dispositivo | Sistema | Recorrido | Defectos | Probado por |
 |---|---|---|---|---|
-| Samsung Galaxy A12 | Android 13 | 1 OK · 2 OK · 3 OK · 4 OK · 5 OK · 6 OK · 7 OK · 8 OK | D-03, D-08, D-09, D-10, D-11, D-12, D-15, D-16, D-19 | Julio Fabián Rodríguez, fecha _pendiente_ |
-| Samsung Galaxy A56 5G (SM-A566E) | Android 16 | 1 OK · 2 OK · 3 OK · 4 OK · 5 OK · 6 OK · 7 OK · 8 OK | D-08, D-09, D-10, D-11, D-13, D-14, D-17, D-18, D-19 | Jean-Pierre Miranda, fecha _pendiente_ |
-| Redmi 9C | Android 10 | 1 OK · 2 OK · 3 OK · 4 OK · 5 OK · 6 OK · 7 OK · 8 OK | D-08, D-10, D-11 | Compañero del equipo (nombre _pendiente_), fecha _pendiente_ |
+| Samsung Galaxy A12 | Android 13 | 1 OK · 2 OK · 3 OK · 4 OK · 5 OK · 6 OK · 7 OK · 8 OK | D-03, D-08, D-09, D-10, D-11, D-12, D-15, D-16, D-19 | Julio Fabián Rodríguez, 24/11/2026 |
+| Samsung Galaxy A56 5G (SM-A566E) | Android 16 | 1 OK · 2 OK · 3 OK · 4 OK · 5 OK · 6 OK · 7 OK · 8 OK | D-08, D-09, D-10, D-11, D-13, D-14, D-17, D-18, D-19 | Jean-Pierre Miranda, 24/11/2026 |
+| Redmi 9C | Android 10 | 1 OK · 2 OK · 3 OK · 4 OK · 5 OK · 6 OK · 7 OK · 8 OK | D-08, D-10, D-11 | Pedro Ricardo Alva Pardave, 24/11/2026 |
 | iPhone | iOS | Bloqueado: sin Mac (ver [docs/ios-bloqueo.md](ios-bloqueo.md)) | | |
 
 Los tres equipos instalaron el APK firmado. Roles usados en las pruebas por rol: A12, residente (permiso propio y con aprobación de los padres); A56, pastor; Redmi 9C, garita y apoderado.
