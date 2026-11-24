@@ -8,10 +8,14 @@ En la columna Recorrido se anota cada paso como OK, FALLA (con el id del defecto
 
 | Dispositivo | Sistema | Recorrido | Defectos | Probado por |
 |---|---|---|---|---|
-| Samsung Galaxy A56 5G (SM-A566E) | Android _pendiente_ | 1 OK · 2 OK · 3 NO PROBADO (la cuenta de residente de prueba está inhabilitada para crear permisos hasta el 28/11/2026 por faltas a cultos; «Crear permiso» sale deshabilitado) · 4 _ · 5 _ · 6 _ · 7 _ · 8 _ | | Jean-Pierre Miranda, 22/11/2026 |
-| _pendiente_ | Android _pendiente_ | 1 _ · 2 _ · 3 _ · 4 _ · 5 _ · 6 _ · 7 _ · 8 _ | | |
-| _pendiente_ | Android _pendiente_ | 1 _ · 2 _ · 3 _ · 4 _ · 5 _ · 6 _ · 7 _ · 8 _ | | |
+| Samsung Galaxy A12 | Android 13 | 1 OK · 2 OK · 3 OK · 4 OK · 5 OK · 6 OK · 7 OK · 8 OK | D-03, D-08, D-09, D-10, D-11, D-12, D-15, D-16, D-19 | Julio Fabián Rodríguez, fecha _pendiente_ |
+| Samsung Galaxy A56 5G (SM-A566E) | Android 16 | 1 OK · 2 OK · 3 OK · 4 OK · 5 OK · 6 OK · 7 OK · 8 OK | D-08, D-09, D-10, D-11, D-13, D-14, D-17, D-18, D-19 | Jean-Pierre Miranda, fecha _pendiente_ |
+| Redmi 9C | Android 10 | 1 OK · 2 OK · 3 OK · 4 OK · 5 OK · 6 OK · 7 OK · 8 OK | D-08, D-10, D-11 | Compañero del equipo (nombre _pendiente_), fecha _pendiente_ |
 | iPhone | iOS | Bloqueado: sin Mac (ver [docs/ios-bloqueo.md](ios-bloqueo.md)) | | |
+
+Los tres equipos instalaron el APK firmado. Roles usados en las pruebas por rol: A12, residente (permiso propio y con aprobación de los padres); A56, pastor; Redmi 9C, garita y apoderado.
+
+Paso 4: la aplicación no ofrece al residente acciones de otro rol; la respuesta 403 se cubre con las pruebas automáticas del servicio.
 
 ## Recorrido (ocho pasos)
 
@@ -32,4 +36,27 @@ Cada defecto lleva dispositivo, pasos para reproducir y estado. Severidad: alta 
 
 | Id. | Dispositivo | Pasos para reproducir | Esperado / obtenido | Sev. | Estado |
 |---|---|---|---|---|---|
-| D-01 | Emulador Pixel 8 (no cuenta como dispositivo real) | Residente → Perfil → desplazar hasta el final | Se espera ver «Cerrar sesión» completo / queda cortado detrás de la barra flotante | Baja | Pendiente |
+| D-03 | Samsung A12 | Residente: crear un permiso y luego intentar crear otro | Se abre un formulario nuevo / no deja crear otro permiso | Media | Pendiente |
+| D-08 | Todos (A12, A56 y Redmi 9C) | Ingresar un número de celular | Solo acepta 9 dígitos que empiecen con 9 / no lo valida | Baja | Pendiente |
+| D-09 | A56 (pastor) y A12 (residente) | Pastor: eliminar un culto y revisar la lista en ambos roles | Desaparece al instante / sigue visible hasta cambiar de día y volver; el residente lo sigue viendo | Media | Pendiente |
+| D-10 | Todos (A12, A56 y Redmi 9C) | Perfil: verificar un correo @upeu.edu.pe o @gmail.com | Llega el correo y pueden verificar el usuario o el administrador / no llega el correo | Media | Pendiente |
+| D-11 | Todos (A12, A56 y Redmi 9C) | Verificar el correo y luego cambiar datos en el perfil | Pasa a la pantalla de edición / se queda en el perfil y el aviso aparece al volver a «Editar datos» | Baja | Pendiente |
+| D-12 | Samsung A12 | Residente: cancelar su reserva e intentar reservar de nuevo | Permite reservar otra vez / no deja entrar | Alta | Pendiente |
+| D-13 | Samsung A56 | Residente reserva; pastor abre Reservas antes y después de cerrarlas | El pastor la ve de inmediato y con detalle / solo aparece al cerrar y sin detalle | Alta | Pendiente |
+| D-14 | Samsung A56 | Pastor: exportar cultos y reservas | Genera el archivo / no exporta | Media | Pendiente |
+| D-15 | Samsung A12 | Residente: mirar el panel de permisos tras un cambio de estado y deslizar para actualizar | El estado cambia al instante o al deslizar / no cambia | Media | Pendiente |
+| D-16 | Samsung A12 | Residente: revisar Cultos después de registrar su ingreso | Ve su asistencia registrada / no aparece | Media | Pendiente |
+| D-17 | Samsung A56 | Pastor: eliminar la asistencia de un residente | Permite eliminarla / no se puede | Media | Pendiente |
+| D-18 | Samsung A56 | Pastor: eliminar una reserva | Permite eliminarla / no se puede | Media | Pendiente |
+| D-19 | A56 (pastor) y A12 (residente) | Pastor evalúa un cuarto; sus residentes consultan la nota | La ven al instante / solo se ve cuando están evaluados todos los cuartos | Media | Pendiente |
+
+## Sugerencias de mejora
+
+No son defectos; salieron durante las pruebas.
+
+- Buscar por nombre o código en cultos, permisos e historial (pastor, monitor y garita).
+- Al tocar una notificación, ir a la sección correspondiente.
+- Limpieza: registrar la evaluación al final, cuando todos los del cuarto tengan nota, y señalar dónde falta.
+- Usar en la solicitud de permisos el mismo calendario del resto de la aplicación.
+- Apoderado: quitar «Mi perfil» de los accesos.
+- Mostrar los permisos de los últimos dos días y un historial con todo el ciclo.
