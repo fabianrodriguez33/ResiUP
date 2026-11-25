@@ -113,6 +113,8 @@ class ReservaFormViewModel(private val repo: ReservasRepository, private val tra
     private val _estado = MutableStateFlow(ReservaFormState())
     val estado: StateFlow<ReservaFormState> = _estado.asStateFlow()
 
+    fun reiniciar() { _estado.value = ReservaFormState() }
+
     fun motivo(v: String) = _estado.update { it.copy(motivo = v.take(300), errores = it.errores - "motivo", error = null) }
     fun curso(v: String) = _estado.update { it.copy(curso = v.take(100), error = null) }
     fun turno(v: Boolean) = _estado.update { it.copy(turno = v, errores = it.errores - "turno", error = null) }
@@ -160,6 +162,8 @@ fun ReservasResidenteScreen() {
     val vm = koinViewModel<ReservasViewModel>()
     val estado by vm.estado.collectAsState()
     var ruta by remember { mutableStateOf<RutaReservas>(RutaReservas.Inicio) }
+    // Revisa el servidor cada 10 s mientras la pantalla está abierta (aprobaciones y cierres del pastor).
+    LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(10_000); vm.cargar() } }
     BackHandler(enabled = ruta != RutaReservas.Inicio) { ruta = RutaReservas.Inicio }
     val alInicio = LocalVolver.current
     CompositionLocalProvider(LocalVolver provides (if (ruta == RutaReservas.Inicio) alInicio else ({ ruta = RutaReservas.Inicio }))) {
@@ -222,7 +226,8 @@ private fun EstadoReserva.aVisual() = when (this) {
 private fun FormularioReserva(comida: ComidaOfertada, oferta: List<ComidaOfertada>, onListo: () -> Unit) {
     val vm = koinViewModel<ReservaFormViewModel>()
     val s by vm.estado.collectAsState()
-    LaunchedEffect(s.creada) { if (s.creada) onListo() }
+    // Se deja el formulario en blanco antes de salir: si no, al reservar otra vez «creada» seguía en true y la pantalla se cerraba sola.
+    LaunchedEffect(s.creada) { if (s.creada) { vm.reiniciar(); onListo() } }
     val abrirGaleria = rememberSelectorImagen(vm::foto)
     val nombre = when {
         comida.tipo.esCena -> "Cena"
