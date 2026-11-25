@@ -228,7 +228,7 @@ private fun DetalleCulto(vm: CultosViewModel, sesion: SesionCulto, onListo: () -
             val acciones = org.koin.compose.koinInject<pe.upeu.resi.resiup.domain.repository.AccionesPastorRepository>()
             val alcanceCulto = androidx.compose.runtime.rememberCoroutineScope()
             ResiBoton("Eliminar culto", {
-                alcanceCulto.launch { acciones.eliminarCulto(sesion.id).onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Culto eliminado exitosamente"); onListo() } }
+                alcanceCulto.launch { acciones.eliminarCulto(sesion.id).onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Culto eliminado exitosamente"); vm.cargar(); onListo() } }
             }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
         }
         if (!sesion.cerrada) {
