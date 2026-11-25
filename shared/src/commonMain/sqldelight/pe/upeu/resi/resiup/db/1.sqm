@@ -1,0 +1,3 @@
+-- Marcas de garita de cada permiso, para mostrar "Salida" y "Entrada" sin conexión.
+ALTER TABLE solicitud ADD COLUMN garita_salida TEXT;
+ALTER TABLE solicitud ADD COLUMN garita_entrada TEXT;

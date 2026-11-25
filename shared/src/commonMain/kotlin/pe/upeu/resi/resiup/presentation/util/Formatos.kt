@@ -34,6 +34,9 @@ fun Instant.soloHoraLima(): String = toLocalDateTime(ZonaResidencia).hora12()
 /** Convierte «2026-10-30» (texto del servidor) a «30 oct 2026». */
 fun String.fechaLegible(): String = runCatching { LocalDate.parse(this).legible() }.getOrDefault(this)
 
+/** Convierte «2026-11-16» a «lun 16 nov». */
+fun String.fechaConDia(): String = runCatching { LocalDate.parse(this).let { "${DIAS[it.dayOfWeek.ordinal]} ${it.day} ${MESES[it.month.ordinal]}" } }.getOrDefault(this)
+
 fun hoyLima(): LocalDate = Clock.System.todayIn(ZonaResidencia)
 
 /** Fecha «AAAA-MM-DD» de los milisegundos UTC a medianoche que entrega el selector de fecha. */

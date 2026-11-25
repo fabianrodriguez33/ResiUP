@@ -1,6 +1,8 @@
 package pe.upeu.resi.resiup.presentation.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -127,10 +129,10 @@ fun ElementoLista(
 }
 
 /** Tipos visuales de estado compartidos por permisos, asistencia y solicitudes. */
-enum class EstadoVisual { Exito, Advertencia, Error, Info, Neutro }
+enum class EstadoVisual { Exito, Advertencia, Error, Info, Neutro, Revision }
 
 @Composable
-fun ChipEstado(texto: String, estado: EstadoVisual, modifier: Modifier = Modifier) {
+fun ChipEstado(texto: String, estado: EstadoVisual, modifier: Modifier = Modifier, centrado: Boolean = false) {
     val c = ResiTheme.colores
     val e = MaterialTheme.colorScheme
     val (fondo, texto0) = when (estado) {
@@ -139,25 +141,35 @@ fun ChipEstado(texto: String, estado: EstadoVisual, modifier: Modifier = Modifie
         EstadoVisual.Error -> e.errorContainer to e.onErrorContainer
         EstadoVisual.Info -> c.infoContenedor to c.info
         EstadoVisual.Neutro -> e.surfaceVariant to e.onSurfaceVariant
+        EstadoVisual.Revision -> pe.upeu.resi.resiup.presentation.theme.Acento.Naranja.suave() to pe.upeu.resi.resiup.presentation.theme.Acento.Naranja.color()
     }
     Surface(modifier, shape = RoundedCornerShape(50), color = fondo) {
         Text(
             texto,
-            Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+            Modifier.then(if (centrado) Modifier.fillMaxWidth() else Modifier).padding(horizontal = 12.dp, vertical = 5.dp),
             style = MaterialTheme.typography.labelMedium,
             color = texto0,
+            textAlign = if (centrado) androidx.compose.ui.text.style.TextAlign.Center else androidx.compose.ui.text.style.TextAlign.Unspecified,
         )
     }
 }
 
+/** Acción de «volver» de la pantalla secundaria abierta desde el inicio; null cuando la pantalla es la principal. */
+val LocalVolver = androidx.compose.runtime.compositionLocalOf<(() -> Unit)?> { null }
+
 @Composable
-fun TituloPantalla(titulo: String, modifier: Modifier = Modifier, subtitulo: String? = null) {
-    // Deja libre el borde derecho: ahí flota la campana de notificaciones.
-    Column(modifier.fillMaxWidth().padding(end = 44.dp)) {
-        Text(titulo, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
-        if (subtitulo != null) {
-            Text(subtitulo, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+fun TituloPantalla(titulo: String, modifier: Modifier = Modifier, subtitulo: String? = null, accion: (@Composable () -> Unit)? = null) {
+    val volver = LocalVolver.current
+    // En el inicio deja libre el borde derecho (ahí flota la campana); en pantallas internas ese espacio es de la acción.
+    Row(modifier.fillMaxWidth().padding(end = if (volver != null) 0.dp else 44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+        if (volver != null) BotonAtras(volver)
+        Column(Modifier.weight(1f)) {
+            Text(titulo, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
+            if (subtitulo != null) {
+                Text(subtitulo, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
+        accion?.invoke()
     }
 }
 

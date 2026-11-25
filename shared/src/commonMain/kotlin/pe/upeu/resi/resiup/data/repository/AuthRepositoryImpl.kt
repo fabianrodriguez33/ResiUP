@@ -1,5 +1,6 @@
 package pe.upeu.resi.resiup.data.repository
 
+import pe.upeu.resi.resiup.domain.usecase.comoUsuario
 import pe.upeu.resi.resiup.data.local.SesionStore
 import pe.upeu.resi.resiup.data.remote.AuthApi
 import pe.upeu.resi.resiup.data.remote.dto.LoginRequestDto
@@ -30,7 +31,7 @@ class AuthRepositoryImpl(
 
     override suspend fun cerrarSesion() = store.borrar()
 
-    override suspend fun olvideClave(usuario: String) = ejecutarLlamada(esLogin = true) { api.olvideClave(usuario.trim()) }
+    override suspend fun olvideClave(usuario: String) = ejecutarLlamada(esLogin = true) { api.olvideClave(usuario.comoUsuario()) }
 
     override suspend fun cambiarClave(actual: String, nueva: String): Result<Unit> = ejecutarLlamada {
         api.cambiarClave(actual, nueva)

@@ -3,10 +3,9 @@ package pe.upeu.resi.resiup.presentation.residente
 import kotlinx.datetime.minus
 import pe.upeu.resi.resiup.presentation.util.hoyLima
 import pe.upeu.resi.resiup.presentation.util.calcularEstadisticas
-import pe.upeu.resi.resiup.presentation.util.calcularNotasMes
-import pe.upeu.resi.resiup.presentation.util.NotasMes
 import pe.upeu.resi.resiup.presentation.util.EstadisticasCultos
 import androidx.lifecycle.ViewModel
+import org.jetbrains.compose.resources.decodeToImageBitmap
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -45,10 +44,26 @@ class MovimientosViewModel(repo: ResidenteRepository) : ListaViewModel<Movimient
 private fun <T> ViewModel.compartir(flujo: Flow<Consulta<T>>): StateFlow<Consulta<T>> =
     flujo.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Consulta.Cargando)
 
-class AsistenciasViewModel(private val consultas: ConsultasResidenteRepository, private val sync: Sincronizador) : ViewModel() {
+class AsistenciasViewModel(
+    private val consultas: ConsultasResidenteRepository,
+    private val sync: Sincronizador,
+    private val residente: ResidenteRepository,
+) : ViewModel() {
     val estado = compartir(consultas.asistencias().comoConsulta(sync.estado, consultas.ultimaSincronizacion()))
-    init { sync.refrescar() }
-    fun reintentar() = sync.refrescar(forzar = true)
+
+    /** Fechas (aaaa-mm-dd) con culto abierto por el pastor; null mientras no se sepa (sin conexión o sin cargar). */
+    private val _diasConCulto = MutableStateFlow<Set<String>?>(null)
+    val diasConCulto: StateFlow<Set<String>?> = _diasConCulto.asStateFlow()
+
+    init { sync.refrescar(); cargarDiasConCulto() }
+    fun reintentar() { sync.refrescar(forzar = true); cargarDiasConCulto() }
+
+    private fun cargarDiasConCulto() {
+        viewModelScope.launch {
+            val hoy = hoyLima()
+            residente.diasConCulto(hoy.minus(400, kotlinx.datetime.DateTimeUnit.DAY).toString(), hoy.toString()).onSuccess { _diasConCulto.value = it.toSet() }
+        }
+    }
 }
 
 class MisSolicitudesViewModel(
@@ -104,8 +119,6 @@ data class InicioResidenteUi(
     val ultimaAsistencia: AsistenciaCulto?,
     val permisoReciente: SolicitudPermiso?,
     val estadisticas: EstadisticasCultos,
-    val notasMes: NotasMes,
-    val notasMesAnterior: NotasMes,
 )
 
 private data class Cinco(
@@ -113,7 +126,46 @@ private data class Cinco(
     val solicitudes: List<SolicitudPermiso>, val sinCulto: List<pe.upeu.resi.resiup.domain.model.DiaSinCulto>,
 )
 
-class InicioResidenteViewModel(private val consultas: ConsultasResidenteRepository, private val sync: Sincronizador) : ViewModel() {
+/** Notas del mes en curso y del anterior, tal como las calcula el servidor. */
+data class NotasInicio(val actual: pe.upeu.resi.resiup.domain.model.ResumenNotas, val anterior: pe.upeu.resi.resiup.domain.model.ResumenNotas)
+
+/** Pide al servidor las notas del mes en curso y del anterior; los dos meses o ninguno. */
+suspend fun cargarNotasDelMesYElAnterior(repo: pe.upeu.resi.resiup.domain.repository.NotasRepository): pe.upeu.resi.resiup.presentation.util.Carga<NotasInicio> {
+    val hoy = hoyLima()
+    val anterior = kotlinx.datetime.LocalDate(hoy.year, hoy.month.ordinal + 1, 1).minus(1, kotlinx.datetime.DateTimeUnit.DAY)
+    val actual = repo.resumen(hoy.year, hoy.month.ordinal + 1)
+    val previo = repo.resumen(anterior.year, anterior.month.ordinal + 1)
+    return actual.fold(
+        { a -> previo.fold({ p -> pe.upeu.resi.resiup.presentation.util.Carga.Exito(NotasInicio(a, p)) }, { pe.upeu.resi.resiup.presentation.util.Carga.Fallo(it.aErrorApi()) }) },
+        { pe.upeu.resi.resiup.presentation.util.Carga.Fallo(it.aErrorApi()) },
+    )
+}
+
+/** Pantalla de Notas del residente: mes en curso y mes anterior, con los datos del servidor. */
+class NotasResidenteViewModel(private val notasRepo: pe.upeu.resi.resiup.domain.repository.NotasRepository) : ViewModel() {
+    private val _notas = kotlinx.coroutines.flow.MutableStateFlow<pe.upeu.resi.resiup.presentation.util.Carga<NotasInicio>>(pe.upeu.resi.resiup.presentation.util.Carga.Cargando)
+    val notas: kotlinx.coroutines.flow.StateFlow<pe.upeu.resi.resiup.presentation.util.Carga<NotasInicio>> = _notas
+
+    fun cargar() {
+        _notas.value = pe.upeu.resi.resiup.presentation.util.Carga.Cargando
+        viewModelScope.launch { _notas.value = cargarNotasDelMesYElAnterior(notasRepo) }
+    }
+}
+
+class InicioResidenteViewModel(
+    private val consultas: ConsultasResidenteRepository,
+    private val sync: Sincronizador,
+    private val notasRepo: pe.upeu.resi.resiup.domain.repository.NotasRepository,
+) : ViewModel() {
+    private val _notas = kotlinx.coroutines.flow.MutableStateFlow<pe.upeu.resi.resiup.presentation.util.Carga<NotasInicio>>(pe.upeu.resi.resiup.presentation.util.Carga.Cargando)
+    val notas: kotlinx.coroutines.flow.StateFlow<pe.upeu.resi.resiup.presentation.util.Carga<NotasInicio>> = _notas
+
+    /** Las notas se piden al servidor (única fuente de verdad); sin conexión no se muestran. */
+    fun cargarNotas() {
+        _notas.value = pe.upeu.resi.resiup.presentation.util.Carga.Cargando
+        viewModelScope.launch { _notas.value = cargarNotasDelMesYElAnterior(notasRepo) }
+    }
+
     val estado = compartir(
         combine(
             combine(consultas.perfil(), consultas.resumenLimpieza(), consultas.asistencias(), consultas.solicitudes(), consultas.diasSinCulto()) { perfil, resumen, asistencias, solicitudes, sinCulto ->
@@ -123,18 +175,13 @@ class InicioResidenteViewModel(private val consultas: ConsultasResidenteReposito
         ) { c, evaluaciones ->
             val feriados = c.sinCulto.mapNotNull { runCatching { kotlinx.datetime.LocalDate.parse(it.fecha) }.getOrNull() }.toSet()
             val hoy = hoyLima()
-            val anterior = kotlinx.datetime.LocalDate(hoy.year, hoy.month.ordinal + 1, 1).minus(1, kotlinx.datetime.DateTimeUnit.DAY)
             c.perfil?.let {
-                InicioResidenteUi(
-                    it, c.resumen, c.asistencias.firstOrNull(), c.solicitudes.firstOrNull(), calcularEstadisticas(c.asistencias, hoy, feriados),
-                    calcularNotasMes(c.asistencias, evaluaciones, hoy.year, hoy.month.ordinal + 1),
-                    calcularNotasMes(c.asistencias, evaluaciones, anterior.year, anterior.month.ordinal + 1),
-                )
+                InicioResidenteUi(it, c.resumen, c.asistencias.firstOrNull(), c.solicitudes.firstOrNull(), calcularEstadisticas(c.asistencias, hoy, feriados))
             }
         }.comoConsulta(sync.estado, consultas.ultimaSincronizacion()),
     )
-    init { sync.refrescar() }
-    fun reintentar() = sync.refrescar(forzar = true)
+    init { sync.refrescar(); cargarNotas() }
+    fun reintentar() { sync.refrescar(forzar = true); cargarNotas() }
 }
 
 // ---------------------------------------------------------------- limpieza
@@ -168,6 +215,11 @@ class SolicitudDetalleViewModel(private val id: Long, private val repo: PermisoR
         viewModelScope.launch { _estado.value = repo.detalle(id).aCarga() }
     }
 
+    /** Vuelve a pedir el estado sin mostrar la rueda de carga (para el refresco automático). */
+    fun actualizarSilencioso() {
+        viewModelScope.launch { repo.detalle(id).onSuccess { _estado.value = Carga.Exito(it) } }
+    }
+
     /** Al volver a la pantalla se descarta lo anterior y se pide el estado vigente. */
     fun recargar() {
         _accion.value = DetalleAccionState()
@@ -194,3 +246,50 @@ class SolicitudDetalleViewModel(private val id: Long, private val repo: PermisoR
         }
     }
 }
+
+/** Posición en cultos y limpieza del ciclo (solo con conexión: se calcula en el servidor). */
+class RankingViewModel(private val repo: ResidenteRepository) : ViewModel() {
+    private val _estado = MutableStateFlow<Carga<pe.upeu.resi.resiup.domain.model.Ranking>>(Carga.Cargando)
+    val estado: StateFlow<Carga<pe.upeu.resi.resiup.domain.model.Ranking>> = _estado.asStateFlow()
+
+    init { cargar() }
+
+    fun cargar() { viewModelScope.launch { _estado.value = repo.ranking().aCarga() } }
+}
+
+/** Foto de perfil del residente: se baja al abrir y se cambia eligiendo una imagen de la galería. */
+class FotoPerfilViewModel(
+    private val residente: ResidenteRepository,
+    private val tramites: pe.upeu.resi.resiup.domain.repository.TramitesRepository,
+) : ViewModel() {
+    private val _foto = MutableStateFlow<androidx.compose.ui.graphics.ImageBitmap?>(null)
+    val foto: StateFlow<androidx.compose.ui.graphics.ImageBitmap?> = _foto.asStateFlow()
+    private val _estado = MutableStateFlow(FotoEstado())
+    val estado: StateFlow<FotoEstado> = _estado.asStateFlow()
+
+    init { cargar() }
+
+    fun cargar() {
+        viewModelScope.launch {
+            val id = residente.fotoPerfil().getOrNull() ?: return@launch
+            tramites.descargarEvidencia(id).getOrNull()?.let { bytes -> _foto.value = runCatching { bytes.decodeToImageBitmap() }.getOrNull() }
+        }
+    }
+
+    fun elegida(imagen: pe.upeu.resi.resiup.domain.model.ImagenElegida?) {
+        if (imagen == null || _estado.value.subiendo) return
+        _estado.value = FotoEstado(subiendo = true)
+        viewModelScope.launch {
+            tramites.subirEvidencia(imagen).fold(
+                { id ->
+                    residente.cambiarFoto(id)
+                        .onSuccess { _foto.value = runCatching { imagen.bytes.decodeToImageBitmap() }.getOrNull(); _estado.value = FotoEstado() }
+                        .onFailure { _estado.value = FotoEstado(error = it.aErrorApi()) }
+                },
+                { _estado.value = FotoEstado(error = it.aErrorApi()) },
+            )
+        }
+    }
+}
+
+data class FotoEstado(val subiendo: Boolean = false, val error: ErrorApi? = null)

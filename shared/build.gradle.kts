@@ -7,12 +7,24 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.sqldelight)
+    id("org.jetbrains.kotlinx.kover") version "0.9.11"
 }
 
 sqldelight {
     databases {
         create("ResiDb") {
             packageName.set("pe.upeu.resi.resiup.db")
+        }
+    }
+}
+
+// Cobertura con Kover (informe XML que lee SonarQube). El código generado (SQLDelight y recursos de Compose) no es propio: se excluye.
+kover {
+    reports {
+        filters {
+            excludes {
+                packages("pe.upeu.resi.resiup.db", "resiup.shared.generated.resources")
+            }
         }
     }
 }

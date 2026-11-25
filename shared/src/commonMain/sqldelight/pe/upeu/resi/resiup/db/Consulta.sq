@@ -78,7 +78,9 @@ CREATE TABLE solicitud (
     estado              TEXT    NOT NULL,
     requiere_apoderado  INTEGER NOT NULL,
     comentario_decision TEXT,
-    creado_en           TEXT    NOT NULL
+    creado_en           TEXT    NOT NULL,
+    garita_salida       TEXT,
+    garita_entrada      TEXT
 );
 
 leerMeta:
@@ -131,8 +133,8 @@ observarSolicitudes:
 SELECT * FROM solicitud ORDER BY creado_en DESC;
 
 guardarSolicitud:
-INSERT OR REPLACE INTO solicitud (id, residente_codigo, residente_nombre, tipo, motivo, destino, salida, retorno_solicitado, retorno_autorizado, estado, requiere_apoderado, comentario_decision, creado_en)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO solicitud (id, residente_codigo, residente_nombre, tipo, motivo, destino, salida, retorno_solicitado, retorno_autorizado, estado, requiere_apoderado, comentario_decision, creado_en, garita_salida, garita_entrada)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 borrarSolicitudes:
 DELETE FROM solicitud;

@@ -100,6 +100,7 @@ fun SolicitudDto.aDominio() = SolicitudPermiso(
     justificaciones = justificaciones.orEmpty().map { Justificacion(it.id, it.motivo, it.estado.aEstadoRevision(), it.comentario) },
     origen = if (origen == "APODERADO") OrigenSolicitud.Apoderado else OrigenSolicitud.Residente,
     responsableNombre = responsableNombre, responsableCelular = responsableCelular, acompanante = acompanante,
+    garitaSalida = garitaSalida?.instante(), garitaEntrada = garitaEntrada?.instante(),
 )
 
 fun HijoDto.aDominio() = Hijo(residenteId, codigo, nombreCompleto, habitacion, cama, puedeSolicitarSolo, pendientes)
@@ -108,7 +109,7 @@ fun ResumenResidenteDto.aDominio() = ResumenResidente(dias, cultosRealizados, as
 
 fun EnlaceDto.aDominio() = EnlaceApoderado(token, ruta, expiraEn.instante(), apoderado)
 
-fun SesionCultoDto.aDominio() = SesionCulto(id, fecha, tipo.aTipoCulto(), estado == "CERRADA", presentes, corte.instante())
+fun SesionCultoDto.aDominio() = SesionCulto(id, fecha, tipo.aTipoCulto(), estado == "CERRADA", presentes, corte.instante(), inicio?.instante())
 
 private fun String.aResultado(): ResultadoGarita = when (this) {
     "AUTORIZADO_SALIDA" -> ResultadoGarita.AutorizadoSalida

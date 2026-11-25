@@ -86,10 +86,40 @@ class PermisosFamiliaTest {
     private val hijo2 = Hijo(2, "A002", "Beto Pérez", "103", "B", true, 0)
 
     @Test
-    fun `el residente solo elige corto o largo y el pernoctar queda para su padre`() = runTest {
+    fun `el residente elige corto largo o pernoctar y el padre tambien`() = runTest {
         val vm = SolicitudFormViewModel(PermisoFalso())
-        assertEquals(listOf(TipoPermiso.Corto, TipoPermiso.Largo), vm.tiposPermitidos)
+        assertEquals(listOf(TipoPermiso.Corto, TipoPermiso.Largo, TipoPermiso.Pernocte), vm.tiposPermitidos)
         assertEquals(listOf(TipoPermiso.Corto, TipoPermiso.Largo, TipoPermiso.Pernocte), FamiliaNuevoViewModel(FamiliaFalsa(listOf(hijo1))).tiposPermitidos)
+    }
+
+    @Test
+    fun `al volver a abrir el formulario se descarta el envio anterior`() = runTest {
+        val vm = SolicitudFormViewModel(PermisoFalso())
+        vm.tipo(TipoPermiso.Largo); vm.destino("Alameda"); vm.motivo("Grupo")
+        val salida = ahora().plus(1.days).conHoraLima(9, 0)
+        vm.salida(salida); vm.retorno(salida + 150.minutes)
+        vm.descartarEnviado()
+        assertEquals("Alameda", vm.estado.value.destino, "un formulario sin enviar se conserva")
+        vm.enviar()
+        assertNotNull(vm.estado.value.creada)
+
+        vm.descartarEnviado()
+
+        assertNull(vm.estado.value.creada)
+        assertEquals("", vm.estado.value.destino)
+    }
+
+    @Test
+    fun `el ingreso no se acepta antes de la salida`() = runTest {
+        val vm = SolicitudFormViewModel(PermisoFalso())
+        val salida = ahora().plus(3.hours)
+        vm.salida(salida)
+        vm.retorno(salida.minus(1.hours))
+        assertNull(vm.estado.value.retorno)
+        assertEquals("El ingreso debe ser después de la salida", vm.estado.value.errores["retorno"])
+        vm.retorno(salida.plus(1.hours))
+        assertEquals(salida.plus(1.hours), vm.estado.value.retorno)
+        assertNull(vm.estado.value.errores["retorno"])
     }
 
     @Test
@@ -115,7 +145,7 @@ class PermisosFamiliaTest {
         val repo = PermisoFalso()
         val vm = SolicitudFormViewModel(repo)
         vm.tipo(TipoPermiso.Largo); vm.destino("Alameda"); vm.motivo("Grupo pequeño")
-        val salida = ahora() + 1.hours
+        val salida = ahora().plus(1.days).conHoraLima(9, 0) // fija: la prueba no depende de la hora del día
         vm.salida(salida); vm.retorno(salida + 150.minutes)
         vm.enviar()
         assertEquals(TipoPermiso.Largo, repo.recibida?.tipo)
@@ -143,10 +173,10 @@ class PermisosFamiliaTest {
         val salida = ahora().plus(3.days).conHoraLima(14, 0)
         vm.salida(salida); vm.retorno(salida.conHoraLima(23, 0))
         vm.enviar()
-        assertEquals(setOf("responsableNombre", "responsableCelular", "retorno"), vm.estado.value.errores.keys)
+        assertEquals(setOf("responsableNombre", "responsableCelular", "acompanante", "retorno"), vm.estado.value.errores.keys)
         assertNull(familia.recibida)
 
-        vm.responsableNombre("Haydee Bazán Abanto"); vm.responsableCelular("+51 968 110 422")
+        vm.responsableNombre("Haydee Bazán Abanto"); vm.responsableCelular("+51 968 110 422"); vm.acompanante("Nadie")
         vm.retorno(salida.plus(3.days).conHoraLima(10, 30))
         vm.enviar()
         val enviada = familia.recibida!!
@@ -154,7 +184,7 @@ class PermisosFamiliaTest {
         assertEquals(1L, enviada.residenteId, "con un solo hijo se elige solo")
         assertEquals("Haydee Bazán Abanto", enviada.responsableNombre)
         assertEquals("+51 968 110 422", enviada.responsableCelular)
-        assertEquals("Nadie", enviada.acompanante, "sin acompañante se registra «Nadie»")
+        assertEquals("Nadie", enviada.acompanante, "quien va solo escribe «Nadie»")
     }
 
     @Test

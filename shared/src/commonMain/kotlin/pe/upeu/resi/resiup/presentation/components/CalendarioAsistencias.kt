@@ -49,15 +49,15 @@ private val NOMBRES_DIA = listOf("lunes", "martes", "miércoles", "jueves", "vie
 
 /**
  * Calendario mensual de asistencias a cultos. Cada día se distingue por una marca además del color
- * («✓» asistió, «!» después del corte, «–» sin registro) y tiene descripción para lectores de pantalla.
+ * («✓» asistió, «!» tardanza, «–» sin registro) y tiene descripción para lectores de pantalla.
  */
 @Composable
-fun CalendarioAsistencias(asistencias: List<AsistenciaCulto>, hoy: LocalDate, modifier: Modifier = Modifier) {
+fun CalendarioAsistencias(asistencias: List<AsistenciaCulto>, hoy: LocalDate, modifier: Modifier = Modifier, onElegir: ((LocalDate) -> Unit)? = null, conMarcas: Boolean = true, diasConCulto: Set<String>? = null, permitirFuturo: Boolean = false, desdeFecha: LocalDate? = null) {
     var anio by remember { mutableStateOf(hoy.year) }
     var mes by remember { mutableStateOf(hoy.month.ordinal + 1) }
     var seleccion by remember { mutableStateOf<LocalDate?>(null) }
     val desde = remember(asistencias) { asistencias.fechaMasAntigua() }
-    val semanas = remember(anio, mes, asistencias, hoy, desde) { armarMes(anio, mes, asistencias, hoy, desde) }
+    val semanas = remember(anio, mes, asistencias, hoy, desde, diasConCulto) { armarMes(anio, mes, asistencias, hoy, desde, diasConCulto) }
     val esMesActual = anio == hoy.year && mes == hoy.month.ordinal + 1
 
     ResiTarjeta(modifier) {
@@ -69,7 +69,7 @@ fun CalendarioAsistencias(asistencias: List<AsistenciaCulto>, hoy: LocalDate, mo
             )
             TextButton(
                 { mesDesplazado(anio, mes, 1).let { anio = it.first; mes = it.second; seleccion = null } },
-                Modifier.semantics { contentDescription = "Mes siguiente" }, enabled = !esMesActual,
+                Modifier.semantics { contentDescription = "Mes siguiente" }, enabled = permitirFuturo || !esMesActual,
             ) { Text("›", style = MaterialTheme.typography.titleLarge) }
         }
         Row(Modifier.fillMaxWidth().padding(top = Espacio.xs).clearAndSetSemantics { }) {
@@ -78,16 +78,16 @@ fun CalendarioAsistencias(asistencias: List<AsistenciaCulto>, hoy: LocalDate, mo
         semanas.forEach { semana ->
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 semana.forEach { dia ->
-                    CeldaDia(dia, dia.fecha == seleccion, Modifier.weight(1f)) { seleccion = if (dia.fecha == seleccion) null else dia.fecha }
+                    CeldaDia(dia, dia.fecha == seleccion, Modifier.weight(1f), habilitada = desdeFecha == null || dia.fecha >= desdeFecha) { if (onElegir != null) onElegir(dia.fecha) else seleccion = if (dia.fecha == seleccion) null else dia.fecha }
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().padding(top = Espacio.m), horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+        if (conMarcas) Row(Modifier.fillMaxWidth().padding(top = Espacio.m), horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
             Leyenda("✓", "Asistió")
-            Leyenda("!", "Tras el corte")
+            Leyenda("!", "Tardanza")
             Leyenda("–", "Sin registro")
         }
-        seleccion?.let { fecha ->
+        if (conMarcas) seleccion?.let { fecha ->
             val dia = semanas.flatten().firstOrNull { it.fecha == fecha }
             if (dia != null) DetalleDia(dia)
         }
@@ -105,7 +105,7 @@ private fun Leyenda(marca: String, texto: String) {
 private fun DiaCalendario.descripcion(): String {
     val base = "${NOMBRES_DIA[fecha.dayOfWeek.ordinal]} ${fecha.legible()}"
     return when {
-        asistencias.isNotEmpty() -> base + ": asistió a " + asistencias.joinToString(" y ") { "culto ${it.tipo.etiqueta.lowercase()}" + if (it.despuesDelCorte) " después del corte" else "" }
+        asistencias.isNotEmpty() -> base + ": asistió a " + asistencias.joinToString(" y ") { "culto ${it.tipo.etiqueta.lowercase()}" + if (it.despuesDelCorte) " con tardanza" else "" }
         sinRegistro -> "$base: sin registro de asistencia"
         !habil -> "$base: sin culto"
         else -> base
@@ -113,7 +113,7 @@ private fun DiaCalendario.descripcion(): String {
 }
 
 @Composable
-private fun CeldaDia(dia: DiaCalendario, seleccionado: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun CeldaDia(dia: DiaCalendario, seleccionado: Boolean, modifier: Modifier, habilitada: Boolean = true, onClick: () -> Unit) {
     val colores = ResiTheme.colores
     val tarde = dia.asistencias.any { it.despuesDelCorte }
     val fondo = when {
@@ -136,7 +136,7 @@ private fun CeldaDia(dia: DiaCalendario, seleccionado: Boolean, modifier: Modifi
     val forma = RoundedCornerShape(12.dp)
     var celda = modifier.aspectRatio(1f).background(fondo, forma)
     if (borde != null) celda = celda.border(borde, forma)
-    if (dia.delMes) {
+    if (dia.delMes && habilitada) {
         celda = celda.clickable(onClickLabel = "Ver detalle del día") { onClick() }
             .semantics { contentDescription = dia.descripcion(); role = Role.Button; selected = seleccionado }
     } else {
@@ -148,7 +148,7 @@ private fun CeldaDia(dia: DiaCalendario, seleccionado: Boolean, modifier: Modifi
                 Text(
                     "${dia.fecha.day}", style = MaterialTheme.typography.bodyMedium,
                     fontWeight = if (dia.esHoy) FontWeight.Bold else FontWeight.Normal,
-                    color = if (dia.habil) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (dia.habil && habilitada) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant,
                 )
                 Text(marca, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
             }
@@ -163,7 +163,7 @@ private fun DetalleDia(dia: DiaCalendario) {
         when {
             dia.asistencias.isNotEmpty() -> dia.asistencias.forEach {
                 Text(
-                    "Culto ${it.tipo.etiqueta.lowercase()} · registrado ${it.registradoEn.formatoLima()}" + if (it.despuesDelCorte) " (después del corte)" else "",
+                    "Culto ${it.tipo.etiqueta.lowercase()} · registrado ${it.registradoEn.formatoLima()}" + if (it.despuesDelCorte) " (tardanza)" else "",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }

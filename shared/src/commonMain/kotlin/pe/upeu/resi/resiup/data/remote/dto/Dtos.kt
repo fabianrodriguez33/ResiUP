@@ -18,6 +18,7 @@ data class HabitacionResumenDto(val id: Long, val numero: String, val cama: Stri
 
 @Serializable
 data class ResidenteDto(
+    val fotoEvidenciaId: Long? = null,
     val id: Long,
     val codigo: String,
     val nombreCompleto: String,
@@ -113,6 +114,8 @@ data class SolicitudDto(
     val responsableNombre: String? = null,
     val responsableCelular: String? = null,
     val acompanante: String? = null,
+    val garitaSalida: String? = null,
+    val garitaEntrada: String? = null,
 )
 
 @Serializable
@@ -144,16 +147,22 @@ data class JustificacionRequestDto(val motivo: String, val evidenciaId: Long? = 
 data class EnlaceDto(val token: String, val ruta: String, val expiraEn: String, val apoderado: String = "")
 
 @Serializable
-data class SesionCultoDto(val id: Long, val fecha: String, val tipo: String, val corte: String, val estado: String, val presentes: Long = 0)
+data class SesionCultoDto(val id: Long, val fecha: String, val tipo: String, val corte: String, val estado: String, val presentes: Long = 0, val inicio: String? = null)
 
 @Serializable
 data class AbrirSesionRequestDto(val tipo: String)
 
 @Serializable
-data class QrRequestDto(val qr: String)
+data class QrRequestDto(val qr: String, val solicitudId: Long? = null)
 
 @Serializable
 data class PuntajePersonalDto(val residenteId: Long, val ropero: Int, val cama: Int, val escritorio: Int, val piso: Int)
+
+@Serializable
+data class DetalleHabitacionDto(val fecha: String, val basura: Int, val olores: Int, val residentes: List<DetallePersonaDto>)
+
+@Serializable
+data class DetallePersonaDto(val residenteId: Long, val nombre: String = "", val ropero: Int, val cama: Int, val escritorio: Int, val piso: Int)
 
 @Serializable
 data class LimpiezaHabitacionRequestDto(val fecha: String, val basura: Int, val olores: Int, val residentes: List<PuntajePersonalDto>)
@@ -179,7 +188,13 @@ data class VerificacionDto(
 )
 
 @Serializable
-data class MovimientoRequestDto(val qr: String, val tipo: String)
+data class MovimientoRequestDto(val qr: String, val tipo: String, val solicitudId: Long? = null)
+
+@Serializable
+data class PermisoGaritaDto(val id: Long, val tipo: String, val destino: String = "", val motivo: String = "", val salida: String, val retorno: String, val salidaAbierta: Boolean = false)
+
+@Serializable
+data class PermisosDeResidenteDto(val resultado: String, val mensaje: String = "", val residente: ResidenteGaritaDto? = null, val permisos: List<PermisoGaritaDto> = emptyList())
 
 @Serializable
 data class MovimientoDto(
@@ -191,3 +206,23 @@ data class MovimientoDto(
     val minutosTarde: Int? = null,
     val anulado: Boolean = false,
 )
+
+@Serializable
+data class PuestoDto(val posicion: Int? = null, val total: Int = 0, val valor: Double? = null)
+
+@Serializable
+data class RankingDto(val cultos: PuestoDto = PuestoDto(), val limpieza: PuestoDto = PuestoDto())
+
+
+@Serializable
+data class FotoRequestDto(val evidenciaId: Long)
+
+
+@Serializable
+data class DecisionRequestDto(val aprobar: Boolean, val comentario: String? = null)
+
+@Serializable
+data class CodigoRequestDto(val codigo: String)
+
+@Serializable
+data class FotoRefDto(val fotoEvidenciaId: Long? = null)

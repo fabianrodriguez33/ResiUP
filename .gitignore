@@ -17,3 +17,9 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
+
+# Firma de la versión de entrega: nunca se versiona
+keystore.properties
+*.jks
+*.keystore
+claves/

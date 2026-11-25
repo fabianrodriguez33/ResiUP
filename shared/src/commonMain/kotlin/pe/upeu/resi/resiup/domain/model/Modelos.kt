@@ -100,6 +100,9 @@ data class SolicitudPermiso(
     val responsableNombre: String? = null,
     val responsableCelular: String? = null,
     val acompanante: String? = null,
+    /** Marcas de garita con este permiso (null si aún no ocurrieron). */
+    val garitaSalida: Instant? = null,
+    val garitaEntrada: Instant? = null,
 )
 
 /** [residenteId] solo lo envía el padre/madre (a qué hijo corresponde); los datos de la casa, solo en pernoctar. */
@@ -129,7 +132,7 @@ data class EnlaceApoderado(val token: String, val ruta: String, val expiraEn: In
 // ---- Preceptor ----
 data class ResidenteResumen(val id: Long, val codigo: String, val nombreCompleto: String, val habitacion: String?, val activo: Boolean)
 
-data class SesionCulto(val id: Long, val fecha: String, val tipo: TipoCulto, val cerrada: Boolean, val presentes: Long, val corte: Instant)
+data class SesionCulto(val id: Long, val fecha: String, val tipo: TipoCulto, val cerrada: Boolean, val presentes: Long, val corte: Instant, val inicio: Instant? = null)
 
 data class AsistenciaRegistrada(val codigo: String, val nombreCompleto: String, val despuesDelCorte: Boolean)
 
@@ -169,6 +172,11 @@ data class VerificacionGarita(
     val minutosTarde: Int?,
 )
 
+/** Un permiso aprobado que garita puede elegir al escanear: [salidaAbierta] = el residente ya salio con el y falta su retorno. */
+data class PermisoParaGarita(val id: Long, val tipo: TipoPermiso, val destino: String, val salida: Instant, val retorno: Instant, val salidaAbierta: Boolean)
+
+data class PermisosDeResidente(val mensaje: String, val nombreCompleto: String?, val codigo: String?, val permisos: List<PermisoParaGarita>, val valido: Boolean)
+
 data class MovimientoRegistrado(
     val id: Long,
     val codigo: String,
@@ -178,3 +186,8 @@ data class MovimientoRegistrado(
     val minutosTarde: Int?,
     val anulado: Boolean,
 )
+
+/** Posición del residente en el ciclo; [posicion] y [valor] vienen vacíos si todavía no tiene datos. */
+data class Puesto(val posicion: Int?, val total: Int, val valor: Double?)
+
+data class Ranking(val cultos: Puesto, val limpieza: Puesto)

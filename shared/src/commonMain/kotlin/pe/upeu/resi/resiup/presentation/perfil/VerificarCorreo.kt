@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -72,8 +73,7 @@ internal fun ErrorApi.textoVisible() = if (this is ErrorApi.Conflicto) mensaje e
 
 @Composable
 fun VerificarCorreoDialogo(correo: String, onCerrar: () -> Unit, onVerificado: () -> Unit, vm: VerificacionCorreoViewModel = koinViewModel()) {
-    val s by vm.estado.collectAsState()
-    LaunchedEffect(Unit) { vm.reiniciar() }
+    val s by remember(vm) { vm.reiniciar(); vm.estado }.collectAsState()
     LaunchedEffect(s.verificado) { if (s.verificado) onVerificado() }
     AlertDialog(
         onDismissRequest = onCerrar,

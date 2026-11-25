@@ -118,7 +118,7 @@ fun CampanaAvisos(noLeidas: Int, onClick: () -> Unit, modifier: Modifier = Modif
         modifier.size(44.dp).background(MaterialTheme.colorScheme.background.copy(alpha = 0.92f), CircleShape).semantics { contentDescription = descripcion }.clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        ResiIcono(ResiIconos.Campana, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        ResiIcono(ResiIconos.CampanaLlena, null, Modifier.size(26.dp), tint = pe.upeu.resi.resiup.presentation.theme.Acento.Azul.color())
         if (noLeidas > 0) {
             Box(
                 Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 2.dp).background(MaterialTheme.colorScheme.error, CircleShape)
@@ -132,7 +132,7 @@ fun CampanaAvisos(noLeidas: Int, onClick: () -> Unit, modifier: Modifier = Modif
 
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-fun BandejaScreen(onVolver: () -> Unit, vm: BandejaViewModel = koinViewModel()) {
+fun BandejaScreen(onVolver: () -> Unit, onIr: (Notificacion) -> Unit = {}, vm: BandejaViewModel = koinViewModel()) {
     val estado by vm.lista.collectAsState()
     LaunchedEffect(Unit) { vm.cargar() }
     BackHandler(onBack = onVolver)
@@ -148,7 +148,7 @@ fun BandejaScreen(onVolver: () -> Unit, vm: BandejaViewModel = koinViewModel()) 
                         ResiBoton("Marcar todas como leídas", vm::marcarTodas, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
                     }
                     LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Espacio.s), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = Espacio.m)) {
-                        items(lista, key = { it.id }) { n -> FilaAviso(n) { vm.abrir(n) } }
+                        items(lista, key = { it.id }) { n -> FilaAviso(n) { vm.abrir(n); onIr(n) } }
                     }
                 }
             }

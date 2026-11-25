@@ -26,7 +26,7 @@ data class DiaCalendario(
  * Semanas (lunes a domingo) de un mes. [desde] es la fecha más antigua descargada: antes de ella no se afirma nada,
  * porque la copia local solo guarda los registros más recientes.
  */
-fun armarMes(anio: Int, mes: Int, asistencias: List<AsistenciaCulto>, hoy: LocalDate, desde: LocalDate?): List<List<DiaCalendario>> {
+fun armarMes(anio: Int, mes: Int, asistencias: List<AsistenciaCulto>, hoy: LocalDate, desde: LocalDate?, diasConCulto: Set<String>? = null): List<List<DiaCalendario>> {
     val primero = LocalDate(anio, mes, 1)
     val ultimo = primero.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
     val porFecha = asistencias.groupBy { it.fecha }
@@ -43,7 +43,7 @@ fun armarMes(anio: Int, mes: Int, asistencias: List<AsistenciaCulto>, hoy: Local
                 asistencias = registros,
                 esHoy = d == hoy,
                 habil = habil,
-                sinRegistro = habil && registros.isEmpty() && d < hoy && desde != null && d >= desde,
+                sinRegistro = habil && registros.isEmpty() && d < hoy && desde != null && d >= desde && (diasConCulto == null || d.toString() in diasConCulto),
             )
         }
         dia = dia.plus(7, DateTimeUnit.DAY)

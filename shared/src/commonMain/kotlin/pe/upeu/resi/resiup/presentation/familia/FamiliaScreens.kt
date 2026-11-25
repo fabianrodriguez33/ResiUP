@@ -1,5 +1,8 @@
 package pe.upeu.resi.resiup.presentation.familia
 
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.width
+import pe.upeu.resi.resiup.presentation.components.estadoParaResidente
 import pe.upeu.resi.resiup.presentation.theme.Acento
 import pe.upeu.resi.resiup.presentation.components.ModuloUi
 import pe.upeu.resi.resiup.presentation.components.CuadriculaModulos
@@ -62,13 +65,8 @@ fun InicioFamiliaScreen(nombre: String, irA: (String) -> Unit) {
     var rechazando by remember { mutableStateOf<SolicitudPermiso?>(null) }
     LaunchedEffect(Unit) { vm.cargar() }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-            AvatarInicial(nombre, Acento.Turquesa)
-            Column(Modifier.weight(1f)) {
-                Text("Hola, ${nombre.substringBefore(' ')}", style = MaterialTheme.typography.headlineMedium)
-                Text("Permisos de tus hijos", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
+        // Misma tarjeta de bienvenida que el residente y el pastor.
+        pe.upeu.resi.resiup.presentation.components.TarjetaHola(nombre, "Padre, madre o apoderado", Acento.Turquesa, { irA(Destinos.Mas) }, Modifier.padding(top = 40.dp))
         s.mensaje?.let { BannerMensaje(it, EstadoVisual.Exito) }
         s.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
 
@@ -94,12 +92,11 @@ fun InicioFamiliaScreen(nombre: String, irA: (String) -> Unit) {
         CuadriculaModulos(
             listOf(
                 ModuloUi("Enviar permiso", ResiIconos.Permisos, Acento.Azul, { irA(Destinos.Nuevo) }),
-                ModuloUi("Permisos de mis hijos", ResiIconos.Solicitudes, Acento.Verde, { irA(Destinos.Solicitudes) }, insignia = pendientes.takeIf { it > 0 }?.toString()),
-                ModuloUi("Mi cuenta", ResiIconos.Perfil, Acento.Rosa, { irA(Destinos.Mas) }),
+                ModuloUi("Permisos de mis hijos", ResiIconos.Solicitudes, Acento.Azul, { irA(Destinos.Solicitudes) }, insignia = pendientes.takeIf { it > 0 }?.toString()),
             ),
         )
 
-        Text("Por aceptar", style = MaterialTheme.typography.titleMedium)
+        pe.upeu.resi.resiup.presentation.components.EncabezadoSeccion("Por aceptar")
         ContenidoCarga(s.porAceptar, vm::cargar, Modifier.fillMaxWidth()) { lista ->
             if (lista.isEmpty()) {
                 Text("No hay permisos esperando tu respuesta.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -146,12 +143,12 @@ private fun ListaFamilia(onAbrir: (Long) -> Unit) {
     LaunchedEffect(Unit) { vm.refrescar() }
     val estado by vm.estado.collectAsState()
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla("Permisos de tus hijos", Modifier.padding(top = Espacio.l))
+        TituloPantalla("Permisos", Modifier.padding(top = Espacio.l), subtitulo = "Permisos de tus hijos")
         ListaPaginada(estado, vm::refrescar, vm::cargarMas, "Sin permisos", "Aquí aparecerán los permisos que tus hijos pidan y los que tú envíes.") { s ->
             ResiTarjeta(onClick = { onAbrir(s.id) }) {
                 ElementoLista(
-                    s.residenteNombre, subtitulo = "${s.tipo.etiqueta} · ${s.destino} · ${s.salida.formatoLima()}", icono = ResiIconos.Permisos,
-                    final = { ChipEstado(s.estado.etiqueta, s.estado.aEstadoVisual()) },
+                    s.residenteNombre, subtitulo = "${s.tipo.etiqueta} - ${s.salida.formatoLima()}", icono = ResiIconos.Permisos, acento = Acento.Azul,
+                    final = { val (t, v) = s.estadoParaResidente(); ChipEstado(t, v) },
                 )
             }
         }
@@ -167,15 +164,26 @@ private fun DetalleFamilia(id: Long, onVolver: () -> Unit) {
     var confirmarCancelar by remember { mutableStateOf(false) }
     var confirmarRechazo by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        ResiBoton("Volver", onVolver, variante = VarianteBoton.Terciario)
         ContenidoCarga(estado, vm::cargar, Modifier.fillMaxWidth()) { s ->
             Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                TituloPantalla(s.residenteNombre, subtitulo = "Permiso ${s.tipo.etiqueta.lowercase()} · ${s.destino}")
-                ChipEstado(s.estado.etiqueta, s.estado.aEstadoVisual())
+                // Igual que el detalle del residente: flecha y estado a la izquierda, datos en dos columnas.
+                Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                    pe.upeu.resi.resiup.presentation.components.BotonAtras(onVolver)
+                    val (t, v) = s.estadoParaResidente()
+                    ChipEstado(t, v, Modifier.width(128.dp), centrado = true)
+                }
                 ResiTarjeta { DatosSolicitud(s) }
+                if (s.garitaSalida != null) {
+                    ResiTarjeta {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                            Column(Modifier.weight(1f)) { Text("Garita Salida", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary); Text(s.garitaSalida.formatoLima()) }
+                            Column(Modifier.weight(1f)) { Text("Garita Entrada", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary); Text(s.garitaEntrada?.formatoLima() ?: "-") }
+                        }
+                    }
+                }
                 s.comentarioDecision?.let { BannerMensaje("Comentario del pastor: $it", EstadoVisual.Info) }
                 if (s.estado == EstadoSolicitud.PendienteApoderado) {
-                    BannerMensaje("${s.residenteNombre} pidió este permiso. Si lo aceptas, queda aprobado y el pastor lo verá en su lista.", EstadoVisual.Info)
+                    BannerMensaje("${s.residenteNombre} pidió este permiso. Si lo aceptas, pasa a revisión del pastor.", EstadoVisual.Info)
                     ResiBoton("Aceptar", { vm.decidir(true) }, Modifier.fillMaxWidth(), cargando = accion.trabajando)
                     ResiBoton("Rechazar", { confirmarRechazo = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo, habilitado = !accion.trabajando)
                 }
@@ -202,7 +210,7 @@ fun NuevoPermisoFamiliaScreen(irA: (String) -> Unit) {
     val s by vm.estado.collectAsState()
     val hijos by vm.hijos.collectAsState()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla("Enviar permiso", subtitulo = "Queda aprobado al enviarlo; el pastor lo ve en su lista")
+        TituloPantalla("Enviar permiso", subtitulo = "Pasa a revisión del pastor al enviarlo")
         val creada = s.creada
         if (creada != null) {
             BannerMensaje("Permiso enviado y aprobado: ${creada.tipo.etiqueta.lowercase()} de ${creada.residenteNombre} a ${creada.destino}.", EstadoVisual.Exito)

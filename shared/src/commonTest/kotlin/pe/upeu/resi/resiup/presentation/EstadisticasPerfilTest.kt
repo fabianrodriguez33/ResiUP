@@ -27,10 +27,6 @@ import pe.upeu.resi.resiup.presentation.residente.EditarPerfilViewModel
 import pe.upeu.resi.resiup.presentation.util.Sincronizador
 import pe.upeu.resi.resiup.presentation.util.calcularEstadisticas
 import pe.upeu.resi.resiup.presentation.util.validarContacto
-import pe.upeu.resi.resiup.presentation.util.Nota
-import pe.upeu.resi.resiup.presentation.util.calcularNotasMes
-import pe.upeu.resi.resiup.presentation.util.notaCultos
-import pe.upeu.resi.resiup.presentation.util.notaLimpieza
 import pe.upeu.resi.resiup.domain.model.EvaluacionLimpieza
 
 /** Racha y estadísticas de cultos, y la edición del perfil del residente. */
@@ -109,34 +105,6 @@ class EstadisticasPerfilTest {
         assertEquals(1, lunes.diasHabilesMes)
     }
 
-    @Test
-    fun `las notas siguen los rangos de la residencia`() {
-        assertEquals(listOf(Nota.C, Nota.C, Nota.B, Nota.B, Nota.A, Nota.A, Nota.AD, Nota.AD), listOf(0, 10, 11, 14, 15, 19, 20, 44).map { notaCultos(it) })
-        assertEquals(Nota.C, notaLimpieza(10.4))
-        assertEquals(Nota.B, notaLimpieza(10.5))
-        assertEquals(Nota.B, notaLimpieza(14.4))
-        assertEquals(Nota.A, notaLimpieza(14.5))
-        assertEquals(Nota.A, notaLimpieza(17.4))
-        assertEquals(Nota.AD, notaLimpieza(17.5))
-        assertEquals(Nota.AD, notaLimpieza(20.0))
-    }
-
-    @Test
-    fun `las notas del mes cuentan cultos y promedian la limpieza solo de ese mes`() {
-        fun eval(fecha: String, total: Int) = EvaluacionLimpieza(1, fecha, total, 20, emptyMap(), null)
-        val cultos = (1..16).map { culto("2026-10-${it.toString().padStart(2, '0')}") } + culto("2026-09-30") + culto("2026-11-02")
-        val n = calcularNotasMes(cultos, listOf(eval("2026-10-05", 20), eval("2026-10-06", 15), eval("2026-09-30", 2)), 2026, 10)
-        assertEquals(16, n.cultos)
-        assertEquals(Nota.A, n.notaCultos)
-        assertEquals(2, n.evaluaciones)
-        assertEquals(17.5, n.promedioLimpieza)
-        assertEquals(Nota.AD, n.notaLimpieza)
-        val vacio = calcularNotasMes(emptyList(), emptyList(), 2026, 12)
-        assertEquals(Nota.C, vacio.notaCultos)
-        assertNull(vacio.promedioLimpieza)
-        assertNull(vacio.notaLimpieza)
-    }
-
     // ------------------------------------------------------------ edición del perfil
 
     private class ResidenteFalso(var respuesta: Result<Perfil>) : ResidenteRepository {
@@ -167,16 +135,16 @@ class EstadisticasPerfilTest {
     }, { 0L })
 
     @Test
-    fun `el formulario parte de los datos actuales y valida correo telefono nacimiento y ciclo`() = runTest {
+    fun `el formulario parte de los datos actuales y valida correo y telefono`() = runTest {
         val repo = ResidenteFalso(Result.success(perfil))
         val vm = EditarPerfilViewModel(repo, sincFalso())
         vm.iniciar(perfil)
         assertEquals("2004-05-17", vm.estado.value.fechaNacimiento)
         assertEquals("6", vm.estado.value.ciclo)
 
-        vm.email("no-es-correo"); vm.telefono("123"); vm.ciclo("15"); vm.fechaNacimiento("2999-01-01")
+        vm.email("no-es-correo"); vm.telefono("123")
         vm.guardar()
-        assertEquals(setOf("email", "telefono", "ciclo", "fechaNacimiento"), vm.estado.value.errores.keys)
+        assertEquals(setOf("email", "telefono"), vm.estado.value.errores.keys)
         assertNull(repo.recibido, "no se llama al servidor con datos inválidos")
     }
 
@@ -192,9 +160,14 @@ class EstadisticasPerfilTest {
     fun `el contacto valida correo telefono y fecha de nacimiento`() {
         val hoy = LocalDate(2026, 11, 1)
         assertEquals(emptyMap(), validarContacto("", "", "", hoy), "todo es opcional")
-        assertEquals(emptyMap(), validarContacto(" ana@upeu.edu.pe ", "968 110 422", "2004-05-17", hoy))
+        assertEquals(emptyMap(), validarContacto(" ana@upeu.edu.pe ", "968110422", "2004-05-17", hoy))
         assertEquals(setOf("email"), validarContacto("ana@upeu", "", "", hoy).keys)
         assertEquals(setOf("telefono"), validarContacto("", "12345", "", hoy).keys)
+        assertEquals(setOf("telefono"), validarContacto("", "96811042", "", hoy).keys, "8 dígitos")
+        assertEquals(setOf("telefono"), validarContacto("", "9681104221", "", hoy).keys, "10 dígitos")
+        assertEquals(setOf("telefono"), validarContacto("", "968 110 422", "", hoy).keys, "solo dígitos")
+        assertEquals(setOf("telefono"), validarContacto("", "868110422", "", hoy).keys, "debe empezar en 9")
+        assertEquals(setOf("email"), validarContacto("sin-arroba", "", "", hoy).keys)
         assertEquals(setOf("fechaNacimiento"), validarContacto("", "", "2026-11-01", hoy).keys, "hoy no es nacimiento")
         assertEquals(setOf("fechaNacimiento"), validarContacto("", "", "2031-01-01", hoy).keys)
         assertEquals(setOf("fechaNacimiento"), validarContacto("", "", "1850-01-01", hoy).keys)
@@ -226,9 +199,10 @@ class EstadisticasPerfilTest {
         val repo = ResidenteFalso(Result.success(perfil.copy(ciclo = 7)))
         val vm = EditarPerfilViewModel(repo, sincFalso())
         vm.iniciar(perfil)
-        vm.email("  julio@upeu.edu.pe "); vm.carrera("Ingeniería de Sistemas"); vm.ciclo("7"); vm.telefono("968 110 422"); vm.fechaNacimiento("2004-05-17")
+        vm.email("  julio@upeu.edu.pe "); vm.telefono("968110422")
         vm.guardar()
-        assertEquals(PerfilEditable("  julio@upeu.edu.pe ", "968 110 422", "2004-05-17", "Ingeniería de Sistemas", 7), repo.recibido)
+        // El residente solo cambia correo y celular: carrera, ciclo y nacimiento no se envían.
+        assertEquals(PerfilEditable("  julio@upeu.edu.pe ", "968110422", null, "", null), repo.recibido)
         assertTrue(vm.estado.value.guardado)
     }
 

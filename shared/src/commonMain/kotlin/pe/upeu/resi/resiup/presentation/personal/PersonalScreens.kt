@@ -1,5 +1,6 @@
 package pe.upeu.resi.resiup.presentation.personal
 
+import kotlinx.datetime.toLocalDateTime
 import pe.upeu.resi.resiup.domain.model.TipoPermiso
 import pe.upeu.resi.resiup.presentation.theme.Acento
 import pe.upeu.resi.resiup.presentation.components.TarjetaDato
@@ -7,11 +8,13 @@ import pe.upeu.resi.resiup.presentation.components.ModuloUi
 import pe.upeu.resi.resiup.presentation.components.EncabezadoSeccion
 import pe.upeu.resi.resiup.presentation.components.CuadriculaModulos
 import pe.upeu.resi.resiup.presentation.components.AvatarInicial
+import pe.upeu.resi.resiup.presentation.components.TarjetaHola
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -105,70 +108,135 @@ private fun ZonaEscaneo(activo: Boolean, onCodigo: (String) -> Unit) {
 @Composable
 fun InicioPreceptorScreen(nombre: String, onIr: (String) -> Unit, vm: InicioPreceptorViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
+    LaunchedEffect(Unit) { vm.cargar() }
     ContenidoCarga(estado, vm::cargar) { ui ->
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                AvatarInicial(nombre, Acento.Azul)
-                Column(Modifier.weight(1f)) {
-                    Text("Hola, ${nombre.substringBefore(' ')}", style = MaterialTheme.typography.headlineMedium)
-                    Text("Panel del pastor", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
-                TarjetaDato(ui.aprobados.toString(), "Permisos aprobados", ResiIconos.Permisos, Acento.Azul, Modifier.weight(1f))
-                TarjetaDato(ui.enEspera.toString(), "Esperan a los padres", ResiIconos.Solicitudes, Acento.Ambar, Modifier.weight(1f))
-                TarjetaDato(ui.sesiones.size.toString(), "Cultos hoy", ResiIconos.Asistencias, Acento.Verde, Modifier.weight(1f), detalle = "${ui.sesiones.sumOf { it.presentes }} presentes")
+            TarjetaHola(nombre, "Pastor", Acento.Turquesa, { onIr("mas") }, Modifier.padding(top = 40.dp), foto = koinViewModel<pe.upeu.resi.resiup.presentation.residente.FotoPerfilViewModel>().foto.collectAsState().value)
+            Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                pe.upeu.resi.resiup.presentation.components.TarjetaCifra("Cultos hoy", ui.presentes.toString(), "residentes presentes", ResiIconos.Cruz, Acento.Naranja, "Cultos hoy: ${ui.presentes} residentes presentes", Modifier.weight(1f))
+                pe.upeu.resi.resiup.presentation.components.TarjetaCifra("Permisos", ui.aprobados.toString(), "aprobados", ResiIconos.Asistencias, Acento.Verde, "Permisos: ${ui.aprobados} aprobados hoy", Modifier.weight(1f))
             }
             EncabezadoSeccion("Accesos")
             CuadriculaModulos(
                 listOf(
-                    ModuloUi("Asistencia a cultos", ResiIconos.Escanear, Acento.Verde, { onIr("escanear") }),
-                    ModuloUi("Permisos", ResiIconos.Solicitudes, Acento.Azul, { onIr("solicitudes") }, insignia = ui.enEspera.takeIf { it > 0 }?.toString()),
-                    ModuloUi("Limpieza", ResiIconos.Limpieza, Acento.Naranja, { onIr("limpieza") }),
-                    ModuloUi("Días sin culto", ResiIconos.Calendario, Acento.Turquesa, { onIr("mas") }),
-                    ModuloUi("Mi cuenta", ResiIconos.Perfil, Acento.Rosa, { onIr("mas") }),
-                ),
+                    ModuloUi("Permisos", ResiIconos.Permisos, Acento.Azul, { onIr("solicitudes") }, insignia = ui.enEspera.takeIf { it > 0 }?.toString()),
+                    // Sol de día (culto matutino) y luna de noche (culto vespertino), según la hora de Lima.
+                    ModuloUi("Cultos", if (pe.upeu.resi.resiup.presentation.util.ahora().toLocalDateTime(pe.upeu.resi.resiup.presentation.util.ZonaResidencia).hour in 5..17) ResiIconos.Sol else ResiIconos.Luna, Acento.Azul, { onIr("cultos") }),
+                    ModuloUi("Reservas", ResiIconos.Reservas, Acento.Azul, { onIr("reservas") }),
+                    ModuloUi("Limpieza", ResiIconos.Limpieza, Acento.Azul, { onIr("limpieza") }),
+                ) + // «Registrar» solo existe mientras haya un culto abierto; al cerrarlo desaparece del inicio.
+                    if (ui.sesiones.any { !it.cerrada }) listOf(ModuloUi("Registrar", ResiIconos.Escanear, Acento.Azul, { onIr("escanear") })) else emptyList(),
             )
-            EncabezadoSeccion("Cultos de hoy")
-            ResiTarjeta(onClick = { onIr("escanear") }) {
-                if (ui.sesiones.isEmpty()) Text("Aún no se abrió ningún culto. Abre uno desde «Asistencia a cultos».", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                ui.sesiones.forEach { s ->
-                    ElementoLista("Culto ${s.tipo.etiqueta.lowercase()}", subtitulo = "${s.presentes} presentes · corte ${s.corte.soloHoraLima()}", icono = ResiIconos.Asistencias, acento = Acento.Verde,
-                        final = { ChipEstado(if (s.cerrada) "Cerrado" else "Abierto", if (s.cerrada) EstadoVisual.Neutro else EstadoVisual.Exito) })
-                }
+        }
+    }
+}
+
+// ================================================================= garita: permisos
+
+/** Lista de permisos aprobados: garita ve quién puede salir. Mismas tarjetas y estados que el resto de la app. */
+@Composable
+fun PermisosGaritaScreen(vm: PermisosGaritaViewModel = koinViewModel()) {
+    LaunchedEffect(Unit) { vm.refrescar() }
+    val estado by vm.estado.collectAsState()
+    Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+        TituloPantalla("Permisos", Modifier.padding(top = Espacio.l), subtitulo = "Permisos aprobados de los residentes")
+        ListaPaginada(estado, vm::refrescar, vm::cargarMas, "Sin permisos", "No hay permisos aprobados.") { s ->
+            ResiTarjeta {
+                ElementoLista(
+                    s.residenteNombre, subtitulo = "${if (s.tipo == TipoPermiso.Pernocte) "Pernoctar" else s.tipo.etiqueta} - ${s.salida.formatoLima()}", icono = ResiIconos.Permisos, acento = Acento.Azul,
+                    final = { val (t, v) = s.estadoParaPastor(); ChipEstado(t, v) },
+                )
             }
         }
+    }
+}
+
+// ================================================================= garita: inicio
+
+@Composable
+fun InicioGaritaScreen(nombre: String, onIr: (String) -> Unit) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.l)) {
+        TarjetaHola(nombre, "Garita", Acento.Turquesa, { onIr("mas") }, Modifier.padding(top = 40.dp), foto = koinViewModel<pe.upeu.resi.resiup.presentation.residente.FotoPerfilViewModel>().foto.collectAsState().value)
+        EncabezadoSeccion("Accesos")
+        CuadriculaModulos(
+            listOf(
+                ModuloUi("Escanear", ResiIconos.Escanear, Acento.Azul, { onIr("escanear") }),
+                ModuloUi("Permisos", ResiIconos.Permisos, Acento.Azul, { onIr("solicitudes") }),
+                ModuloUi("Historial", ResiIconos.Historial, Acento.Azul, { onIr("historial") }),
+            ),
+        )
     }
 }
 
 // ================================================================= preceptor: asistencia
 
 @Composable
-fun AsistenciaCultoScreen(vm: AsistenciaCultoViewModel = koinViewModel()) {
+fun AsistenciaCultoScreen(onCultos: () -> Unit = {}, vm: AsistenciaCultoViewModel = koinViewModel()) {
     val e by vm.estado.collectAsState()
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla("Asistencia a cultos", subtitulo = "Lunes a viernes")
-        val sesion = e.sesion
-        when {
-            e.cargandoSesion -> Text("Cargando…", style = MaterialTheme.typography.bodyMedium)
-            sesion == null -> {
-                e.errorSesion?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
-                Text("Elige el culto que vas a registrar:", style = MaterialTheme.typography.bodyLarge)
-                TipoCulto.entries.forEach { t -> ResiBoton("Abrir culto ${t.etiqueta.lowercase()}", { vm.abrir(t) }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario) }
-            }
-            else -> {
-                Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                    TarjetaEstadistica("Culto", sesion.tipo.etiqueta, Modifier.weight(1f), "corte ${sesion.corte.soloHoraLima()}")
-                    TarjetaEstadistica("Presentes", e.presentes.toString(), Modifier.weight(1f))
+    var manual by remember { mutableStateOf(false) }
+    val sesion = e.sesion
+    Column(Modifier.fillMaxSize().padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+        TituloPantalla("Registrar asistencia", subtitulo = sesion?.let { "Culto ${it.tipo.etiqueta}" } ?: "Culto")
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+            when {
+                e.cargandoSesion -> Text("Cargando…", style = MaterialTheme.typography.bodyMedium)
+                sesion == null -> {
+                    e.errorSesion?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else it.aMensaje(), EstadoVisual.Error) }
+                    Text("No hay un culto abierto. Crea uno desde «Cultos» para registrar asistencia.", style = MaterialTheme.typography.bodyLarge)
+                    ResiBoton("Ir a Cultos", onCultos, Modifier.fillMaxWidth())
                 }
-                ZonaEscaneo(activo = !e.procesando, onCodigo = vm::codigoLeido)
-                e.errorSesion?.let { BannerMensaje(it.aMensaje(), EstadoVisual.Error) }
-                e.registros.forEach { r ->
-                    BannerMensaje("${r.texto}${r.detalle?.let { " — $it" } ?: ""}", if (r.exito) EstadoVisual.Exito else EstadoVisual.Error)
+                else -> {
+                    Box(Modifier.fillMaxWidth().height(340.dp).clip(RoundedCornerShape(24.dp)).background(androidx.compose.ui.graphics.Color.Black), contentAlignment = Alignment.Center) {
+                        EscanerCamara(activo = !e.procesando, onCodigo = vm::codigoLeido)
+                        MarcoDeEscaneo()
+                    }
+                    Text("ó", Modifier.fillMaxWidth(), style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    ResiTarjeta {
+                        Column(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.primaryContainer).clickable(role = Role.Button) { manual = true }.padding(vertical = Espacio.l),
+                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Espacio.s),
+                        ) {
+                            pe.upeu.resi.resiup.presentation.components.ResiIcono(ResiIconos.Teclado, null, tint = MaterialTheme.colorScheme.primary, tamano = 40.dp)
+                            Text("Código manual", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    e.errorSesion?.let { BannerMensaje(it.aMensaje(), EstadoVisual.Error) }
                 }
-                ResiBoton("Cerrar culto", vm::cerrarSesion, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
             }
         }
+        // Aviso al pie, como en el prototipo: «Nombre Apellido registrado exitosamente».
+        e.registros.firstOrNull()?.let { r ->
+            BannerMensaje(if (r.exito) "${r.texto} registrado exitosamente" else "${r.texto}${r.detalle?.let { d -> " — $d" } ?: ""}", if (r.exito) EstadoVisual.Exito else EstadoVisual.Error)
+        }
+    }
+    if (manual) {
+        var codigo by remember { mutableStateOf("") }
+        androidx.compose.ui.window.Dialog(onDismissRequest = { manual = false }) {
+            ResiTarjeta {
+                Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                    Text("Código manual", style = MaterialTheme.typography.titleMedium)
+                    ResiCampoTexto(codigo, { codigo = it.filter { c -> c.isDigit() }.take(9) }, "Código universitario (9 dígitos)", tipoTeclado = androidx.compose.ui.text.input.KeyboardType.Number)
+                    ResiBoton("Registrar", { vm.codigoManual(codigo); manual = false }, Modifier.fillMaxWidth(), habilitado = codigo.length == 9)
+                }
+            }
+        }
+    }
+}
+
+/** Marco de lectura del prototipo: cuatro esquinas blancas y una línea azul al centro. */
+@Composable
+private fun MarcoDeEscaneo() {
+    androidx.compose.foundation.Canvas(Modifier.fillMaxSize().padding(40.dp)) {
+        val largo = size.width * 0.22f
+        val trazo = 6.dp.toPx()
+        val c = androidx.compose.ui.graphics.Color.White
+        fun linea(x1: Float, y1: Float, x2: Float, y2: Float) = drawLine(c, androidx.compose.ui.geometry.Offset(x1, y1), androidx.compose.ui.geometry.Offset(x2, y2), trazo, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        val w = size.width; val h = size.height
+        linea(0f, 0f, largo, 0f); linea(0f, 0f, 0f, largo)
+        linea(w, 0f, w - largo, 0f); linea(w, 0f, w, largo)
+        linea(0f, h, largo, h); linea(0f, h, 0f, h - largo)
+        linea(w, h, w - largo, h); linea(w, h, w, h - largo)
+        drawLine(androidx.compose.ui.graphics.Color(0xFF3B82F6), androidx.compose.ui.geometry.Offset(0f, h / 2), androidx.compose.ui.geometry.Offset(w, h / 2), trazo)
     }
 }
 
@@ -180,7 +248,7 @@ private sealed interface RutaSolicitudes {
     data object Tramites : RutaSolicitudes
 }
 
-private enum class FiltroPermisos(val etiqueta: String) { Aprobados("Aprobados"), EnEspera("En espera"), Todos("Todos") }
+private enum class FiltroPermisos(val etiqueta: String) { Aprobados("Aprobados"), EnRevision("En revisión"), Todos("Todos") }
 
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
@@ -212,13 +280,13 @@ private fun ListaPermisosPastor(onAbrir: (Long) -> Unit, onTramites: () -> Unit)
     LaunchedEffect(Unit) { tramites.cargar() }
     var filtro by remember { mutableStateOf(FiltroPermisos.Aprobados) }
     val aprobados = koinViewModel<PermisosAprobadosViewModel>()
-    val enEspera = koinViewModel<PermisosEnEsperaViewModel>()
+    val enEspera = koinViewModel<PermisosEnRevisionViewModel>()
     val todos = koinViewModel<PermisosTodosViewModel>()
     LaunchedEffect(Unit) { aprobados.refrescar(); enEspera.refrescar(); todos.refrescar() }
-    val vm = when (filtro) { FiltroPermisos.Aprobados -> aprobados; FiltroPermisos.EnEspera -> enEspera; FiltroPermisos.Todos -> todos }
+    val vm = when (filtro) { FiltroPermisos.Aprobados -> aprobados; FiltroPermisos.EnRevision -> enEspera; FiltroPermisos.Todos -> todos }
     val estado by vm.estado.collectAsState()
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla("Permisos", Modifier.padding(top = Espacio.l), subtitulo = "Lista de permisos generados")
+        TituloPantalla("Permisos", Modifier.padding(top = Espacio.l), subtitulo = "Lista de permisos de los residentes")
         ResiTarjeta(onClick = onTramites) {
             ElementoLista(
                 "Por revisar", subtitulo = "Ampliaciones, justificaciones, faltas y residentes inhabilitados", icono = ResiIconos.Solicitudes, acento = Acento.Naranja,
@@ -229,12 +297,25 @@ private fun ListaPermisosPastor(onAbrir: (Long) -> Unit, onTramites: () -> Unit)
         ListaPaginada(estado, vm::refrescar, vm::cargarMas, "Sin permisos", "No hay permisos en esta lista.") { s ->
             ResiTarjeta(onClick = { onAbrir(s.id) }) {
                 ElementoLista(
-                    s.residenteNombre, subtitulo = "${s.tipo.etiqueta} · ${s.destino}\n${s.salida.formatoLima()}", icono = ResiIconos.Permisos, acento = s.tipo.acento(),
-                    final = { ChipEstado(s.estado.etiqueta, s.estado.aEstadoVisual()) },
+                    s.residenteNombre, subtitulo = "${if (s.tipo == TipoPermiso.Pernocte) "Pernoctar" else s.tipo.etiqueta} - ${s.salida.formatoLima()}", icono = ResiIconos.Permisos, acento = Acento.Azul,
+                    final = {
+                        val etiqueta = when (s.estado) { EstadoSolicitud.PendientePreceptor -> "En revisión"; EstadoSolicitud.PendienteApoderado -> "Pendiente"; else -> s.estado.etiqueta }
+                        ChipEstado(etiqueta, s.estado.aEstadoVisual())
+                    },
                 )
             }
         }
     }
+}
+
+@Composable
+/** Cómo ve el pastor el estado: En revisión (naranja), Aprobado, Salida, Entrada, Rechazado... */
+private fun pe.upeu.resi.resiup.domain.model.SolicitudPermiso.estadoParaPastor(): Pair<String, EstadoVisual> = when {
+    estado == EstadoSolicitud.PendientePreceptor -> "En revisión" to EstadoVisual.Revision
+    estado == EstadoSolicitud.PendienteApoderado -> "Pendiente" to EstadoVisual.Advertencia
+    estado == EstadoSolicitud.Aprobado && garitaEntrada != null -> "Entrada" to EstadoVisual.Exito
+    estado == EstadoSolicitud.Aprobado && garitaSalida != null -> "Salida" to EstadoVisual.Info
+    else -> estado.etiqueta to estado.aEstadoVisual()
 }
 
 @Composable
@@ -243,14 +324,26 @@ private fun DetallePermisoPastor(id: Long, onVolver: () -> Unit) {
     val estado by vm.estado.collectAsState()
     val accion by vm.accion.collectAsState()
     var anulando by remember { mutableStateOf(false) }
+    var rechazando by remember { mutableStateOf(false) }
     LaunchedEffect(id) { vm.recargar() }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        ResiBoton("Volver", onVolver, variante = VarianteBoton.Terciario)
         ContenidoCarga(estado, vm::cargar, Modifier.fillMaxWidth()) { s ->
             Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                TituloPantalla(s.residenteNombre, subtitulo = "${s.tipo.etiqueta} · ${s.destino}")
-                ChipEstado(s.estado.etiqueta, s.estado.aEstadoVisual())
+                // Igual que el detalle del residente: flecha y estado a la izquierda, y los datos en dos columnas.
+                Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                    pe.upeu.resi.resiup.presentation.components.BotonAtras(onVolver)
+                    val (texto, visual) = s.estadoParaPastor()
+                    ChipEstado(texto, visual, Modifier.width(128.dp), centrado = true)
+                }
                 ResiTarjeta { DatosSolicitud(s) }
+                if (s.garitaSalida != null) {
+                    ResiTarjeta {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                            Column(Modifier.weight(1f)) { Text("Garita Salida", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary); Text(s.garitaSalida.formatoLima()) }
+                            Column(Modifier.weight(1f)) { Text("Garita Entrada", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary); Text(s.garitaEntrada?.formatoLima() ?: "-") }
+                        }
+                    }
+                }
                 ResumenDelResidente(vm.resumen.collectAsState().value)
                 when (s.estado) {
                     EstadoSolicitud.PendienteApoderado -> {
@@ -265,8 +358,11 @@ private fun DetallePermisoPastor(id: Long, onVolver: () -> Unit) {
                             }
                         }
                     }
+                    EstadoSolicitud.PendientePreceptor -> {
+                        ResiBoton("Aprobar", { vm.decidir(true, null) }, Modifier.fillMaxWidth(), cargando = accion.trabajando)
+                        ResiBoton("Rechazar", { rechazando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo, habilitado = !accion.trabajando)
+                    }
                     EstadoSolicitud.Aprobado -> {
-                        BannerMensaje("Aprobado: garita lo verá como autorizado en el horario indicado.", EstadoVisual.Exito)
                         ResiBoton("Anular permiso", { anulando = true }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo, cargando = accion.trabajando)
                     }
                     EstadoSolicitud.Anulado -> BannerMensaje(
@@ -278,6 +374,12 @@ private fun DetallePermisoPastor(id: Long, onVolver: () -> Unit) {
                 accion.mensaje?.let { BannerMensaje(it, EstadoVisual.Exito) }
             }
         }
+    }
+    if (rechazando) {
+        pe.upeu.resi.resiup.presentation.components.DialogoMotivo(
+            titulo = "Rechazar permiso", mensaje = "El residente verá el motivo.", etiqueta = "Motivo del rechazo", textoConfirmar = "Rechazar",
+            onConfirmar = { rechazando = false; vm.decidir(false, it) }, onCancelar = { rechazando = false }, destructivo = true,
+        )
     }
     if (anulando) {
         pe.upeu.resi.resiup.presentation.components.DialogoMotivo(
@@ -303,7 +405,7 @@ private fun ResumenDelResidente(estado: Carga<ResumenResidente>) {
             is Carga.Exito -> {
                 val r = estado.datos
                 Text(
-                    "Cultos: asistió a ${r.asistencias} de ${r.cultosRealizados}" + if (r.despuesDelCorte > 0) " (${r.despuesDelCorte} después del corte)" else "",
+                    "Cultos: asistió a ${r.asistencias} de ${r.cultosRealizados}" + if (r.despuesDelCorte > 0) " (${r.despuesDelCorte} con tardanza)" else "",
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Text(
@@ -315,114 +417,6 @@ private fun ResumenDelResidente(estado: Carga<ResumenResidente>) {
     }
 }
 
-// ================================================================= preceptor: limpieza
-
-@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
-@Composable
-fun LimpiezaPreceptorScreen(vm: LimpiezaPreceptorViewModel = koinViewModel()) {
-    val s by vm.estado.collectAsState()
-    val hab = s.habitacion
-    BackHandler(enabled = hab != null) { vm.cerrar() }
-    Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla(
-            if (hab == null) "Evaluación de limpieza" else "Habitación ${hab.numero}", Modifier.padding(top = Espacio.l),
-            subtitulo = if (hab == null) "Hoy, ${hoyLima().toString().fechaLegible()} · elige una habitación" else "Hoy, ${hoyLima().toString().fechaLegible()}",
-        )
-        s.mensaje?.let { BannerMensaje(it, EstadoVisual.Exito) }
-        val finDeSemana = hoyLima().dayOfWeek.let { it == kotlinx.datetime.DayOfWeek.SATURDAY || it == kotlinx.datetime.DayOfWeek.SUNDAY }
-        if (hab == null && finDeSemana) {
-            pe.upeu.resi.resiup.presentation.components.EstadoVacio("Hoy no se evalúa", "La limpieza se revisa de lunes a viernes. Vuelve el lunes para evaluar las habitaciones.")
-        } else if (hab == null) {
-            ContenidoCarga(s.habitaciones, vm::cargar) { lista ->
-                if (lista.isEmpty()) {
-                    pe.upeu.resi.resiup.presentation.components.EstadoVacio("Sin habitaciones ocupadas", "Asigna residentes a las habitaciones desde administración para poder evaluarlas.")
-                } else {
-                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
-                        lista.groupBy { it.numero.take(1) }.forEach { (piso, habitaciones) ->
-                            Text(if (piso.first().isDigit()) "Piso $piso" else "Otras", Modifier.padding(top = Espacio.s).semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-                            habitaciones.forEach { h ->
-                                ResiTarjeta(onClick = { vm.abrir(h) }) {
-                                    ElementoLista(
-                                        "Habitación ${h.numero}",
-                                        subtitulo = h.residentes.joinToString(", ") { it.nombreCompleto.substringBefore(' ') },
-                                        icono = ResiIconos.Limpieza,
-                                        final = {
-                                            if (h.completa) ChipEstado("Evaluada", EstadoVisual.Exito)
-                                            else ChipEstado("${h.evaluados}/${h.residentes.size}", if (h.evaluados > 0) EstadoVisual.Advertencia else EstadoVisual.Neutro)
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            FormularioHabitacion(s, hab, vm)
-        }
-    }
-}
-
-@Composable
-private fun FormularioHabitacion(s: LimpiezaFormState, hab: HabitacionLimpieza, vm: LimpiezaPreceptorViewModel) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        ResiTarjeta {
-            Text("Común a toda la habitación", style = MaterialTheme.typography.titleMedium)
-            CRITERIOS_DE_HABITACION.forEach { c -> Contador(c.etiqueta, c.maximo, s.comun(c)) { vm.ajustarComun(c, it) } }
-        }
-        hab.residentes.forEach { r ->
-            ResiTarjeta {
-                val etiquetaCama = r.cama?.let { "Cama ${hab.numero}-$it · " }.orEmpty()
-                ElementoLista(
-                    r.nombreCompleto, subtitulo = etiquetaCama + r.codigo,
-                    final = { if (r.evaluado) ChipEstado("Ya evaluado", EstadoVisual.Exito) else ChipEstado("${s.totalDe(r.residenteId)}/20", EstadoVisual.Info) },
-                )
-                val puntajes = s.personales[r.residenteId]
-                if (puntajes != null) {
-                    CRITERIOS_PERSONALES.forEach { c -> Contador(c.etiqueta, c.maximo, puntajes.getValue(c)) { vm.ajustar(r.residenteId, c, it) } }
-                }
-            }
-        }
-        s.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else if (it is ErrorApi.Validacion) it.porCampo.values.firstOrNull() ?: it.aMensaje() else it.aMensaje(), EstadoVisual.Error) }
-        if (s.personales.isEmpty()) {
-            BannerMensaje("Todos los residentes de esta habitación ya fueron evaluados hoy.", EstadoVisual.Info)
-        } else {
-            ResiBoton("Guardar evaluación", vm::guardar, Modifier.fillMaxWidth(), cargando = s.enviando)
-        }
-        ResiBoton("Volver a las habitaciones", vm::cerrar, Modifier.fillMaxWidth(), variante = VarianteBoton.Terciario)
-    }
-}
-
-/** Fila de puntaje con − / + : etiqueta y máximo a la izquierda, valor al centro. */
-@Composable
-private fun Contador(etiqueta: String, maximo: Int, valor: Int, onCambio: (Int) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(top = Espacio.xs), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
-        Column(Modifier.weight(1f)) {
-            Text(etiqueta, style = MaterialTheme.typography.bodyLarge)
-            Text("máx. $maximo", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        BotonPaso("−", "Restar a $etiqueta", valor > 0) { onCambio(-1) }
-        Text(
-            valor.toString(), Modifier.widthIn(min = 24.dp).semantics { contentDescription = "$etiqueta: $valor de $maximo" },
-            style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
-        BotonPaso("+", "Sumar a $etiqueta", valor < maximo) { onCambio(1) }
-    }
-}
-
-/** Botón cuadrado compacto (44 dp) para sumar o restar un punto. */
-@Composable
-private fun BotonPaso(texto: String, descripcion: String, habilitado: Boolean, onClick: () -> Unit) {
-    val forma = RoundedCornerShape(12.dp)
-    val color = if (habilitado) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-    Box(
-        Modifier.size(44.dp).clip(forma).border(1.dp, MaterialTheme.colorScheme.outlineVariant, forma)
-            .clickable(enabled = habilitado, role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = descripcion },
-        contentAlignment = Alignment.Center,
-    ) { Text(texto, style = MaterialTheme.typography.titleMedium, color = color) }
-}
-
 // ================================================================= garita
 
 @Composable
@@ -431,7 +425,36 @@ fun EscanerGaritaScreen(vm: GaritaEscanerViewModel = koinViewModel()) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla("Garita", subtitulo = "Escanea el QR del residente. Requiere conexión con el servidor.")
         when (val x = e) {
-            GaritaEstado.Esperando -> ZonaEscaneo(activo = true, onCodigo = vm::codigoLeido)
+            GaritaEstado.Esperando -> {
+                // Igual que «Registrar asistencia» del pastor: cámara con marco, «ó» y código manual.
+                var manual by remember { mutableStateOf(false) }
+                Box(Modifier.fillMaxWidth().height(340.dp).clip(RoundedCornerShape(24.dp)).background(androidx.compose.ui.graphics.Color.Black), contentAlignment = Alignment.Center) {
+                    EscanerCamara(activo = true, onCodigo = vm::codigoLeido)
+                    MarcoDeEscaneo()
+                }
+                Text("ó", Modifier.fillMaxWidth(), style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                ResiTarjeta {
+                    Column(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.primaryContainer).clickable(role = Role.Button) { manual = true }.padding(vertical = Espacio.l),
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Espacio.s),
+                    ) {
+                        pe.upeu.resi.resiup.presentation.components.ResiIcono(ResiIconos.Teclado, null, tint = MaterialTheme.colorScheme.primary, tamano = 40.dp)
+                        Text("Código manual", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                if (manual) {
+                    var codigo by remember { mutableStateOf("") }
+                    androidx.compose.ui.window.Dialog(onDismissRequest = { manual = false }) {
+                        ResiTarjeta {
+                            Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                                Text("Código manual", style = MaterialTheme.typography.titleMedium)
+                                ResiCampoTexto(codigo, { codigo = it.filter { c -> c.isDigit() }.take(9) }, "Código universitario (9 dígitos)", tipoTeclado = androidx.compose.ui.text.input.KeyboardType.Number)
+                                ResiBoton("Verificar", { vm.codigoLeido(codigo); manual = false }, Modifier.fillMaxWidth(), habilitado = codigo.length == 9)
+                            }
+                        }
+                    }
+                }
+            }
             GaritaEstado.Verificando -> Text("Verificando con el servidor…", style = MaterialTheme.typography.titleMedium)
             is GaritaEstado.Fallo -> {
                 val sinRed = x.error == ErrorApi.SinConexion || x.error == ErrorApi.TiempoAgotado
@@ -440,6 +463,24 @@ fun EscanerGaritaScreen(vm: GaritaEscanerViewModel = koinViewModel()) {
                     EstadoVisual.Error,
                 )
                 ResiBoton("Escanear otro", vm::siguiente, Modifier.fillMaxWidth())
+            }
+            is GaritaEstado.ElegirPermiso -> {
+                // Un residente puede tener varios permisos el mismo dia: garita elige con cual sale o vuelve.
+                ResiTarjeta {
+                    Text(x.datos.nombreCompleto ?: "Residente", style = MaterialTheme.typography.titleLarge)
+                    x.datos.codigo?.let { Text("Código $it", style = MaterialTheme.typography.bodyLarge) }
+                    Text("Elige el permiso", Modifier.padding(top = Espacio.s), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                x.datos.permisos.forEach { p ->
+                    ResiTarjeta(onClick = { vm.elegir(x.qr, p.id) }) {
+                        ElementoLista(
+                            "${if (p.tipo == TipoPermiso.Pernocte) "Pernoctar" else p.tipo.etiqueta} · ${p.destino}", subtitulo = "${p.salida.formatoLima()} → ${p.retorno.formatoLima()}",
+                            icono = ResiIconos.Permisos, acento = Acento.Azul,
+                            final = { ChipEstado(if (p.salidaAbierta) "Registrar entrada" else "Registrar salida", if (p.salidaAbierta) EstadoVisual.Exito else EstadoVisual.Info) },
+                        )
+                    }
+                }
+                ResiBoton("Escanear otro", vm::siguiente, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
             }
             is GaritaEstado.Resultado -> ResultadoGaritaVista(x, onRegistrar = vm::registrar, onSiguiente = vm::siguiente)
             is GaritaEstado.Registrado -> {
