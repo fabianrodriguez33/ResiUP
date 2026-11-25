@@ -401,7 +401,7 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
     var cancelando by remember { mutableStateOf<ReservaPastor?>(null) }
     val acciones = org.koin.compose.koinInject<pe.upeu.resi.resiup.domain.repository.AccionesPastorRepository>()
     // Al abrir la lista se piden de nuevo: así aparecen las reservas que los residentes hicieron mientras tanto.
-    androidx.compose.runtime.LaunchedEffect(Unit) { vm.cargar() }
+    androidx.compose.runtime.LaunchedEffect(Unit) { vm.cargar(); while (true) { kotlinx.coroutines.delay(10_000); vm.cargar() } }
     val titulo = when (grupo) { "almuerzo" -> "Reservas de almuerzo"; "cena" -> "Reservas de cenas"; else -> "Reservas de desayunos" }
     val cerrada = claveGrupo(grupo) in cerradas
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {

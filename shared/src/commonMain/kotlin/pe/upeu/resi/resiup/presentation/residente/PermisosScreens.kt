@@ -103,7 +103,11 @@ private fun ListaPermisos(onNueva: () -> Unit, onDetalle: (Long) -> Unit) {
     val vm = koinViewModel<MisSolicitudesViewModel>()
     val habilitacion = koinViewModel<HabilitacionViewModel>()
     val hab by habilitacion.estado.collectAsState()
-    LaunchedEffect(Unit) { habilitacion.cargar(); vm.reintentar() }
+    LaunchedEffect(Unit) {
+        habilitacion.cargar(); vm.reintentar()
+        // Mientras la pantalla está abierta se revisa el servidor cada 10 s: el cambio de estado se ve casi al instante.
+        while (true) { kotlinx.coroutines.delay(10_000); vm.reintentar() }
+    }
     var refrescando by remember { mutableStateOf(false) }
     LaunchedEffect(refrescando) { if (refrescando) { kotlinx.coroutines.delay(900); refrescando = false } }
     // Deslizar hacia abajo vuelve a pedir los permisos al servidor.
@@ -171,7 +175,10 @@ private fun SolicitudDetalleScreen(id: Long, onVolver: () -> Unit) {
     val vm = koinViewModel<SolicitudDetalleViewModel>(key = "detalle-$id", parameters = { parametersOf(id) })
     val estado by vm.estado.collectAsState()
     val accion by vm.accion.collectAsState()
-    LaunchedEffect(id) { vm.recargar() }
+    LaunchedEffect(id) {
+        vm.recargar()
+        while (true) { kotlinx.coroutines.delay(10_000); vm.actualizarSilencioso() }
+    }
     var confirmarCancelar by remember { mutableStateOf(false) }
     var verQr by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {

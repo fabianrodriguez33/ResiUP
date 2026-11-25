@@ -62,6 +62,8 @@ class CambiarClaveViewModel(private val repo: AuthRepository, private val gestor
     private val _estado = MutableStateFlow(CambiarClaveUi())
     val estado: StateFlow<CambiarClaveUi> = _estado.asStateFlow()
 
+    fun reiniciar() { _estado.value = CambiarClaveUi() }
+
     fun actual(v: String) = _estado.update { it.copy(actual = v.take(100), errores = it.errores - "actual", error = null) }
     fun nueva(v: String) = _estado.update { it.copy(nueva = v.take(72), errores = it.errores - "nueva", error = null) }
     fun repetir(v: String) = _estado.update { it.copy(repetir = v.take(72), errores = it.errores - "repetir", error = null) }
@@ -119,7 +121,7 @@ fun CambiarClaveForzadaScreen(onCerrarSesion: () -> Unit, vm: CambiarClaveViewMo
 @Composable
 fun CambiarClaveDialogo(onCerrar: () -> Unit, vm: CambiarClaveViewModel = koinViewModel()) {
     val s by vm.estado.collectAsState()
-    LaunchedEffect(s.listo) { if (s.listo) onCerrar() }
+    LaunchedEffect(s.listo) { if (s.listo) { vm.reiniciar(); onCerrar() } }
     AlertDialog(
         onDismissRequest = { if (!s.trabajando) onCerrar() },
         title = { Text("Cambiar contraseña") },

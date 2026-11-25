@@ -215,6 +215,11 @@ class SolicitudDetalleViewModel(private val id: Long, private val repo: PermisoR
         viewModelScope.launch { _estado.value = repo.detalle(id).aCarga() }
     }
 
+    /** Vuelve a pedir el estado sin mostrar la rueda de carga (para el refresco automático). */
+    fun actualizarSilencioso() {
+        viewModelScope.launch { repo.detalle(id).onSuccess { _estado.value = Carga.Exito(it) } }
+    }
+
     /** Al volver a la pantalla se descarta lo anterior y se pide el estado vigente. */
     fun recargar() {
         _accion.value = DetalleAccionState()
