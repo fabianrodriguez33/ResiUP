@@ -85,9 +85,11 @@ interface CultoRepository {
     suspend fun reabrirSesion(sesionId: Long): Result<SesionCulto> = Result.failure(UnsupportedOperationException())
     suspend fun registrarPorCodigo(sesionId: Long, codigo: String): Result<AsistenciaRegistrada> = Result.failure(UnsupportedOperationException())
     suspend fun exportarPresentes(sesionId: Long): Result<String> = Result.failure(UnsupportedOperationException())
+    /** El pastor o monitor corrige: anula la asistencia de un residente con motivo (queda auditado). */
+    suspend fun anularAsistencia(asistenciaId: Long, motivo: String): Result<Unit> = Result.failure(UnsupportedOperationException())
 }
 
-data class AsistenciaPresente(val codigo: String, val nombreCompleto: String, val despuesDelCorte: Boolean)
+data class AsistenciaPresente(val codigo: String, val nombreCompleto: String, val despuesDelCorte: Boolean, val id: Long = 0)
 
 interface LimpiezaRepository {
     suspend fun habitaciones(fecha: String): Result<List<HabitacionLimpieza>>

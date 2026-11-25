@@ -103,7 +103,11 @@ fun ShellPrincipal(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit) {
         CompositionLocalProvider(LocalVolver provides volver) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().padding(bottom = if (sinBarra) 0.dp else 84.dp)) {
             if (sesion != null && verBandeja) {
-                BandejaScreen(onVolver = { verBandeja = false })
+                BandejaScreen(onVolver = { verBandeja = false }, onIr = { n ->
+                    // Tocar un aviso lleva a la pantalla de la que habla (según su texto y el rol).
+                    val d = destinoDeAviso(rol, n)
+                    if (d != null) { verBandeja = false; irA(d) }
+                })
             } else if (sesion == null) {
                 // Vista previa de desarrollo: sin sesión no se consulta el servidor.
                 when (actual.id) {
@@ -216,5 +220,21 @@ private fun PantallaCuenta(rol: Rol, sesion: Sesion?, onCerrarSesion: () -> Unit
             onCancelar = { confirmar = false },
             destructivo = true,
         )
+    }
+}
+
+/** Pantalla a la que lleva un aviso, según de qué habla; `null` si no corresponde a ninguna (se queda en la bandeja). */
+internal fun destinoDeAviso(rol: Rol, n: pe.upeu.resi.resiup.domain.model.Notificacion): String? {
+    val t = (n.titulo + " " + n.mensaje).lowercase()
+    return when {
+        "reserva" in t -> when (rol) { Rol.Residente -> Destinos.Reservas; Rol.Preceptor -> Destinos.Reservas; else -> null }
+        "culto" in t || "asistencia" in t -> when (rol) { Rol.Residente -> Destinos.Asistencias; Rol.Preceptor -> Destinos.Cultos; else -> null }
+        "limpieza" in t || "evaluaci" in t || "cuarto" in t || "habitaci" in t -> when (rol) { Rol.Residente -> Destinos.Notas; Rol.Preceptor -> Destinos.Limpieza; else -> null }
+        "permiso" in t || "salida" in t || "retorno" in t || "pernocte" in t -> when (rol) {
+            Rol.Residente -> Destinos.Permisos
+            Rol.Preceptor, Rol.Apoderado, Rol.Garita -> Destinos.Solicitudes
+            else -> null
+        }
+        else -> null
     }
 }

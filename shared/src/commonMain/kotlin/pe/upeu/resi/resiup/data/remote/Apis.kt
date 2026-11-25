@@ -116,6 +116,7 @@ class CultoApi(private val client: HttpClient) {
     suspend fun registrarCodigo(sesionId: Long, codigo: String): AsistenciaDto =
         client.post("${BASE}cultos/sesiones/$sesionId/asistencias") { setBody(CodigoRequestDto(codigo)) }.body()
     suspend fun exportar(sesionId: Long): String = client.get("${BASE}cultos/sesiones/$sesionId/exportar").body()
+    suspend fun anularAsistencia(asistenciaId: Long, motivo: String) { client.post("${BASE}cultos/asistencias/$asistenciaId/anular") { setBody(AnulacionRequestDto(motivo)) } }
 }
 
 class LimpiezaApi(private val client: HttpClient) {

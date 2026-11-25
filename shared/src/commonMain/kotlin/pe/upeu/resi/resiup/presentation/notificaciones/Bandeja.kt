@@ -132,7 +132,7 @@ fun CampanaAvisos(noLeidas: Int, onClick: () -> Unit, modifier: Modifier = Modif
 
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-fun BandejaScreen(onVolver: () -> Unit, vm: BandejaViewModel = koinViewModel()) {
+fun BandejaScreen(onVolver: () -> Unit, onIr: (Notificacion) -> Unit = {}, vm: BandejaViewModel = koinViewModel()) {
     val estado by vm.lista.collectAsState()
     LaunchedEffect(Unit) { vm.cargar() }
     BackHandler(onBack = onVolver)
@@ -148,7 +148,7 @@ fun BandejaScreen(onVolver: () -> Unit, vm: BandejaViewModel = koinViewModel()) 
                         ResiBoton("Marcar todas como leídas", vm::marcarTodas, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
                     }
                     LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Espacio.s), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = Espacio.m)) {
-                        items(lista, key = { it.id }) { n -> FilaAviso(n) { vm.abrir(n) } }
+                        items(lista, key = { it.id }) { n -> FilaAviso(n) { vm.abrir(n); onIr(n) } }
                     }
                 }
             }

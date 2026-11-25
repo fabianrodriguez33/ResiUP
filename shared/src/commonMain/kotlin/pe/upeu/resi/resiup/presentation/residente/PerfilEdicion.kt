@@ -112,7 +112,8 @@ class EditarPerfilViewModel(private val repo: ResidenteRepository, private val s
 fun EditarPerfilScreen(perfil: Perfil, onTerminar: () -> Unit, vm: EditarPerfilViewModel = koinViewModel()) {
     val s by vm.estado.collectAsState()
     LaunchedEffect(perfil.id) { vm.reiniciar(); vm.iniciar(perfil) }
-    LaunchedEffect(s.guardado) { if (s.guardado) onTerminar() }
+    // Se limpia el estado al terminar: si no, al volver a abrir la pantalla «guardado» seguía en true y la cerraba sola.
+    LaunchedEffect(s.guardado) { if (s.guardado) { vm.reiniciar(); onTerminar() } }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla("Cambiar datos", subtitulo = perfil.nombreCompleto)
         Text("Aquí cambias tu correo y tu celular. Tu foto se cambia desde tu perfil; lo demás lo gestiona la administración.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
