@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -238,7 +239,7 @@ private fun DetalleCulto(vm: CultosViewModel, sesion: SesionCulto, onListo: () -
             val alcance = androidx.compose.runtime.rememberCoroutineScope()
             Row(Modifier.fillMaxWidth().padding(bottom = Espacio.m), horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
                 if (sesion.fecha == hoyLima().toString()) ResiBoton("Abrir nuevamente", { vm.reabrir(sesion.id, onListo) }, Modifier.weight(1f), variante = VarianteBoton.Secundario, cargando = accion.trabajando)
-                ResiBoton("Exportar", { alcance.launch { vm.exportar(sesion.id).onSuccess { exportar("culto-${sesion.tipo.etiqueta.lowercase()}-${sesion.fecha}.csv", it) } } }, Modifier.weight(1f))
+                ResiBoton("Exportar", { alcance.launch { vm.exportar(sesion.id).onSuccess { exportar("culto-${sesion.tipo.etiqueta.lowercase()}-${sesion.fecha}.csv", it) }.avisarFallo() } }, Modifier.weight(1f))
             }
         }
     }
@@ -246,7 +247,7 @@ private fun DetalleCulto(vm: CultosViewModel, sesion: SesionCulto, onListo: () -
 
 // ================================================================= reservas (pastor / monitor)
 
-data class ReservaPastor(val id: Long, val nombre: String, val codigo: String, val tipo: TipoReserva, val estado: EstadoReserva, val motivo: String, val curso: String?)
+data class ReservaPastor(val id: Long, val nombre: String, val codigo: String, val tipo: TipoReserva, val estado: EstadoReserva, val motivo: String, val curso: String?, val evidenciaId: Long? = null)
 
 class ReservasPastorViewModel(private val api: ReservasApi) : ViewModel() {
     private val _fecha = MutableStateFlow(hoyLima())
@@ -267,7 +268,7 @@ class ReservasPastorViewModel(private val api: ReservasApi) : ViewModel() {
     fun cargar() {
         val f = _fecha.value
         viewModelScope.launch {
-            _lista.value = ejecutarLlamada { api.delDia(f.toString(), null).map { ReservaPastor(it.id, it.residenteNombre, it.codigo, it.tipo.aTipoReserva(), it.estado.aEstadoReserva(), it.motivo, it.curso) } }.aCarga()
+            _lista.value = ejecutarLlamada { api.delDia(f.toString(), null).map { ReservaPastor(it.id, it.residenteNombre, it.codigo, it.tipo.aTipoReserva(), it.estado.aEstadoReserva(), it.motivo, it.curso, it.evidenciaId) } }.aCarga()
             ejecutarLlamada { api.cierres(f.toString()) }.onSuccess { _cerradas.value = it.toSet() }
             ejecutarLlamada { api.aperturas(f.toString()) }.onSuccess { _abiertas.value = it.toSet() }
         }
@@ -302,6 +303,8 @@ private sealed interface RutaReservasPastor {
     data class Fecha(val grupo: String) : RutaReservasPastor
     data class Lista(val grupo: String) : RutaReservasPastor
 }
+
+private fun <T> Result<T>.avisarFallo() = onFailure { pe.upeu.resi.resiup.presentation.components.Mensajes.error(it.aErrorApi().let { e -> if (e is ErrorApi.Conflicto) e.mensaje else e.aMensaje() }) }
 
 private fun nombreGrupo(grupo: String) = when (grupo) { "almuerzo" -> "Almuerzo"; "cena" -> "Cena"; else -> "Desayuno" }
 private fun claveGrupo(grupo: String) = grupo.uppercase()
@@ -390,6 +393,8 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
     val acciones = org.koin.compose.koinInject<pe.upeu.resi.resiup.domain.repository.AccionesPastorRepository>()
     val titulo = when (grupo) { "almuerzo" -> "Reservas de almuerzo"; "cena" -> "Reservas de cenas"; else -> "Reservas de desayunos" }
     val cerrada = claveGrupo(grupo) in cerradas
+    // El ViewModel vive toda la sesión: al entrar se piden las reservas que llegaron después.
+    LaunchedEffect(Unit) { vm.cargar() }
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla(titulo, Modifier.padding(top = Espacio.l), subtitulo = "Lista de reservas de los residentes")
         if (grupo == "cena") Segmentos(listOf(true, false), turno, { if (it) "Turno" else "Táper" }, { turno = it })
@@ -408,7 +413,7 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
                     }
                     if (visibles.isEmpty()) Text("No hay reservas", Modifier.fillMaxWidth().padding(top = Espacio.l), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
                     visibles.forEach { r ->
-                        ResiTarjeta(onClick = if ((r.estado == EstadoReserva.Pendiente && !cerrada) || r.estado == EstadoReserva.Reservado) ({ elegida = r }) else null) {
+                        ResiTarjeta(onClick = { elegida = r }) {
                             ElementoLista(
                                 r.nombre, subtitulo = r.codigo, icono = if (grupo == "almuerzo") ResiIconos.Almuerzo else if (grupo == "cena") ResiIconos.Cena else ResiIconos.Desayuno, acento = Acento.Azul,
                                 final = { ChipEstado(r.estado.etiqueta, when (r.estado) { EstadoReserva.Pendiente -> EstadoVisual.Advertencia; EstadoReserva.Reservado -> EstadoVisual.Exito; EstadoReserva.Rechazada -> EstadoVisual.Error; else -> EstadoVisual.Neutro }) },
@@ -422,30 +427,35 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
         Row(Modifier.fillMaxWidth().padding(bottom = Espacio.m), horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
             ResiBoton("Cerrar reservas", { vm.cerrar(claveGrupo(grupo)) }, Modifier.weight(1f), habilitado = !cerrada)
             if (cerrada) ResiBoton("Exportar", {
-                alcance.launch { vm.exportar(claveGrupo(grupo)).onSuccess { exportar("reservas-$grupo-$fecha.csv", it) } }
+                alcance.launch { vm.exportar(claveGrupo(grupo)).onSuccess { exportar("reservas-$grupo-$fecha.csv", it) }.avisarFallo() }
             }, Modifier.weight(1f))
         }
     }
     elegida?.let { r ->
         Dialog(onDismissRequest = { elegida = null }) {
             ResiTarjeta {
-                Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
                     Text(r.nombre, style = MaterialTheme.typography.titleMedium)
+                    Text("${r.codigo} · ${r.tipo.etiqueta} · ${r.estado.etiqueta}", style = MaterialTheme.typography.bodyMedium)
                     Text("Motivo: ${r.motivo}" + (r.curso?.let { " · Curso: $it" } ?: ""), style = MaterialTheme.typography.bodyMedium)
-                    if (r.estado == EstadoReserva.Pendiente) {
+                    r.evidenciaId?.let { pe.upeu.resi.resiup.presentation.tramites.EvidenciaImagen(it) }
+                    val porRevisar = r.estado == EstadoReserva.Pendiente && !cerrada
+                    if (porRevisar) {
                         ResiBoton("Aprobar", { vm.decidir(r.id, true, null); elegida = null }, Modifier.fillMaxWidth())
                         ResiBoton("Rechazar", { rechazando = r; elegida = null }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
-                    } else {
-                        // Reservada: el pastor puede cancelarla con motivo; el residente puede volver a reservar si el plazo sigue abierto.
+                    }
+                    // El pastor puede cancelar una reserva activa, con motivo; el residente puede volver a reservar si el plazo sigue abierto.
+                    if (porRevisar || r.estado == EstadoReserva.Reservado) {
                         ResiBoton("Cancelar reserva", { cancelando = r; elegida = null }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
                     }
+                    ResiBoton("Cerrar", { elegida = null }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
                 }
             }
         }
     }
     cancelando?.let { r ->
         DialogoMotivo("Cancelar reserva", "El residente verá el motivo y podrá volver a reservar.", "Motivo", "Cancelar reserva",
-            { m -> cancelando = null; alcance.launch { acciones.cancelarReserva(r.id, m).onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Reserva cancelada exitosamente"); vm.cargar() } } },
+            { m -> cancelando = null; alcance.launch { acciones.cancelarReserva(r.id, m).onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Reserva cancelada exitosamente"); vm.cargar() }.avisarFallo() } },
             { cancelando = null }, destructivo = true)
     }
     rechazando?.let { r ->

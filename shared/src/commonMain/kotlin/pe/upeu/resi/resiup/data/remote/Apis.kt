@@ -2,6 +2,7 @@ package pe.upeu.resi.resiup.data.remote
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
@@ -11,6 +12,7 @@ import pe.upeu.resi.resiup.data.remote.dto.FotoRefDto
 import pe.upeu.resi.resiup.data.remote.dto.CodigoRequestDto
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
 import pe.upeu.resi.resiup.data.remote.dto.AbrirSesionRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.DecisionRequestDto
 import pe.upeu.resi.resiup.data.remote.dto.AnulacionRequestDto
@@ -115,7 +117,7 @@ class CultoApi(private val client: HttpClient) {
     suspend fun reabrir(sesionId: Long): SesionCultoDto = client.post("${BASE}cultos/sesiones/$sesionId/reabrir").body()
     suspend fun registrarCodigo(sesionId: Long, codigo: String): AsistenciaDto =
         client.post("${BASE}cultos/sesiones/$sesionId/asistencias") { setBody(CodigoRequestDto(codigo)) }.body()
-    suspend fun exportar(sesionId: Long): String = client.get("${BASE}cultos/sesiones/$sesionId/exportar").body()
+    suspend fun exportar(sesionId: Long): String = client.get("${BASE}cultos/sesiones/$sesionId/exportar") { accept(ContentType.Text.CSV) }.body()
 }
 
 class LimpiezaApi(private val client: HttpClient) {
