@@ -166,6 +166,7 @@ class EstadisticasPerfilTest {
         assertEquals(setOf("telefono"), validarContacto("", "96811042", "", hoy).keys, "8 dígitos")
         assertEquals(setOf("telefono"), validarContacto("", "9681104221", "", hoy).keys, "10 dígitos")
         assertEquals(setOf("telefono"), validarContacto("", "968 110 422", "", hoy).keys, "solo dígitos")
+        assertEquals(setOf("telefono"), validarContacto("", "868110422", "", hoy).keys, "debe empezar en 9")
         assertEquals(setOf("email"), validarContacto("sin-arroba", "", "", hoy).keys)
         assertEquals(setOf("fechaNacimiento"), validarContacto("", "", "2026-11-01", hoy).keys, "hoy no es nacimiento")
         assertEquals(setOf("fechaNacimiento"), validarContacto("", "", "2031-01-01", hoy).keys)
