@@ -441,6 +441,18 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
             ResiBoton("Exportar", {
                 alcance.launch { vm.exportar(claveGrupo(grupo)).onSuccess { exportar("reservas-$grupo-$fecha.csv", it) }.avisarFallo() }
             }, Modifier.weight(1f), variante = if (cerrada) VarianteBoton.Primario else VarianteBoton.Secundario)
+            val exportarImagen = pe.upeu.resi.resiup.presentation.components.rememberExportadorImagen()
+            ResiBoton("Imagen", {
+                val actuales = ((lista as? Carga.Exito)?.datos ?: emptyList()).filter {
+                    it.estado == EstadoReserva.Reservado && when (grupo) {
+                        "almuerzo" -> it.tipo == TipoReserva.Almuerzo
+                        "desayuno" -> it.tipo == TipoReserva.Desayuno
+                        else -> it.tipo == (if (turno) TipoReserva.CenaSegundoTurno else TipoReserva.CenaTaper)
+                    }
+                }
+                val sufijo = if (grupo == "cena") (if (turno) " (turno)" else " (táper)") else ""
+                exportarImagen("reservas-$grupo-$fecha.png", "${titulo.replace("Reservas de ", "Reservas: ")}$sufijo - ${fecha.toString().fechaLegible()}", actuales.map { "${it.codigo}  ${it.nombre}" })
+            }, Modifier.weight(1f), variante = VarianteBoton.Secundario)
         }
     }
     elegida?.let { r ->
