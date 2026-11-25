@@ -466,9 +466,10 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
                     if (r.estado == EstadoReserva.Pendiente && !cerrada) {
                         ResiBoton("Aprobar", { vm.decidir(r.id, true, null); elegida = null }, Modifier.fillMaxWidth())
                         ResiBoton("Rechazar", { rechazando = r; elegida = null }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
-                    } else if (r.estado == EstadoReserva.Reservado) {
-                        // Reservada: el pastor puede cancelarla con motivo; el residente puede volver a reservar si el plazo sigue abierto.
-                        ResiBoton("Cancelar reserva", { cancelando = r; elegida = null }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
+                    }
+                    // Eliminar: el pastor quita una reserva activa (pendiente o reservada) con motivo; el residente puede volver a reservar si el plazo sigue abierto.
+                    if (r.estado == EstadoReserva.Pendiente || r.estado == EstadoReserva.Reservado) {
+                        ResiBoton("Eliminar reserva", { cancelando = r; elegida = null }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
                     }
                     r.evidenciaId?.let { pe.upeu.resi.resiup.presentation.tramites.EvidenciaImagen(it) }
                     ResiBoton("Cerrar", { elegida = null }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
@@ -477,8 +478,8 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
         }
     }
     cancelando?.let { r ->
-        DialogoMotivo("Cancelar reserva", "El residente verá el motivo y podrá volver a reservar.", "Motivo", "Cancelar reserva",
-            { m -> cancelando = null; alcance.launch { acciones.cancelarReserva(r.id, m).onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Reserva cancelada exitosamente"); vm.cargar() }.avisarFallo() } },
+        DialogoMotivo("Eliminar reserva", "El residente verá el motivo y podrá volver a reservar.", "Motivo", "Eliminar",
+            { m -> cancelando = null; alcance.launch { acciones.cancelarReserva(r.id, m).onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Reserva eliminada exitosamente"); vm.cargar() }.avisarFallo() } },
             { cancelando = null }, destructivo = true)
     }
     rechazando?.let { r ->
