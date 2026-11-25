@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -65,6 +66,8 @@ class CambiarClaveViewModel(private val repo: AuthRepository, private val gestor
     fun actual(v: String) = _estado.update { it.copy(actual = v.take(100), errores = it.errores - "actual", error = null) }
     fun nueva(v: String) = _estado.update { it.copy(nueva = v.take(72), errores = it.errores - "nueva", error = null) }
     fun repetir(v: String) = _estado.update { it.copy(repetir = v.take(72), errores = it.errores - "repetir", error = null) }
+
+    fun descartarEnviado() { if (_estado.value.listo) _estado.value = CambiarClaveUi() }
 
     fun guardar() {
         val s = _estado.value
@@ -118,7 +121,7 @@ fun CambiarClaveForzadaScreen(onCerrarSesion: () -> Unit, vm: CambiarClaveViewMo
 /** Cambio de contraseña desde el perfil, con la sesión iniciada. */
 @Composable
 fun CambiarClaveDialogo(onCerrar: () -> Unit, vm: CambiarClaveViewModel = koinViewModel()) {
-    val s by vm.estado.collectAsState()
+    val s by remember(vm) { vm.descartarEnviado(); vm.estado }.collectAsState()
     LaunchedEffect(s.listo) { if (s.listo) onCerrar() }
     AlertDialog(
         onDismissRequest = { if (!s.trabajando) onCerrar() },

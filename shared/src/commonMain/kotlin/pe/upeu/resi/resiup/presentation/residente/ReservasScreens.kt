@@ -116,6 +116,9 @@ class ReservaFormViewModel(private val repo: ReservasRepository, private val tra
     fun motivo(v: String) = _estado.update { it.copy(motivo = v.take(300), errores = it.errores - "motivo", error = null) }
     fun curso(v: String) = _estado.update { it.copy(curso = v.take(100), error = null) }
     fun turno(v: Boolean) = _estado.update { it.copy(turno = v, errores = it.errores - "turno", error = null) }
+    /** Al volver a abrir el formulario: la reserva anterior ya se atendió y, si no se limpia, lo cierra al instante. */
+    fun descartarEnviado() { if (_estado.value.creada) _estado.value = ReservaFormState() }
+
     fun foto(v: ImagenElegida?) { if (v != null) _estado.update { it.copy(foto = v, errores = it.errores - "foto", error = null) } }
 
     fun enviar(comida: ComidaOfertada, ofertaCena: List<ComidaOfertada>) {
@@ -221,7 +224,7 @@ private fun EstadoReserva.aVisual() = when (this) {
 @Composable
 private fun FormularioReserva(comida: ComidaOfertada, oferta: List<ComidaOfertada>, onListo: () -> Unit) {
     val vm = koinViewModel<ReservaFormViewModel>()
-    val s by vm.estado.collectAsState()
+    val s by remember(vm) { vm.descartarEnviado(); vm.estado }.collectAsState()
     LaunchedEffect(s.creada) { if (s.creada) onListo() }
     val abrirGaleria = rememberSelectorImagen(vm::foto)
     val nombre = when {

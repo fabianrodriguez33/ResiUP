@@ -93,6 +93,23 @@ class PermisosFamiliaTest {
     }
 
     @Test
+    fun `al volver a abrir el formulario se descarta el envio anterior`() = runTest {
+        val vm = SolicitudFormViewModel(PermisoFalso())
+        vm.tipo(TipoPermiso.Largo); vm.destino("Alameda"); vm.motivo("Grupo")
+        val salida = ahora().plus(1.days).conHoraLima(9, 0)
+        vm.salida(salida); vm.retorno(salida + 150.minutes)
+        vm.descartarEnviado()
+        assertEquals("Alameda", vm.estado.value.destino, "un formulario sin enviar se conserva")
+        vm.enviar()
+        assertNotNull(vm.estado.value.creada)
+
+        vm.descartarEnviado()
+
+        assertNull(vm.estado.value.creada)
+        assertEquals("", vm.estado.value.destino)
+    }
+
+    @Test
     fun `el ingreso no se acepta antes de la salida`() = runTest {
         val vm = SolicitudFormViewModel(PermisoFalso())
         val salida = ahora().plus(3.hours)

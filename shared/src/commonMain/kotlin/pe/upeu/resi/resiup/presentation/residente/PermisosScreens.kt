@@ -147,7 +147,7 @@ private fun ListaPermisos(onNueva: () -> Unit, onDetalle: (Long) -> Unit) {
 @Composable
 private fun SolicitudNuevaScreen(onVolver: () -> Unit, onCreada: (Long) -> Unit) {
     val vm = koinViewModel<SolicitudFormViewModel>()
-    val s by vm.estado.collectAsState()
+    val s by remember(vm) { vm.descartarEnviado(); vm.estado }.collectAsState()
     LaunchedEffect(s.creada) { s.creada?.let { onCreada(it.id) } }
     LaunchedEffect(s.enCola) { if (s.enCola) onVolver() }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {

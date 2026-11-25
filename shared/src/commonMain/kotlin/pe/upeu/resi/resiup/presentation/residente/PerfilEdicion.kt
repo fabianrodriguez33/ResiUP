@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.ViewModel
@@ -110,8 +111,8 @@ class EditarPerfilViewModel(private val repo: ResidenteRepository, private val s
 
 @Composable
 fun EditarPerfilScreen(perfil: Perfil, onTerminar: () -> Unit, vm: EditarPerfilViewModel = koinViewModel()) {
-    val s by vm.estado.collectAsState()
-    LaunchedEffect(perfil.id) { vm.reiniciar(); vm.iniciar(perfil) }
+    // Se reinicia antes de leer el estado: un «guardado» anterior cerraría la pantalla apenas se abre.
+    val s by remember(vm, perfil.id) { vm.reiniciar(); vm.iniciar(perfil); vm.estado }.collectAsState()
     LaunchedEffect(s.guardado) { if (s.guardado) onTerminar() }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla("Cambiar datos", subtitulo = perfil.nombreCompleto)

@@ -143,6 +143,9 @@ abstract class PermisoFormViewModel(
         }
     }
 
+    /** Al volver a abrir el formulario: el envío anterior ya se atendió y, si no se limpia, lo cierra al instante. */
+    fun descartarEnviado() { if (_estado.value.creada != null || _estado.value.enCola) reiniciar() }
+
     /** Deja el formulario en blanco para enviar otro permiso. */
     fun reiniciar() = _estado.update { SolicitudFormState(tipo = tiposPermitidos.first(), residenteId = it.residenteId) }
 
