@@ -2,10 +2,12 @@ package pe.upeu.resi.resiup.data.remote
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
 import kotlinx.serialization.Serializable
 import pe.upeu.resi.resiup.data.remote.dto.PaginaDto
 import pe.upeu.resi.resiup.domain.model.ComidaOfertada
@@ -32,7 +34,7 @@ data class ReservaRequestDto(val tipo: String, val fecha: String, val motivo: St
 @Serializable
 data class ReservaPastorDto(
     val id: Long, val residenteNombre: String = "", val codigo: String = "", val tipo: String, val fecha: String,
-    val motivo: String = "", val curso: String? = null, val estado: String, val comentarioDecision: String? = null,
+    val motivo: String = "", val curso: String? = null, val estado: String, val comentarioDecision: String? = null, val evidenciaId: Long? = null,
 )
 
 @Serializable
@@ -54,7 +56,7 @@ class ReservasApi(private val client: HttpClient) {
     suspend fun aperturas(fecha: String): List<String> = client.get("$BASE/aperturas") { parameter("fecha", fecha) }.body()
     suspend fun cerrar(fecha: String, grupo: String) { client.post("$BASE/cerrar") { setBody(CierreRequestDto(fecha, grupo)) } }
     suspend fun cierres(fecha: String): List<String> = client.get("$BASE/cierres") { parameter("fecha", fecha) }.body()
-    suspend fun exportar(fecha: String, grupo: String): String = client.get("$BASE/exportar") { parameter("fecha", fecha); parameter("grupo", grupo) }.body()
+    suspend fun exportar(fecha: String, grupo: String): String = client.get("$BASE/exportar") { accept(ContentType.Text.CSV); parameter("fecha", fecha); parameter("grupo", grupo) }.body()
     suspend fun mias(pagina: Int): PaginaDto<ReservaDto> = client.get("$BASE/mias") { parameter("pagina", pagina); parameter("tamanio", 20) }.body()
 }
 

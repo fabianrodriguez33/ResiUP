@@ -108,7 +108,17 @@ fun CampoFechaHora(etiqueta: String, valor: Instant?, error: String?, onElegido:
         val d = (desde ?: pe.upeu.resi.resiup.presentation.util.ahora()).toLocalDateTime(pe.upeu.resi.resiup.presentation.util.ZonaResidencia).date
         d.atStartOfDayIn(kotlinx.datetime.TimeZone.UTC).toEpochMilliseconds()
     }
-    if (paso == 1) SelectorFecha({ fechaMillis = it; paso = 2 }, { paso = 0 }, desdeMillis = primerDia)
+    // Mismo calendario que el resto de la app (cultos, limpieza); aquí sí se pueden elegir días futuros.
+    if (paso == 1) {
+        val hoyLima = remember { pe.upeu.resi.resiup.presentation.util.hoyLima() }
+        val primeraFecha = remember(primerDia) { kotlinx.datetime.Instant.fromEpochMilliseconds(primerDia).toLocalDateTime(kotlinx.datetime.TimeZone.UTC).date }
+        androidx.compose.ui.window.Dialog(onDismissRequest = { paso = 0 }) {
+            CalendarioAsistencias(
+                emptyList(), hoyLima, conMarcas = false, permitirFuturo = true, desdeFecha = primeraFecha,
+                onElegir = { fechaMillis = it.atStartOfDayIn(kotlinx.datetime.TimeZone.UTC).toEpochMilliseconds(); paso = 2 },
+            )
+        }
+    }
     if (paso == 2) SelectorHora({ h, m -> onElegido(combinarFechaHora(fechaMillis, h, m)); paso = 0 }, { paso = 0 })
 }
 
