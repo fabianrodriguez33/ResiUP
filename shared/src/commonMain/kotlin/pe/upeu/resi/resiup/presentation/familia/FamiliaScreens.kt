@@ -93,7 +93,6 @@ fun InicioFamiliaScreen(nombre: String, irA: (String) -> Unit) {
             listOf(
                 ModuloUi("Enviar permiso", ResiIconos.Permisos, Acento.Azul, { irA(Destinos.Nuevo) }),
                 ModuloUi("Permisos de mis hijos", ResiIconos.Solicitudes, Acento.Azul, { irA(Destinos.Solicitudes) }, insignia = pendientes.takeIf { it > 0 }?.toString()),
-                ModuloUi("Mi cuenta", ResiIconos.Perfil, Acento.Azul, { irA(Destinos.Mas) }),
             ),
         )
 

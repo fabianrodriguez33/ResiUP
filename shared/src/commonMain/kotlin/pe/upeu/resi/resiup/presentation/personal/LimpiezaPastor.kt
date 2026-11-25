@@ -186,10 +186,12 @@ private fun Habitaciones(s: LimpiezaFormState, vm: LimpiezaPreceptorViewModel) {
                     delPiso.chunked(2).forEach { fila ->
                         Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
                             fila.forEach { hab ->
-                                ResiTarjeta(Modifier.weight(1f), onClick = { if (hab.completa) elegidaEvaluada = hab else vm.abrir(hab) }) {
+                                val vacia = hab.residentes.isEmpty()
+                                // Sin residentes no hay a quién evaluar: el cuarto queda como no disponible.
+                                ResiTarjeta(Modifier.weight(1f), onClick = if (vacia) null else ({ if (hab.completa) elegidaEvaluada = hab else vm.abrir(hab) })) {
                                     ElementoLista(
-                                        hab.numero, subtitulo = if (hab.completa) "Evaluado" else "Falta evaluación", icono = ResiIconos.Limpieza,
-                                        acento = if (hab.completa) Acento.Verde else Acento.Ambar,
+                                        hab.numero, subtitulo = if (vacia) "Cuarto no disponible" else if (hab.completa) "Evaluado" else "Falta evaluación", icono = ResiIconos.Limpieza,
+                                        acento = if (vacia) Acento.Azul else if (hab.completa) Acento.Verde else Acento.Ambar,
                                     )
                                 }
                             }
@@ -204,13 +206,18 @@ private fun Habitaciones(s: LimpiezaFormState, vm: LimpiezaPreceptorViewModel) {
 
 @Composable
 private fun Habitacion(s: LimpiezaFormState, hab: HabitacionLimpieza, vm: LimpiezaPreceptorViewModel) {
+    // Todos los criterios a la vez: la evaluación se registra una sola vez, cuando ya no falta ninguna nota.
+    val faltan = buildList {
+        hab.pendientes.forEach { r ->
+            CRITERIOS_POR_RESIDENTE.forEach { c -> if (s.personales[r.residenteId]?.get(c) == null) add("${c.nombre().lowercase().replaceFirstChar { it.uppercase() }} de ${r.nombreCompleto}") }
+        }
+        listOf(CriterioLimpieza.Basura, CriterioLimpieza.Olores, CriterioLimpieza.Piso).forEach { c -> if (s.comun(c) == null) add(c.nombre().lowercase().replaceFirstChar { it.uppercase() } + " de la habitación") }
+    }
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla("Habitación ${hab.numero}", Modifier.padding(top = Espacio.l), subtitulo = "Elija el criterio")
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-            if (s.personales.isEmpty()) BannerMensaje("Todos los residentes de esta habitación ya fueron evaluados hoy.", EstadoVisual.Info)
-            CampoDesplegable("Criterio", CRITERIOS_EN_MENU.filter { it !in s.registrados }, s.criterio, { it.nombre() }, vm::elegirCriterio)
-            val c = s.criterio
-            if (c != null) {
+        TituloPantalla("Habitación ${hab.numero}", Modifier.padding(top = Espacio.l), subtitulo = "Pon la nota de cada criterio")
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+            if (hab.pendientes.isEmpty()) BannerMensaje("Todos los residentes de esta habitación ya fueron evaluados hoy.", EstadoVisual.Info)
+            CRITERIOS_EN_MENU.forEach { c ->
                 if (c in CRITERIOS_POR_RESIDENTE) {
                     hab.pendientes.forEach { r ->
                         Fila(c, r.nombreCompleto, "${c.nombre().lowercase().replaceFirstChar { it.uppercase() }} ${r.cama ?: ""}".trim(), s.personales[r.residenteId]?.get(c)) { vm.ajustar(r.residenteId, c, it) }
@@ -221,8 +228,8 @@ private fun Habitacion(s: LimpiezaFormState, hab: HabitacionLimpieza, vm: Limpie
             }
             s.error?.let { BannerMensaje(if (it is ErrorApi.Conflicto) it.mensaje else if (it is ErrorApi.Validacion) it.porCampo.values.firstOrNull() ?: it.aMensaje() else it.aMensaje(), EstadoVisual.Error) }
         }
-        if (s.edicion) ResiBoton("Guardar cambios", vm::guardarCambios, Modifier.fillMaxWidth(), habilitado = !s.enviando, cargando = s.enviando)
-        ResiBoton("Registrar evaluación", vm::registrarCriterio, Modifier.fillMaxWidth().padding(bottom = Espacio.m), habilitado = s.criterioCompleto && !s.enviando, cargando = s.enviando)
+        if (faltan.isNotEmpty()) Text("Falta la nota de: ${faltan.take(3).joinToString(", ")}" + if (faltan.size > 3) " y ${faltan.size - 3} más" else "", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+        ResiBoton(if (s.edicion) "Guardar cambios" else "Registrar evaluación", vm::registrarTodo, Modifier.fillMaxWidth().padding(bottom = Espacio.m), habilitado = faltan.isEmpty() && hab.pendientes.isNotEmpty() && !s.enviando, cargando = s.enviando)
     }
 }
 

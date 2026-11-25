@@ -104,6 +104,10 @@ private fun ListaPermisos(onNueva: () -> Unit, onDetalle: (Long) -> Unit) {
     val habilitacion = koinViewModel<HabilitacionViewModel>()
     val hab by habilitacion.estado.collectAsState()
     LaunchedEffect(Unit) { habilitacion.cargar(); vm.reintentar() }
+    var refrescando by remember { mutableStateOf(false) }
+    LaunchedEffect(refrescando) { if (refrescando) { kotlinx.coroutines.delay(900); refrescando = false } }
+    // Deslizar hacia abajo vuelve a pedir los permisos al servidor.
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(isRefreshing = refrescando, onRefresh = { refrescando = true; vm.reintentar(); habilitacion.cargar() }) {
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla("Permisos", Modifier.padding(top = Espacio.l), subtitulo = "Gestión e historial",
             accion = { IconoAccion(ResiIconos.Actualizar, "Actualizar permisos", { vm.reintentar() }) })
@@ -144,14 +148,16 @@ private fun ListaPermisos(onNueva: () -> Unit, onDetalle: (Long) -> Unit) {
             }
         }
     }
+    }
 }
 
 @Composable
 private fun SolicitudNuevaScreen(onVolver: () -> Unit, onCreada: (Long) -> Unit) {
     val vm = koinViewModel<SolicitudFormViewModel>()
     val s by vm.estado.collectAsState()
-    LaunchedEffect(s.creada) { s.creada?.let { onCreada(it.id) } }
-    LaunchedEffect(s.enCola) { if (s.enCola) onVolver() }
+    // Se deja el formulario en blanco antes de salir: si no, al crear otro permiso «creada» seguía puesta y la pantalla saltaba sola al anterior.
+    LaunchedEffect(s.creada) { s.creada?.let { vm.reiniciar(); onCreada(it.id) } }
+    LaunchedEffect(s.enCola) { if (s.enCola) { vm.reiniciar(); onVolver() } }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla("Nuevo permiso", subtitulo = "Salida corta, larga o pernoctar fuera")
         CamposPermiso(s, vm)

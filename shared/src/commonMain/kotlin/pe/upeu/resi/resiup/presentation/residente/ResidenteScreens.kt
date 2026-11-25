@@ -270,6 +270,8 @@ private fun CultoDelDia(tipo: TipoCulto, dia: LocalDate, a: AsistenciaCulto?) {
 @Composable
 fun LimpiezaResidenteScreen(vm: LimpiezaResidenteViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
+    // Al entrar se piden las notas al servidor: ya se ven apenas se evalúa la habitación.
+    LaunchedEffect(Unit) { vm.reintentar() }
     val hoy = remember { hoyLima() }
     var dia by remember { mutableStateOf(hoy) }
     var calendario by remember { mutableStateOf(false) }

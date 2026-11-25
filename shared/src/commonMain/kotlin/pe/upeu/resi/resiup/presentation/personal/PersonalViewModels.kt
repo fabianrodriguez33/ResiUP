@@ -331,6 +331,9 @@ class LimpiezaPreceptorViewModel(private val limpieza: LimpiezaRepository) : Vie
 
     fun guardarCambios() = guardar()
 
+    /** Registra la habitación completa (o guarda los cambios) cuando ya no falta ninguna nota. */
+    fun registrarTodo() = guardar()
+
     fun elegirCriterio(c: CriterioLimpieza) { _estado.update { it.copy(criterio = c, error = null) }; respaldar() }
 
     private fun paso(actual: Int?, delta: Int, maximo: Int) = if (actual == null) (if (delta > 0) 1 else 0).coerceAtMost(maximo) else (actual + delta).coerceIn(0, maximo)

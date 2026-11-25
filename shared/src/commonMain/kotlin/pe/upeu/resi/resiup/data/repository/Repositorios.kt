@@ -112,11 +112,12 @@ class CultoRepositoryImpl(private val api: CultoApi) : CultoRepository {
     override suspend fun cerrarSesion(sesionId: Long) = ejecutarLlamada { api.cerrar(sesionId).aDominio() }
     override suspend fun sesionesDeFecha(fecha: String) = ejecutarLlamada { api.porFecha(fecha).map { it.aDominio() } }
     override suspend fun presentes(sesionId: Long) = ejecutarLlamada {
-        api.presentes(sesionId).map { pe.upeu.resi.resiup.domain.repository.AsistenciaPresente(it.codigo, it.nombreCompleto, it.despuesDelCorte) }
+        api.presentes(sesionId).map { pe.upeu.resi.resiup.domain.repository.AsistenciaPresente(it.codigo, it.nombreCompleto, it.despuesDelCorte, it.id) }
     }
     override suspend fun reabrirSesion(sesionId: Long) = ejecutarLlamada { api.reabrir(sesionId).aDominio() }
     override suspend fun registrarPorCodigo(sesionId: Long, codigo: String) = ejecutarLlamada { api.registrarCodigo(sesionId, codigo).aRegistrada() }
     override suspend fun exportarPresentes(sesionId: Long) = ejecutarLlamada { api.exportar(sesionId) }
+    override suspend fun anularAsistencia(asistenciaId: Long, motivo: String) = ejecutarLlamada { api.anularAsistencia(asistenciaId, motivo.trim()) }
 }
 
 class LimpiezaRepositoryImpl(private val api: LimpiezaApi) : LimpiezaRepository {

@@ -108,6 +108,7 @@ class CultosViewModel(private val repo: CultoRepository) : ViewModel() {
 
     suspend fun presentes(id: Long) = repo.presentes(id)
     suspend fun exportar(id: Long) = repo.exportarPresentes(id)
+    suspend fun anularAsistencia(id: Long, motivo: String) = repo.anularAsistencia(id, motivo)
 
     private fun ejecutar(alListo: () -> Unit, mensajeOk: String, bloque: suspend () -> Result<Unit>) {
         if (_accion.value.trabajando) return
@@ -202,17 +203,27 @@ private fun NuevoCulto(vm: CultosViewModel, onListo: () -> Unit) {
 @Composable
 private fun DetalleCulto(vm: CultosViewModel, sesion: SesionCulto, onListo: () -> Unit) {
     val accion by vm.accion.collectAsState()
-    val presentes by produceState<Carga<List<pe.upeu.resi.resiup.domain.repository.AsistenciaPresente>>>(Carga.Cargando, sesion.id) { value = vm.presentes(sesion.id).aCarga() }
+    var recarga by remember { mutableStateOf(0) }
+    var busqueda by remember { mutableStateOf("") }
+    var anulando by remember { mutableStateOf<pe.upeu.resi.resiup.domain.repository.AsistenciaPresente?>(null) }
+    val presentes by produceState<Carga<List<pe.upeu.resi.resiup.domain.repository.AsistenciaPresente>>>(Carga.Cargando, sesion.id, recarga) { value = vm.presentes(sesion.id).aCarga() }
+    val exportar = pe.upeu.resi.resiup.presentation.components.rememberExportador()
+    val alcance = androidx.compose.runtime.rememberCoroutineScope()
     Column(Modifier.fillMaxSize().padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla(sesion.tipo.titulo(), subtitulo = "Residentes presentes")
+        pe.upeu.resi.resiup.presentation.components.ResiCampoTexto(busqueda, { busqueda = it }, "Buscar por nombre o código")
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
             when (val p = presentes) {
                 Carga.Cargando -> IndicadorCarga(Modifier.padding(Espacio.xl))
                 is Carga.Fallo -> BannerMensaje(p.error.aMensaje(), EstadoVisual.Error)
                 is Carga.Exito -> {
+                    val q = busqueda.trim().lowercase()
+                    val visibles = if (q.isEmpty()) p.datos else p.datos.filter { it.nombreCompleto.lowercase().contains(q) || it.codigo.contains(q) }
                     if (p.datos.isEmpty()) Text("Todavía no hay residentes presentes", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    p.datos.forEach { a ->
-                        ResiTarjeta {
+                    else if (visibles.isEmpty()) Text("Ningún residente coincide con la búsqueda", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    visibles.forEach { a ->
+                        // Tocar a un residente permite anular su asistencia (corrección con motivo, auditada).
+                        ResiTarjeta(onClick = { anulando = a }) {
                             ElementoLista(
                                 a.nombreCompleto, subtitulo = a.codigo, icono = ResiIconos.Perfil,
                                 final = { if (a.despuesDelCorte) ChipEstado("Tardanza", EstadoVisual.Advertencia) },
@@ -231,16 +242,17 @@ private fun DetalleCulto(vm: CultosViewModel, sesion: SesionCulto, onListo: () -
                 alcanceCulto.launch { acciones.eliminarCulto(sesion.id).onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Culto eliminado exitosamente"); vm.cargar(); onListo() } }
             }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
         }
-        if (!sesion.cerrada) {
-            ResiBoton("Terminar culto", { vm.terminar(sesion.id, onListo) }, Modifier.fillMaxWidth(), cargando = accion.trabajando)
-        } else {
-            val exportar = pe.upeu.resi.resiup.presentation.components.rememberExportador()
-            val alcance = androidx.compose.runtime.rememberCoroutineScope()
-            Row(Modifier.fillMaxWidth().padding(bottom = Espacio.m), horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
-                if (sesion.fecha == hoyLima().toString()) ResiBoton("Abrir nuevamente", { vm.reabrir(sesion.id, onListo) }, Modifier.weight(1f), variante = VarianteBoton.Secundario, cargando = accion.trabajando)
-                ResiBoton("Exportar", { alcance.launch { vm.exportar(sesion.id).onSuccess { exportar("culto-${sesion.tipo.etiqueta.lowercase()}-${sesion.fecha}.csv", it) } } }, Modifier.weight(1f))
-            }
+        Row(Modifier.fillMaxWidth().padding(bottom = Espacio.m), horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+            if (!sesion.cerrada) ResiBoton("Terminar culto", { vm.terminar(sesion.id, onListo) }, Modifier.weight(1f), cargando = accion.trabajando)
+            else if (sesion.fecha == hoyLima().toString()) ResiBoton("Abrir nuevamente", { vm.reabrir(sesion.id, onListo) }, Modifier.weight(1f), variante = VarianteBoton.Secundario, cargando = accion.trabajando)
+            // Se puede exportar la lista en cualquier momento, también con el culto abierto.
+            ResiBoton("Exportar", { alcance.launch { vm.exportar(sesion.id).onSuccess { exportar("culto-${sesion.tipo.etiqueta.lowercase()}-${sesion.fecha}.csv", it) } } }, Modifier.weight(1f), variante = if (sesion.cerrada) VarianteBoton.Primario else VarianteBoton.Secundario)
         }
+    }
+    anulando?.let { a ->
+        DialogoMotivo("Anular asistencia", "Se anulará la asistencia de ${a.nombreCompleto}. Queda registrado quién y por qué.", "Motivo", "Anular",
+            { m -> anulando = null; alcance.launch { vm.anularAsistencia(a.id, m).onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Asistencia anulada exitosamente"); recarga++; vm.cargar() } } },
+            { anulando = null }, destructivo = true)
     }
 }
 
@@ -388,6 +400,8 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
     var rechazando by remember { mutableStateOf<ReservaPastor?>(null) }
     var cancelando by remember { mutableStateOf<ReservaPastor?>(null) }
     val acciones = org.koin.compose.koinInject<pe.upeu.resi.resiup.domain.repository.AccionesPastorRepository>()
+    // Al abrir la lista se piden de nuevo: así aparecen las reservas que los residentes hicieron mientras tanto.
+    androidx.compose.runtime.LaunchedEffect(Unit) { vm.cargar() }
     val titulo = when (grupo) { "almuerzo" -> "Reservas de almuerzo"; "cena" -> "Reservas de cenas"; else -> "Reservas de desayunos" }
     val cerrada = claveGrupo(grupo) in cerradas
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
@@ -408,7 +422,7 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
                     }
                     if (visibles.isEmpty()) Text("No hay reservas", Modifier.fillMaxWidth().padding(top = Espacio.l), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
                     visibles.forEach { r ->
-                        ResiTarjeta(onClick = if ((r.estado == EstadoReserva.Pendiente && !cerrada) || r.estado == EstadoReserva.Reservado) ({ elegida = r }) else null) {
+                        ResiTarjeta(onClick = { elegida = r }) {
                             ElementoLista(
                                 r.nombre, subtitulo = r.codigo, icono = if (grupo == "almuerzo") ResiIconos.Almuerzo else if (grupo == "cena") ResiIconos.Cena else ResiIconos.Desayuno, acento = Acento.Azul,
                                 final = { ChipEstado(r.estado.etiqueta, when (r.estado) { EstadoReserva.Pendiente -> EstadoVisual.Advertencia; EstadoReserva.Reservado -> EstadoVisual.Exito; EstadoReserva.Rechazada -> EstadoVisual.Error; else -> EstadoVisual.Neutro }) },
@@ -421,9 +435,10 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
         // «Cerrar reservas»; ya cerradas, queda en gris y aparece «Exportar».
         Row(Modifier.fillMaxWidth().padding(bottom = Espacio.m), horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
             ResiBoton("Cerrar reservas", { vm.cerrar(claveGrupo(grupo)) }, Modifier.weight(1f), habilitado = !cerrada)
-            if (cerrada) ResiBoton("Exportar", {
+            // Se puede exportar en cualquier momento (solo salen las reservas aprobadas).
+            ResiBoton("Exportar", {
                 alcance.launch { vm.exportar(claveGrupo(grupo)).onSuccess { exportar("reservas-$grupo-$fecha.csv", it) } }
-            }, Modifier.weight(1f))
+            }, Modifier.weight(1f), variante = if (cerrada) VarianteBoton.Primario else VarianteBoton.Secundario)
         }
     }
     elegida?.let { r ->
@@ -432,10 +447,11 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
                 Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
                     Text(r.nombre, style = MaterialTheme.typography.titleMedium)
                     Text("Motivo: ${r.motivo}" + (r.curso?.let { " · Curso: $it" } ?: ""), style = MaterialTheme.typography.bodyMedium)
-                    if (r.estado == EstadoReserva.Pendiente) {
+                    Text("Estado: ${r.estado.etiqueta}", style = MaterialTheme.typography.bodyMedium)
+                    if (r.estado == EstadoReserva.Pendiente && !cerrada) {
                         ResiBoton("Aprobar", { vm.decidir(r.id, true, null); elegida = null }, Modifier.fillMaxWidth())
                         ResiBoton("Rechazar", { rechazando = r; elegida = null }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
-                    } else {
+                    } else if (r.estado == EstadoReserva.Reservado) {
                         // Reservada: el pastor puede cancelarla con motivo; el residente puede volver a reservar si el plazo sigue abierto.
                         ResiBoton("Cancelar reserva", { cancelando = r; elegida = null }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
                     }
