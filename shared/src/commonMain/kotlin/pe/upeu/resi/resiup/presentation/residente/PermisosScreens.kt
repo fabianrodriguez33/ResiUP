@@ -102,7 +102,7 @@ private fun ListaPermisos(onNueva: () -> Unit, onDetalle: (Long) -> Unit) {
     val vm = koinViewModel<MisSolicitudesViewModel>()
     val habilitacion = koinViewModel<HabilitacionViewModel>()
     val hab by habilitacion.estado.collectAsState()
-    LaunchedEffect(Unit) { habilitacion.cargar() }
+    LaunchedEffect(Unit) { habilitacion.cargar(); vm.reintentar() }
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla("Permisos", Modifier.padding(top = Espacio.l), subtitulo = "Gestión e historial")
         hab?.takeIf { !it.habilitado }?.let { h ->

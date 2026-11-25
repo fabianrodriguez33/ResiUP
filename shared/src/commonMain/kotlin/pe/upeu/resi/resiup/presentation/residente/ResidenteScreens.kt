@@ -1,6 +1,7 @@
 package pe.upeu.resi.resiup.presentation.residente
 
 import androidx.compose.foundation.clickable
+import androidx.compose.runtime.LaunchedEffect
 import pe.upeu.resi.resiup.presentation.theme.Acento
 import pe.upeu.resi.resiup.presentation.perfil.VerificarCorreoDialogo
 import pe.upeu.resi.resiup.presentation.components.ResiIcono
@@ -209,6 +210,7 @@ internal fun DatoPerfil(
 fun AsistenciasScreen(vm: AsistenciasViewModel = koinViewModel()) {
     val estado by vm.estado.collectAsState()
     val diasConCulto by vm.diasConCulto.collectAsState()
+    LaunchedEffect(Unit) { vm.reintentar() }
     val hoy = remember { hoyLima() }
     var dia by remember { mutableStateOf(hoy) }
     var calendario by remember { mutableStateOf(false) }
