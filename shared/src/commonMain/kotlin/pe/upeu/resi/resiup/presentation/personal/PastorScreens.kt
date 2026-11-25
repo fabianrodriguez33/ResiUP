@@ -246,7 +246,7 @@ private fun DetalleCulto(vm: CultosViewModel, sesion: SesionCulto, onListo: () -
             if (!sesion.cerrada) ResiBoton("Terminar culto", { vm.terminar(sesion.id, onListo) }, Modifier.weight(1f), cargando = accion.trabajando)
             else if (sesion.fecha == hoyLima().toString()) ResiBoton("Abrir nuevamente", { vm.reabrir(sesion.id, onListo) }, Modifier.weight(1f), variante = VarianteBoton.Secundario, cargando = accion.trabajando)
             // Se puede exportar la lista en cualquier momento, también con el culto abierto.
-            ResiBoton("Exportar", { alcance.launch { vm.exportar(sesion.id).onSuccess { exportar("culto-${sesion.tipo.etiqueta.lowercase()}-${sesion.fecha}.csv", it) } } }, Modifier.weight(1f), variante = if (sesion.cerrada) VarianteBoton.Primario else VarianteBoton.Secundario)
+            ResiBoton("Exportar", { alcance.launch { vm.exportar(sesion.id).onSuccess { exportar("culto-${sesion.tipo.etiqueta.lowercase()}-${sesion.fecha}.csv", it) }.avisarFallo() } }, Modifier.weight(1f), variante = if (sesion.cerrada) VarianteBoton.Primario else VarianteBoton.Secundario)
         }
     }
     anulando?.let { a ->
@@ -258,7 +258,7 @@ private fun DetalleCulto(vm: CultosViewModel, sesion: SesionCulto, onListo: () -
 
 // ================================================================= reservas (pastor / monitor)
 
-data class ReservaPastor(val id: Long, val nombre: String, val codigo: String, val tipo: TipoReserva, val estado: EstadoReserva, val motivo: String, val curso: String?)
+data class ReservaPastor(val id: Long, val nombre: String, val codigo: String, val tipo: TipoReserva, val estado: EstadoReserva, val motivo: String, val curso: String?, val evidenciaId: Long? = null)
 
 class ReservasPastorViewModel(private val api: ReservasApi) : ViewModel() {
     private val _fecha = MutableStateFlow(hoyLima())
@@ -279,7 +279,7 @@ class ReservasPastorViewModel(private val api: ReservasApi) : ViewModel() {
     fun cargar() {
         val f = _fecha.value
         viewModelScope.launch {
-            _lista.value = ejecutarLlamada { api.delDia(f.toString(), null).map { ReservaPastor(it.id, it.residenteNombre, it.codigo, it.tipo.aTipoReserva(), it.estado.aEstadoReserva(), it.motivo, it.curso) } }.aCarga()
+            _lista.value = ejecutarLlamada { api.delDia(f.toString(), null).map { ReservaPastor(it.id, it.residenteNombre, it.codigo, it.tipo.aTipoReserva(), it.estado.aEstadoReserva(), it.motivo, it.curso, it.evidenciaId) } }.aCarga()
             ejecutarLlamada { api.cierres(f.toString()) }.onSuccess { _cerradas.value = it.toSet() }
             ejecutarLlamada { api.aperturas(f.toString()) }.onSuccess { _abiertas.value = it.toSet() }
         }
@@ -308,6 +308,8 @@ class ReservasPastorViewModel(private val api: ReservasApi) : ViewModel() {
 
     fun limpiarError() { _error.value = null }
 }
+
+private fun <T> Result<T>.avisarFallo() = onFailure { pe.upeu.resi.resiup.presentation.components.Mensajes.error(it.aErrorApi().let { e -> if (e is ErrorApi.Conflicto) e.mensaje else e.aMensaje() }) }
 
 private sealed interface RutaReservasPastor {
     data object Inicio : RutaReservasPastor
@@ -437,15 +439,16 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
             ResiBoton("Cerrar reservas", { vm.cerrar(claveGrupo(grupo)) }, Modifier.weight(1f), habilitado = !cerrada)
             // Se puede exportar en cualquier momento (solo salen las reservas aprobadas).
             ResiBoton("Exportar", {
-                alcance.launch { vm.exportar(claveGrupo(grupo)).onSuccess { exportar("reservas-$grupo-$fecha.csv", it) } }
+                alcance.launch { vm.exportar(claveGrupo(grupo)).onSuccess { exportar("reservas-$grupo-$fecha.csv", it) }.avisarFallo() }
             }, Modifier.weight(1f), variante = if (cerrada) VarianteBoton.Primario else VarianteBoton.Secundario)
         }
     }
     elegida?.let { r ->
         Dialog(onDismissRequest = { elegida = null }) {
             ResiTarjeta {
-                Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
                     Text(r.nombre, style = MaterialTheme.typography.titleMedium)
+                    Text("${r.codigo} · ${r.tipo.etiqueta}", style = MaterialTheme.typography.bodyMedium)
                     Text("Motivo: ${r.motivo}" + (r.curso?.let { " · Curso: $it" } ?: ""), style = MaterialTheme.typography.bodyMedium)
                     Text("Estado: ${r.estado.etiqueta}", style = MaterialTheme.typography.bodyMedium)
                     if (r.estado == EstadoReserva.Pendiente && !cerrada) {
@@ -455,13 +458,15 @@ private fun ListaReservasPastor(vm: ReservasPastorViewModel, grupo: String) {
                         // Reservada: el pastor puede cancelarla con motivo; el residente puede volver a reservar si el plazo sigue abierto.
                         ResiBoton("Cancelar reserva", { cancelando = r; elegida = null }, Modifier.fillMaxWidth(), variante = VarianteBoton.Destructivo)
                     }
+                    r.evidenciaId?.let { pe.upeu.resi.resiup.presentation.tramites.EvidenciaImagen(it) }
+                    ResiBoton("Cerrar", { elegida = null }, Modifier.fillMaxWidth(), variante = VarianteBoton.Secundario)
                 }
             }
         }
     }
     cancelando?.let { r ->
         DialogoMotivo("Cancelar reserva", "El residente verá el motivo y podrá volver a reservar.", "Motivo", "Cancelar reserva",
-            { m -> cancelando = null; alcance.launch { acciones.cancelarReserva(r.id, m).onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Reserva cancelada exitosamente"); vm.cargar() } } },
+            { m -> cancelando = null; alcance.launch { acciones.cancelarReserva(r.id, m).onSuccess { pe.upeu.resi.resiup.presentation.components.Mensajes.exito("Reserva cancelada exitosamente"); vm.cargar() }.avisarFallo() } },
             { cancelando = null }, destructivo = true)
     }
     rechazando?.let { r ->

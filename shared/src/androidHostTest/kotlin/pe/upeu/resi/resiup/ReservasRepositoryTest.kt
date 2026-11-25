@@ -1,5 +1,8 @@
 package pe.upeu.resi.resiup
 
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpHeaders
+import io.ktor.http.headersOf
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import io.ktor.http.HttpStatusCode
 import kotlin.test.Test
@@ -32,6 +35,15 @@ private fun baseEnMemoria(): DatosLocales {
 class ReservasRepositoryTest {
 
     private fun errorDe(r: Result<*>): ErrorApi = (r.exceptionOrNull() as ErrorApiException).error
+
+    @Test
+    fun `exportar pide CSV que es lo unico que entrega el servidor`() = runTest {
+        val e = Entorno { respond("a;b", headers = headersOf(HttpHeaders.ContentType, "text/csv;charset=UTF-8")) }
+
+        assertEquals("a;b", ReservasApi(e.cliente).exportar("2026-11-23", "ALMUERZO"))
+
+        assertTrue(e.peticiones.single().headers.getAll(HttpHeaders.Accept).orEmpty().any { "text/csv" in it })
+    }
 
     @Test
     fun `la oferta se mapea del servidor al dominio`() = runTest {
