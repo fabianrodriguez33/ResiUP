@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import pe.upeu.resi.resiup.presentation.components.IconoAccion
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -104,7 +105,8 @@ private fun ListaPermisos(onNueva: () -> Unit, onDetalle: (Long) -> Unit) {
     val hab by habilitacion.estado.collectAsState()
     LaunchedEffect(Unit) { habilitacion.cargar(); vm.reintentar() }
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla("Permisos", Modifier.padding(top = Espacio.l), subtitulo = "Gestión e historial")
+        TituloPantalla("Permisos", Modifier.padding(top = Espacio.l), subtitulo = "Gestión e historial",
+            accion = { IconoAccion(ResiIconos.Actualizar, "Actualizar permisos", { vm.reintentar() }) })
         hab?.takeIf { !it.habilitado }?.let { h ->
             BannerMensaje("Estás inhabilitado para solicitar permisos hasta el sábado ${h.hasta.fechaLegible()}: ${h.motivo.orEmpty()}. Si es una falta, el pastor puede justificarla hasta el lunes.", EstadoVisual.Advertencia)
         }

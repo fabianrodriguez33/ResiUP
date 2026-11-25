@@ -217,7 +217,12 @@ fun AsistenciasScreen(vm: AsistenciasViewModel = koinViewModel()) {
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         TituloPantalla(
             "Asistencias", Modifier.padding(top = Espacio.l), subtitulo = "Cultos de lunes a viernes",
-            accion = { IconoAccion(ResiIconos.Calendario, "Abrir calendario", { calendario = true }) },
+            accion = {
+                Row {
+                    IconoAccion(ResiIconos.Actualizar, "Actualizar asistencias", { vm.reintentar() })
+                    IconoAccion(ResiIconos.Calendario, "Abrir calendario", { calendario = true })
+                }
+            },
         )
         FranjaSemana(dia, { dia = it })
         Text("Historial del ${dia.toString().fechaLegible()}", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
