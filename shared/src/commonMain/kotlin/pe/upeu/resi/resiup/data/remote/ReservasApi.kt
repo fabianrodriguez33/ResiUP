@@ -57,7 +57,18 @@ class ReservasApi(private val client: HttpClient) {
     suspend fun cerrar(fecha: String, grupo: String) { client.post("$BASE/cerrar") { setBody(CierreRequestDto(fecha, grupo)) } }
     suspend fun cierres(fecha: String): List<String> = client.get("$BASE/cierres") { parameter("fecha", fecha) }.body()
     suspend fun exportar(fecha: String, grupo: String): String = client.get("$BASE/exportar") { accept(ContentType.Text.CSV); parameter("fecha", fecha); parameter("grupo", grupo) }.body()
-    suspend fun mias(pagina: Int): PaginaDto<ReservaDto> = client.get("$BASE/mias") { parameter("pagina", pagina); parameter("tamanio", 20) }.body()
+    suspend fun mias(pagina: Int): PaginaDto<ReservaDto> = client.get("$BASE/mias") { parameter("pagina", pagina); parameter("tamanio", 100) }.body()
+
+    /** Todas las reservas del residente: el historial las muestra completas. */
+    suspend fun todasMias(): List<ReservaDto> {
+        val todas = mutableListOf<ReservaDto>()
+        var pagina = 0
+        do {
+            val r = mias(pagina++)
+            todas += r.contenido
+        } while (!r.ultima && r.contenido.isNotEmpty())
+        return todas
+    }
 }
 
 internal fun String.aTipoReserva() = when (this) {

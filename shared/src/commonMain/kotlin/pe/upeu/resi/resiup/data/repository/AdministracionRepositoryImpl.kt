@@ -61,7 +61,7 @@ class AccionesPastorRepositoryImpl(private val c: HttpClient) : AccionesPastorRe
 
 class ReservasRepositoryImpl(private val api: pe.upeu.resi.resiup.data.remote.ReservasApi, private val locales: pe.upeu.resi.resiup.data.local.DatosLocales) : pe.upeu.resi.resiup.domain.repository.ReservasRepository {
     override suspend fun oferta() = conRespaldoLocal(locales, "reservas:oferta", pe.upeu.resi.resiup.data.remote.OfertaDto.serializer()) { api.oferta() }.map { o -> o.comidas.map { it.aDominio() } }
-    override suspend fun mias() = conRespaldoLocal(locales, "reservas:mias", kotlinx.serialization.builtins.ListSerializer(pe.upeu.resi.resiup.data.remote.ReservaDto.serializer())) { api.mias(0).contenido }.map { l -> l.map { it.aDominio() } }
+    override suspend fun mias() = conRespaldoLocal(locales, "reservas:mias", kotlinx.serialization.builtins.ListSerializer(pe.upeu.resi.resiup.data.remote.ReservaDto.serializer())) { api.todasMias() }.map { l -> l.map { it.aDominio() } }
     override suspend fun reservar(n: NuevaReserva) = ejecutarLlamada { api.reservar(pe.upeu.resi.resiup.data.remote.ReservaRequestDto(n.tipo.aApi(), n.fecha, n.motivo, n.curso, n.evidenciaId)).aDominio() }
     override suspend fun cancelar(id: Long) = ejecutarLlamada { api.cancelar(id).aDominio() }
 }
