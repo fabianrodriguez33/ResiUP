@@ -44,7 +44,7 @@ import pe.upeu.resi.resiup.presentation.components.ResiBoton
 import pe.upeu.resi.resiup.presentation.components.VarianteBoton
 
 actual fun crearMatrizQr(contenido: String): List<List<Boolean>>? = runCatching {
-    val m = QRCodeWriter().encode(contenido, BarcodeFormat.QR_CODE, 0, 0, mapOf(EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M, EncodeHintType.MARGIN to 0))
+    val m = QRCodeWriter().encode(contenido, BarcodeFormat.QR_CODE, 0, 0, mapOf(EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.H, EncodeHintType.MARGIN to 0))
     List(m.height) { y -> List(m.width) { x -> m.get(x, y) } }
 }.getOrNull()
 
