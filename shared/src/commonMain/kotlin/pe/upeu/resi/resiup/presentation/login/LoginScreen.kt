@@ -40,6 +40,7 @@ import androidx.compose.ui.layout.ContentScale
 import org.jetbrains.compose.resources.painterResource
 import resiup.shared.generated.resources.Res
 import resiup.shared.generated.resources.residencia_azul
+import resiup.shared.generated.resources.resiup_logo_letras
 import pe.upeu.resi.resiup.presentation.components.ResiBoton
 import pe.upeu.resi.resiup.presentation.components.ResiCampoTexto
 import pe.upeu.resi.resiup.presentation.components.VarianteBoton
@@ -73,7 +74,7 @@ fun LoginScreen(
                 Modifier.fillMaxWidth().padding(horizontal = Espacio.xl).padding(top = Espacio.l, bottom = Espacio.xl),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Espacio.s),
             ) {
-                Text("Bienvenido a ResiUP", style = MaterialTheme.typography.displaySmall, color = colores.sobreMarca, textAlign = TextAlign.Center)
+                Image(painterResource(Res.drawable.resiup_logo_letras), "Bienvenido a ResiUP", Modifier.fillMaxWidth(0.72f), contentScale = ContentScale.FillWidth)
                 Text(
                     "Más que una residencia, una hermandad con propósito",
                     style = MaterialTheme.typography.bodyLarge, color = colores.sobreMarca, textAlign = TextAlign.Center,

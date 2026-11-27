@@ -83,6 +83,8 @@ import pe.upeu.resi.resiup.presentation.util.aCarga
 import pe.upeu.resi.resiup.presentation.util.aErrorApi
 import pe.upeu.resi.resiup.presentation.util.fechaLegible
 import pe.upeu.resi.resiup.presentation.util.formatoLima
+import pe.upeu.resi.resiup.presentation.util.ahora
+import pe.upeu.resi.resiup.presentation.util.hoyLima
 
 data class ReservasUi(val oferta: List<ComidaOfertada>, val historial: List<Reserva>)
 
@@ -164,11 +166,15 @@ fun ReservasResidenteScreen() {
     var ruta by remember { mutableStateOf<RutaReservas>(RutaReservas.Inicio) }
     // Revisa el servidor cada 10 s mientras la pantalla está abierta (aprobaciones y cierres del pastor).
     LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(10_000); vm.cargar() } }
-    BackHandler(enabled = ruta != RutaReservas.Inicio) { ruta = RutaReservas.Inicio }
+    // Vive aquí para que, al volver de un detalle, se siga en el historial.
+    var historial by remember { mutableStateOf(false) }
+    val enInicio = ruta == RutaReservas.Inicio
+    val volver: () -> Unit = { if (enInicio) historial = false else ruta = RutaReservas.Inicio }
+    BackHandler(enabled = !enInicio || historial, onBack = volver)
     val alInicio = LocalVolver.current
-    CompositionLocalProvider(LocalVolver provides (if (ruta == RutaReservas.Inicio) alInicio else ({ ruta = RutaReservas.Inicio }))) {
+    CompositionLocalProvider(LocalVolver provides (if (enInicio && !historial) alInicio else volver)) {
         when (val r = ruta) {
-            RutaReservas.Inicio -> InicioReservas(estado, vm::cargar, onElegir = { ruta = RutaReservas.Formulario(it) }, onDetalle = { ruta = RutaReservas.Detalle(it) })
+            RutaReservas.Inicio -> InicioReservas(estado, vm::cargar, historial, { historial = it }, onElegir = { ruta = RutaReservas.Formulario(it) }, onDetalle = { ruta = RutaReservas.Detalle(it) })
             is RutaReservas.Formulario -> FormularioReserva(r.comida, (estado as? Carga.Exito)?.datos?.oferta.orEmpty(), onListo = { vm.cargar(); ruta = RutaReservas.Inicio })
             is RutaReservas.Detalle -> DetalleReserva(r.reserva, onListo = { vm.cargar(); ruta = RutaReservas.Inicio }, onVolver = { ruta = RutaReservas.Inicio })
         }
@@ -176,9 +182,12 @@ fun ReservasResidenteScreen() {
 }
 
 @Composable
-private fun InicioReservas(estado: Carga<ReservasUi>, reintentar: () -> Unit, onElegir: (ComidaOfertada) -> Unit, onDetalle: (Reserva) -> Unit) {
+private fun InicioReservas(
+    estado: Carga<ReservasUi>, reintentar: () -> Unit, historial: Boolean, onHistorial: (Boolean) -> Unit,
+    onElegir: (ComidaOfertada) -> Unit, onDetalle: (Reserva) -> Unit,
+) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla("Reservas", subtitulo = "Elije tus reservas")
+        TituloPantalla(if (historial) "Historial de reservas" else "Reservas", subtitulo = if (historial) "Todas, lo más nuevo primero" else "Elije tus reservas")
         when (estado) {
             Carga.Cargando -> IndicadorCarga(Modifier.padding(Espacio.xl))
             is Carga.Fallo -> BannerMensaje(estado.error.aMensaje(), EstadoVisual.Error).also { ResiBoton("Reintentar", reintentar, variante = VarianteBoton.Secundario) }
@@ -187,19 +196,29 @@ private fun InicioReservas(estado: Carga<ReservasUi>, reintentar: () -> Unit, on
                 fun comida(vararg tipos: TipoReserva) = oferta.filter { it.tipo in tipos }.let { l -> l.firstOrNull { it.puedeReservar } ?: l.firstOrNull() }
                 fun mosaico(titulo: String, icono: androidx.compose.ui.graphics.vector.ImageVector, c: ComidaOfertada?) =
                     ModuloUi(titulo, icono, Acento.Azul, { if (c != null && c.puedeReservar) onElegir(c) }, deshabilitado = c == null || !c.puedeReservar)
-                CuadriculaModulos(
+                if (!historial) CuadriculaModulos(
                     listOf(
                         mosaico("Almuerzo", ResiIconos.Almuerzo, comida(TipoReserva.Almuerzo)),
                         mosaico("Cena", ResiIconos.Cena, comida(TipoReserva.CenaTaper, TipoReserva.CenaSegundoTurno)),
                         mosaico("Desayuno", ResiIconos.Desayuno, comida(TipoReserva.Desayuno)),
                     ),
                 )
-                oferta.firstOrNull { !it.puedeReservar && it.reserva == null && it.motivoNoDisponible != null }?.let {
+                oferta.firstOrNull { !historial && !it.puedeReservar && it.reserva == null && it.motivoNoDisponible != null }?.let {
                     Text(it.motivoNoDisponible!!, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text("Historial de Reservas", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                if (estado.datos.historial.isEmpty()) Text("Aún no tienes reservas.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                estado.datos.historial.forEach { r ->
+                val todas = estado.datos.historial
+                val visibles = if (historial) todas.todasLasReservas() else todas.reservasPrincipales(ahora(), hoyLima())
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (historial) "" else "Mis reservas", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    ResiBoton(if (historial) "Volver" else "Historial", { onHistorial(!historial) }, variante = VarianteBoton.Secundario)
+                }
+                val aviso = when {
+                    todas.isEmpty() -> "Aún no tienes reservas."
+                    visibles.isEmpty() -> "No hay reservas recientes. Las anteriores están en Historial."
+                    else -> null
+                }
+                aviso?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                visibles.forEach { r ->
                     ResiTarjeta(onClick = { onDetalle(r) }) {
                         ElementoLista(r.tipo.etiqueta, subtitulo = r.fecha.fechaConDia(), icono = r.tipo.icono(), acento = Acento.Azul, final = { ChipEstado(r.estado.etiqueta, r.estado.aVisual()) })
                     }

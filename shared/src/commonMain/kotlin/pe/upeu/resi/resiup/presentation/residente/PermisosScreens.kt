@@ -84,12 +84,16 @@ private enum class Seccion(val etiqueta: String) { Solicitudes("Solicitudes"), M
 @Composable
 fun PermisosResidenteScreen() {
     var ruta by remember { mutableStateOf<RutaPermisos>(RutaPermisos.Lista) }
-    BackHandler(enabled = ruta != RutaPermisos.Lista) { ruta = RutaPermisos.Lista }
-    // Dentro del flujo, la flecha de cada pantalla vuelve a la lista (en la lista, al inicio).
+    // Vive aquí para que, al volver de un detalle, se siga en el historial.
+    var historial by remember { mutableStateOf(false) }
+    val enLista = ruta == RutaPermisos.Lista
+    val volver: () -> Unit = { if (enLista) historial = false else ruta = RutaPermisos.Lista }
+    BackHandler(enabled = !enLista || historial, onBack = volver)
+    // Dentro del flujo, la flecha de cada pantalla vuelve a la anterior (en la lista principal, al inicio).
     val alInicio = LocalVolver.current
-    androidx.compose.runtime.CompositionLocalProvider(LocalVolver provides (if (ruta == RutaPermisos.Lista) alInicio else ({ ruta = RutaPermisos.Lista }))) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalVolver provides (if (enLista && !historial) alInicio else volver)) {
         when (val r = ruta) {
-            RutaPermisos.Lista -> ListaPermisos(onNueva = { ruta = RutaPermisos.Nueva }, onDetalle = { ruta = RutaPermisos.Detalle(it) })
+            RutaPermisos.Lista -> ListaPermisos(historial, { historial = it }, onNueva = { ruta = RutaPermisos.Nueva }, onDetalle = { ruta = RutaPermisos.Detalle(it) })
             RutaPermisos.Nueva -> SolicitudNuevaScreen(onVolver = { ruta = RutaPermisos.Lista }, onCreada = { ruta = RutaPermisos.Detalle(it) })
             is RutaPermisos.Detalle -> SolicitudDetalleScreen(r.id, onVolver = { ruta = RutaPermisos.Lista })
         }
@@ -99,7 +103,7 @@ fun PermisosResidenteScreen() {
 private fun TipoPermiso.titulo() = "Permiso " + if (this == TipoPermiso.Pernocte) "Pernoctar" else etiqueta
 
 @Composable
-private fun ListaPermisos(onNueva: () -> Unit, onDetalle: (Long) -> Unit) {
+private fun ListaPermisos(historial: Boolean, onHistorial: (Boolean) -> Unit, onNueva: () -> Unit, onDetalle: (Long) -> Unit) {
     val vm = koinViewModel<MisSolicitudesViewModel>()
     val habilitacion = koinViewModel<HabilitacionViewModel>()
     val hab by habilitacion.estado.collectAsState()
@@ -113,16 +117,19 @@ private fun ListaPermisos(onNueva: () -> Unit, onDetalle: (Long) -> Unit) {
     // Deslizar hacia abajo vuelve a pedir los permisos al servidor.
     androidx.compose.material3.pulltorefresh.PullToRefreshBox(isRefreshing = refrescando, onRefresh = { refrescando = true; vm.reintentar(); habilitacion.cargar() }) {
     Column(Modifier.fillMaxSize().padding(horizontal = Espacio.l), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-        TituloPantalla("Permisos", Modifier.padding(top = Espacio.l), subtitulo = "Gestión e historial",
+        TituloPantalla(
+            if (historial) "Historial de permisos" else "Permisos", Modifier.padding(top = Espacio.l),
+            subtitulo = if (historial) "Todos, lo más nuevo primero" else "Vigentes y de las últimas 72 horas",
             accion = { IconoAccion(ResiIconos.Actualizar, "Actualizar permisos", { vm.reintentar() }) })
         hab?.takeIf { !it.habilitado }?.let { h ->
             BannerMensaje("Estás inhabilitado para solicitar permisos hasta el sábado ${h.hasta.fechaLegible()}: ${h.motivo.orEmpty()}. Si es una falta, el pastor puede justificarla hasta el lunes.", EstadoVisual.Advertencia)
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            ResiBoton("Crear permiso", onNueva, habilitado = hab?.habilitado != false)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Espacio.s, Alignment.End)) {
+            ResiBoton(if (historial) "Volver" else "Historial", { onHistorial(!historial) }, variante = VarianteBoton.Secundario)
+            if (!historial) ResiBoton("Crear permiso", onNueva, habilitado = hab?.habilitado != false)
         }
         val pendientes by vm.pendientes.collectAsState()
-        pendientes.forEach { p ->
+        if (!historial) pendientes.forEach { p ->
             ResiTarjeta {
                 ElementoLista(
                     p.tipo.titulo(), subtitulo = p.salida.formatoLima(), icono = ResiIconos.Permisos, acento = Acento.Azul,
@@ -138,11 +145,14 @@ private fun ListaPermisos(onNueva: () -> Unit, onDetalle: (Long) -> Unit) {
         }
         val estado by vm.estado.collectAsState()
         ContenidoConsulta(estado, vm::reintentar) { lista ->
+            val visibles = if (historial) lista.todosLosPermisos() else lista.permisosPrincipales(ahora())
             if (lista.isEmpty()) {
                 EstadoVacio("Sin permisos", "Cuando crees un permiso aparecerá aquí con su estado.")
+            } else if (visibles.isEmpty()) {
+                EstadoVacio("Sin permisos recientes", "Los anteriores están en Historial.")
             } else {
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                    items(lista) { s ->
+                    items(visibles) { s ->
                         val (texto, visual) = s.estadoParaResidente()
                         ResiTarjeta(onClick = { onDetalle(s.id) }) {
                             ElementoLista(s.tipo.titulo(), subtitulo = s.salida.formatoLima(), icono = ResiIconos.Permisos, acento = Acento.Azul, final = { ChipEstado(texto, visual) })
