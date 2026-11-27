@@ -1,6 +1,12 @@
 package pe.upeu.resi.resiup.presentation.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.graphics.ColorFilter
+import org.jetbrains.compose.resources.painterResource
+import resiup.shared.generated.resources.Res
+import resiup.shared.generated.resources.resiup_icono
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -43,18 +49,32 @@ import pe.upeu.resi.resiup.presentation.util.conHoraLima
 import pe.upeu.resi.resiup.presentation.util.soloHoraLima
 import pe.upeu.resi.resiup.presentation.util.formatoLima
 
-/** Dibuja la matriz de un QR en negro sobre blanco, con zona de silencio, para que sea legible por cualquier lector. */
+/**
+ * QR de la casa: tarjeta blanca sobre el azul y el icono de ResiUP al centro. Los módulos van en negro sobre blanco y la
+ * matriz se genera con corrección H, que recupera el centro tapado; así lo sigue leyendo cualquier lector.
+ */
 @Composable
 fun QrVista(matriz: List<List<Boolean>>, modifier: Modifier = Modifier, descripcion: String = "Código QR personal") {
     val n = matriz.size
-    Canvas(
-        modifier.aspectRatio(1f).background(Color.White, RoundedCornerShape(12.dp)).padding(12.dp)
+    val hueco = (n * 0.28f).toInt() or 1
+    val desde = (n - hueco) / 2
+    Box(
+        modifier.aspectRatio(1f).background(Color(0xFF012E68), RoundedCornerShape(24.dp)).padding(16.dp)
+            .background(Color.White, RoundedCornerShape(14.dp)).padding(14.dp)
             .semantics { contentDescription = descripcion },
+        contentAlignment = Alignment.Center,
     ) {
-        val lado = size.minDimension / n
-        for (y in 0 until n) for (x in 0 until n) if (matriz[y][x]) {
-            drawRect(Color.Black, Offset(x * lado, y * lado), Size(lado + 0.5f, lado + 0.5f))
+        Canvas(Modifier.fillMaxSize()) {
+            val lado = size.minDimension / n
+            for (y in 0 until n) for (x in 0 until n) {
+                val enHueco = x in desde until desde + hueco && y in desde until desde + hueco
+                if (matriz[y][x] && !enHueco) drawRect(Color.Black, Offset(x * lado, y * lado), Size(lado + 0.5f, lado + 0.5f))
+            }
         }
+        Image(
+            painterResource(Res.drawable.resiup_icono), null, Modifier.fillMaxSize((hueco - 1f) / n),
+            colorFilter = ColorFilter.tint(Color.Black),
+        )
     }
 }
 
